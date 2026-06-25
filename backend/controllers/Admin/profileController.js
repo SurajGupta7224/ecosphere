@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Role, Country, State, City } = require("../../models/index");
+const { User, Role, Country, State, City, SecuritySettings } = require("../../models/index");
 
 // GET /api/profile
 const getProfile = async (req, res) => {
@@ -25,7 +25,7 @@ const updateProfile = async (req, res) => {
   const { 
     name, email, phone, password, 
     country_id, state_id, city_id,
-    trade_name, company_type, pan_number, aadhaar_number, gst_number
+    company_type, pan_number, aadhaar_number
   } = req.body;
 
   try {
@@ -49,14 +49,17 @@ const updateProfile = async (req, res) => {
       country_id: country_id || user.country_id,
       state_id: state_id || user.state_id,
       city_id: city_id || user.city_id,
-      trade_name: trade_name || user.trade_name,
       company_type: company_type || user.company_type,
       pan_number: pan_number || user.pan_number,
-      aadhaar_number: aadhaar_number || user.aadhaar_number,
-      gst_number: gst_number || user.gst_number
+      aadhaar_number: aadhaar_number || user.aadhaar_number
     };
 
     if (password && password.trim() !== "") {
+      const security = await SecuritySettings.findByPk(1);
+      const minLength = security?.password_min_length || 8;
+      if (password.length < minLength) {
+        return res.status(400).json({ message: `Password must be at least ${minLength} characters long.` });
+      }
       updateData.password = await bcrypt.hash(password, 10);
     }
 
@@ -65,7 +68,6 @@ const updateProfile = async (req, res) => {
       if (req.files.profile_photo) updateData.profile_photo = req.files.profile_photo[0].filename;
       if (req.files.pan_card_file) updateData.pan_card_file = req.files.pan_card_file[0].filename;
       if (req.files.aadhaar_card_file) updateData.aadhaar_card_file = req.files.aadhaar_card_file[0].filename;
-      if (req.files.gst_file) updateData.gst_file = req.files.gst_file[0].filename;
     }
 
     // If user is a vendor, reset profile_status to pending on update

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Plus, Search, Edit2, Trash2, X, Image as ImageIcon,
-  ChevronLeft, ChevronRight, Save, RotateCcw, Filter, Layers
+  ChevronLeft, ChevronRight, Save, RotateCcw, Filter, Layers, GripVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
@@ -30,6 +30,7 @@ const SubCategories = () => {
   const [formData, setFormData] = useState({
     category_id: '',
     name: '',
+    color: '',
     slug: '',
     description: '',
     alt_tag: '',
@@ -40,6 +41,11 @@ const SubCategories = () => {
 
   const [subCategoryImage, setSubCategoryImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // Variations State
+  const [variations, setVariations] = useState([]);
+  const [variationErrors, setVariationErrors] = useState([]);
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Fetch categories for dropdown on mount
   useEffect(() => {
@@ -106,8 +112,187 @@ const SubCategories = () => {
     }
   };
 
+  // ─── VARIATION HANDLERS ───────────────────────────────────────────────────
+
+  const addVariation = () => {
+    const newOrder = variations.length;
+    setVariations([
+      ...variations,
+      {
+        id: null,
+        variation_name: '',
+        number_of_sr: '',
+        schedule_after_days: '',
+        per_kg_price: '',
+        status: 'Active',
+        display_order: newOrder
+      }
+    ]);
+    setVariationErrors([
+      ...variationErrors,
+      {
+        variation_name: '',
+        number_of_sr: '',
+        schedule_after_days: '',
+        per_kg_price: ''
+      }
+    ]);
+  };
+
+  const deleteVariation = (index) => {
+    const updated = variations.filter((_, i) => i !== index);
+    const reordered = updated.map((v, i) => ({ ...v, display_order: i }));
+    setVariations(reordered);
+
+    const updatedErrors = variationErrors.filter((_, i) => i !== index);
+    setVariationErrors(updatedErrors);
+  };
+
+  const handleVariationChange = (index, field, value) => {
+    const updated = [...variations];
+    updated[index] = { ...updated[index], [field]: value };
+    setVariations(updated);
+
+    // Inline field validation
+    const updatedErrors = [...variationErrors];
+    const rowErrors = { ...updatedErrors[index] };
+
+    if (field === 'variation_name') {
+      if (!value || value.trim() === '') {
+        rowErrors.variation_name = 'Name is required';
+      } else if (value.length > 100) {
+        rowErrors.variation_name = 'Max 100 characters';
+      } else {
+        rowErrors.variation_name = '';
+      }
+    }
+
+    if (field === 'number_of_sr') {
+      const num = Number(value);
+      if (value === '') {
+        rowErrors.number_of_sr = 'Required';
+      } else if (isNaN(num) || num <= 0) {
+        rowErrors.number_of_sr = 'Must be > 0';
+      } else {
+        rowErrors.number_of_sr = '';
+      }
+    }
+
+    if (field === 'schedule_after_days') {
+      const num = Number(value);
+      if (value === '') {
+        rowErrors.schedule_after_days = 'Required';
+      } else if (isNaN(num) || num <= 0) {
+        rowErrors.schedule_after_days = 'Must be > 0';
+      } else {
+        rowErrors.schedule_after_days = '';
+      }
+    }
+
+    if (field === 'per_kg_price') {
+      const num = Number(value);
+      if (value === '') {
+        rowErrors.per_kg_price = 'Required';
+      } else if (isNaN(num) || num < 0) {
+        rowErrors.per_kg_price = 'Must be ≥ 0';
+      } else {
+        rowErrors.per_kg_price = '';
+      }
+    }
+
+    updatedErrors[index] = rowErrors;
+    setVariationErrors(updatedErrors);
+  };
+
+  // HTML5 Drag and Drop Handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const updated = [...variations];
+    const draggedItem = updated[draggedIndex];
+
+    // Rearrange array items
+    updated.splice(draggedIndex, 1);
+    updated.splice(index, 0, draggedItem);
+
+    // Re-index display_order based on array position
+    const reordered = updated.map((v, i) => ({ ...v, display_order: i }));
+
+    // Rearrange validation errors array to match
+    const updatedErrors = [...variationErrors];
+    const draggedError = updatedErrors[draggedIndex];
+    updatedErrors.splice(draggedIndex, 1);
+    updatedErrors.splice(index, 0, draggedError);
+
+    setDraggedIndex(index);
+    setVariations(reordered);
+    setVariationErrors(updatedErrors);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // Validate entire variations state before submit
+  const validateVariationsForm = () => {
+    let isValid = true;
+    const errors = variations.map((v) => {
+      const rowErrors = {};
+      if (!v.variation_name || v.variation_name.trim() === '') {
+        rowErrors.variation_name = 'Name is required';
+        isValid = false;
+      } else if (v.variation_name.length > 100) {
+        rowErrors.variation_name = 'Max 100 characters';
+        isValid = false;
+      }
+
+      const numSr = Number(v.number_of_sr);
+      if (v.number_of_sr === '' || v.number_of_sr === undefined || v.number_of_sr === null) {
+        rowErrors.number_of_sr = 'Required';
+        isValid = false;
+      } else if (isNaN(numSr) || numSr <= 0) {
+        rowErrors.number_of_sr = 'Must be > 0';
+        isValid = false;
+      }
+
+      const numDays = Number(v.schedule_after_days);
+      if (v.schedule_after_days === '' || v.schedule_after_days === undefined || v.schedule_after_days === null) {
+        rowErrors.schedule_after_days = 'Required';
+        isValid = false;
+      } else if (isNaN(numDays) || numDays <= 0) {
+        rowErrors.schedule_after_days = 'Must be > 0';
+        isValid = false;
+      }
+
+      const numPrice = Number(v.per_kg_price);
+      if (v.per_kg_price === '' || v.per_kg_price === undefined || v.per_kg_price === null) {
+        rowErrors.per_kg_price = 'Required';
+        isValid = false;
+      } else if (isNaN(numPrice) || numPrice < 0) {
+        rowErrors.per_kg_price = 'Must be ≥ 0';
+        isValid = false;
+      }
+
+      return rowErrors;
+    });
+
+    setVariationErrors(errors);
+    return isValid;
+  };
+
+  // ─── SUBMISSION & RESET ───────────────────────────────────────────────────
+
   const resetForm = () => {
-    setFormData({ category_id: '', name: '', slug: '', description: '', alt_tag: '', meta_title: '', meta_description: '', status: 1 });
+    setFormData({ category_id: '', name: '', color: '', slug: '', description: '', alt_tag: '', meta_title: '', meta_description: '', status: 1 });
+    setVariations([]);
+    setVariationErrors([]);
     setSubCategoryImage(null);
     setImagePreview(null);
     setIsEditMode(false);
@@ -123,6 +308,7 @@ const SubCategories = () => {
     setFormData({
       category_id: sc.category_id,
       name: sc.name,
+      color: sc.color || '',
       slug: sc.slug,
       description: sc.description || '',
       alt_tag: sc.alt_tag || '',
@@ -130,6 +316,25 @@ const SubCategories = () => {
       meta_description: sc.meta_description || '',
       status: sc.status,
     });
+
+    // Populate variations state
+    const loadedVariations = sc.variations || [];
+    setVariations(loadedVariations.map((v) => ({
+      id: v.id,
+      variation_name: v.variation_name,
+      number_of_sr: v.number_of_sr,
+      schedule_after_days: v.schedule_after_days,
+      per_kg_price: v.per_kg_price !== undefined ? v.per_kg_price : '',
+      status: v.status,
+      display_order: v.display_order
+    })));
+    setVariationErrors(loadedVariations.map(() => ({
+      variation_name: '',
+      number_of_sr: '',
+      per_kg_price: '',
+      schedule_after_days: ''
+    })));
+
     setImagePreview(sc.image ? `http://localhost:5000/uploads/SubCategory/${sc.image}` : null);
     setSelectedId(sc.id);
     setIsEditMode(true);
@@ -142,11 +347,21 @@ const SubCategories = () => {
       toast.error('Please select a category');
       return;
     }
+
+    // Validate variations before submission
+    if (!validateVariationsForm()) {
+      toast.error('Please resolve validation errors in the Variations section');
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = new FormData();
     Object.keys(formData).forEach((key) => payload.append(key, formData[key]));
     if (subCategoryImage) payload.append('subcategory_image', subCategoryImage);
+    
+    // Append variations array as JSON string
+    payload.append('variations', JSON.stringify(variations));
 
     try {
       if (isEditMode) {
@@ -252,6 +467,30 @@ const SubCategories = () => {
                   />
                 </div>
 
+                {/* Sub-Category Color */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Sub-Category Color
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text" name="color" value={formData.color || ''}
+                        onChange={handleInputChange}
+                        placeholder="e.g. #6366F1, rgb(99, 102, 241)…"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-mono"
+                      />
+                    </div>
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex-shrink-0">
+                      <input
+                        type="color" name="color" value={formData.color && formData.color.startsWith('#') && formData.color.length === 7 ? formData.color : '#6366f1'}
+                        onChange={handleInputChange}
+                        className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer scale-150"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Slug (auto) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -345,6 +584,183 @@ const SubCategories = () => {
                 onChange={handleInputChange} rows="2" required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
               />
+            </div>
+
+            {/* Variations Card Section */}
+            <div className="mt-8 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Variations</h3>
+                  <p className="text-xs text-slate-400 mt-1">Configure service variations, schedule periods, and ordering.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addVariation}
+                  className="flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-xs shadow-md shadow-violet-100 transition-all active:scale-95"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" /> Add Variation
+                </button>
+              </div>
+
+              <div className="p-6">
+                {variations.length === 0 ? (
+                  <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/30">
+                    <p className="text-sm text-slate-400 font-medium">No variations added yet.</p>
+                    <p className="text-xs text-slate-300 mt-1">Click "Add Variation" to define your service pricing and schedule.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                          <th className="p-3 w-10 text-center"></th> {/* Drag handle column */}
+                          <th className="p-3">Variation Name *</th>
+                          <th className="p-3 w-32">Number of SR *</th>
+                          <th className="p-3 w-44">Schedule After Days *</th>
+                          <th className="p-3 w-36">Par Kg Price *</th>
+                          <th className="p-3 w-36">Status *</th>
+                          <th className="p-3 w-12 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {variations.map((v, index) => (
+                          <tr
+                            key={index}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                            className={`transition-colors duration-150 ${
+                              draggedIndex === index ? 'bg-violet-50/70 opacity-50' : 'hover:bg-slate-50/50'
+                            }`}
+                          >
+                            {/* Drag handle */}
+                            <td className="p-3 text-center">
+                              <div
+                                className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                                title="Drag to reorder"
+                              >
+                                <GripVertical className="w-4 h-4" />
+                              </div>
+                            </td>
+
+                            {/* Variation Name */}
+                            <td className="p-3">
+                              <input
+                                type="text"
+                                value={v.variation_name}
+                                onChange={(e) => handleVariationChange(index, 'variation_name', e.target.value)}
+                                placeholder="e.g. Daily, Weekly, Monthly..."
+                                className={`w-full bg-slate-50 border rounded-xl py-2 px-3 outline-none text-xs transition-all ${
+                                  variationErrors[index]?.variation_name
+                                    ? 'border-red-300 focus:ring-4 focus:ring-red-50 focus:border-red-400'
+                                    : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
+                                }`}
+                              />
+                              {variationErrors[index]?.variation_name && (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
+                                  {variationErrors[index].variation_name}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Number of SR */}
+                            <td className="p-3">
+                              <input
+                                type="number"
+                                min="1"
+                                value={v.number_of_sr}
+                                onChange={(e) => handleVariationChange(index, 'number_of_sr', e.target.value)}
+                                placeholder="e.g. 4"
+                                className={`w-full bg-slate-50 border rounded-xl py-2 px-3 outline-none text-xs transition-all ${
+                                  variationErrors[index]?.number_of_sr
+                                    ? 'border-red-300 focus:ring-4 focus:ring-red-50 focus:border-red-400'
+                                    : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
+                                }`}
+                              />
+                              {variationErrors[index]?.number_of_sr && (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
+                                  {variationErrors[index].number_of_sr}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Schedule After Days */}
+                            <td className="p-3">
+                              <input
+                                type="number"
+                                min="1"
+                                value={v.schedule_after_days}
+                                onChange={(e) => handleVariationChange(index, 'schedule_after_days', e.target.value)}
+                                placeholder="e.g. 7"
+                                className={`w-full bg-slate-50 border rounded-xl py-2 px-3 outline-none text-xs transition-all ${
+                                  variationErrors[index]?.schedule_after_days
+                                    ? 'border-red-300 focus:ring-4 focus:ring-red-50 focus:border-red-400'
+                                    : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
+                                }`}
+                              />
+                              {variationErrors[index]?.schedule_after_days && (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
+                                  {variationErrors[index].schedule_after_days}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Par Kg Price */}
+                            <td className="p-3">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={v.per_kg_price}
+                                  onChange={(e) => handleVariationChange(index, 'per_kg_price', e.target.value)}
+                                  placeholder="0.00"
+                                  className={`w-full bg-slate-50 border rounded-xl py-2 pl-7 pr-3 outline-none text-xs transition-all ${
+                                    variationErrors[index]?.per_kg_price
+                                      ? 'border-red-300 focus:ring-4 focus:ring-red-50 focus:border-red-400'
+                                      : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
+                                  }`}
+                                />
+                              </div>
+                              {variationErrors[index]?.per_kg_price && (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
+                                  {variationErrors[index].per_kg_price}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="p-3">
+                              <select
+                                value={v.status}
+                                onChange={(e) => handleVariationChange(index, 'status', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 outline-none text-xs focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all font-medium text-slate-700"
+                              >
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                              </select>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="p-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => deleteVariation(index)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                title="Remove Variation"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -485,7 +901,16 @@ const SubCategories = () => {
 
                         {/* Sub-Category Name */}
                         <td className="p-5">
-                          <p className="font-bold text-slate-800 text-sm">{sc.name}</p>
+                          <div className="flex items-center gap-2">
+                            {sc.color && (
+                              <span 
+                                className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0 shadow-sm" 
+                                style={{ backgroundColor: sc.color }}
+                                title={`Color: ${sc.color}`}
+                              />
+                            )}
+                            <p className="font-bold text-slate-800 text-sm">{sc.name}</p>
+                          </div>
                         </td>
 
                         {/* Parent Category */}

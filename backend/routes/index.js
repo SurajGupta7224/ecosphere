@@ -3,6 +3,7 @@ const router = express.Router();
 console.log("DEBUG: Loading API routes from routes/index.js");
 
 const { login } = require("../controllers/Admin/authController");
+const settingsController = require("../controllers/Admin/settingsController");
 const { getAllUsers, createUser, updateUser, updateUserStatus, deleteUser, getRoles } = require("../controllers/Admin/userController");
 const roleController = require("../controllers/Admin/roleController");
 const permissionController = require("../controllers/Admin/permissionController");
@@ -10,22 +11,16 @@ const locationController = require("../controllers/Admin/locationController");
 const profileController = require("../controllers/Admin/profileController");
 const categoryController = require("../controllers/Admin/categoryController");
 const subCategoryController = require("../controllers/Admin/subCategoryController");
-const productController = require("../controllers/Admin/productController");
-const warehouseController = require("../controllers/Admin/warehouseController");
+
 const { verifyToken, requirePermission } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
-const customerController = require("../controllers/Admin/customerController");
-const cartController = require("../controllers/Admin/cartController");
-const orderController = require("../controllers/Admin/orderController");
-const paymentController = require("../controllers/Admin/paymentController");
 const dashboardController = require("../controllers/Admin/dashboardController");
 
 // Setup file upload fields configuration
 const userUploads = upload.fields([
   { name: 'profile_photo', maxCount: 1 },
   { name: 'pan_card_file', maxCount: 1 },
-  { name: 'aadhaar_card_file', maxCount: 1 },
-  { name: 'gst_file', maxCount: 1 }
+  { name: 'aadhaar_card_file', maxCount: 1 }
 ]);
 
 const categoryUploads = upload.fields([
@@ -34,10 +29,6 @@ const categoryUploads = upload.fields([
 
 const subCategoryUploads = upload.fields([
   { name: 'subcategory_image', maxCount: 1 }
-]);
-
-const productUploads = upload.fields([
-  { name: 'product_images', maxCount: 10 }
 ]);
 
 // Auth routes (public)
@@ -60,15 +51,6 @@ router.post("/sub-categories", verifyToken, requirePermission('sub_category_mana
 router.put("/sub-categories/:id", verifyToken, requirePermission('sub_category_management'), subCategoryUploads, subCategoryController.updateSubCategory);
 router.patch("/sub-categories/:id/status", verifyToken, requirePermission('sub_category_management'), subCategoryController.toggleSubCategoryStatus);
 router.delete("/sub-categories/:id", verifyToken, requirePermission('sub_category_management'), subCategoryController.deleteSubCategory);
-
-// Product routes
-router.get("/products", verifyToken, requirePermission('product_management'), productController.getAllProducts);
-router.get("/products/:id", verifyToken, requirePermission('product_management'), productController.getProductById);
-router.get("/products/:id/variations", verifyToken, requirePermission('product_management'), productController.getProductVariations);
-router.post("/products", verifyToken, requirePermission('product_management'), productUploads, productController.createProduct);
-router.put("/products/:id", verifyToken, requirePermission('product_management'), productUploads, productController.updateProduct);
-router.patch("/products/:id/status", verifyToken, requirePermission('product_management'), productController.toggleProductStatus);
-router.delete("/products/:id", verifyToken, requirePermission('product_management'), productController.deleteProduct);
 
 // User routes (protected)
 // Uses user_management permission
@@ -98,61 +80,37 @@ router.get("/locations/countries", locationController.getCountries);
 router.get("/locations/states/:country_id", locationController.getStates);
 router.get("/locations/cities/:state_id", locationController.getCities);
 router.get("/locations/pincode/:pincode", locationController.getPincodeDetails);
-router.get("/locations/pincodes", verifyToken, requirePermission('warehouse_management'), locationController.getAllPincodes);
-router.get("/locations/pincodes/city/:city_id", verifyToken, requirePermission('warehouse_management'), locationController.getPincodesByCity);
-router.get("/locations/suggestions", verifyToken, requirePermission('warehouse_management'), locationController.getSuggestions);
-
-// Warehouse Setup routes
-router.get("/warehouses", verifyToken, requirePermission('warehouse_management'), warehouseController.getAllWarehouses);
-router.post("/warehouses", verifyToken, requirePermission('warehouse_management'), warehouseController.createWarehouse);
-router.put("/warehouses/:id", verifyToken, requirePermission('warehouse_management'), warehouseController.updateWarehouse);
-router.patch("/warehouses/:id/status", verifyToken, requirePermission('warehouse_management'), warehouseController.toggleWarehouseStatus);
-router.delete("/warehouses/:id", verifyToken, requirePermission('warehouse_management'), warehouseController.deleteWarehouse);
-
-// Warehouse Pincode Mapping routes
-router.get("/warehouses/mappings/report", verifyToken, requirePermission('warehouse_management'), warehouseController.getMappingReport);
-router.get("/warehouses/:id/pincodes", verifyToken, requirePermission('warehouse_management'), warehouseController.getWarehousePincodes);
-router.post("/warehouses/:id/pincodes", verifyToken, requirePermission('warehouse_management'), warehouseController.assignPincodes);
-
-// Warehouse Inventory routes
-router.get("/warehouse-inventory", verifyToken, requirePermission('warehouse_management'), warehouseController.getInventory);
-router.post("/warehouse-inventory", verifyToken, requirePermission('warehouse_management'), warehouseController.allocateProduct);
-router.patch("/warehouse-inventory/:id/stock", verifyToken, requirePermission('warehouse_management'), warehouseController.updateStock);
-
-// Customer routes (for order booking)
-router.get("/customers/check", verifyToken, requirePermission('order_management'), customerController.checkCustomer);
-router.post("/customers", verifyToken, requirePermission('order_management'), customerController.createCustomer);
-router.get("/customers/:id/addresses", verifyToken, requirePermission('order_management'), customerController.getCustomerAddresses);
-router.post("/customers/:id/addresses", verifyToken, requirePermission('order_management'), customerController.addCustomerAddress);
-router.patch("/customers/addresses/:id/default", verifyToken, requirePermission('order_management'), customerController.setDefaultAddress);
-
-// Cart routes
-router.get("/cart", verifyToken, requirePermission('order_management'), cartController.getCart);
-router.post("/cart", verifyToken, requirePermission('order_management'), cartController.addToCart);
-router.put("/cart/:id", verifyToken, requirePermission('order_management'), cartController.updateCartItem);
-router.delete("/cart/:id", verifyToken, requirePermission('order_management'), cartController.removeFromCart);
-router.delete("/cart", verifyToken, requirePermission('order_management'), cartController.clearCart);
-
-// Order routes
-router.get("/orders/serviceability", verifyToken, requirePermission('order_management'), orderController.checkServiceability);
-router.post("/orders/check-stock", verifyToken, requirePermission('order_management'), orderController.checkStock);
-router.get("/orders", verifyToken, requirePermission('order_management'), orderController.getOrders);
-router.get("/orders/:id/related", verifyToken, requirePermission('order_management'), orderController.getRelatedOrders);
-router.get("/orders/:id", verifyToken, requirePermission('order_management'), orderController.getOrderById);
-router.post("/orders", verifyToken, requirePermission('order_management'), orderController.placeOrder);
-router.patch("/orders/:id/status", verifyToken, requirePermission('order_management'), orderController.updateOrderStatus);
-
-// Payment routes
-router.get("/payments/reports/summary", verifyToken, requirePermission('order_management'), paymentController.getPaymentSummary);
-router.get("/payments", verifyToken, requirePermission('order_management'), paymentController.getAllPayments);
-router.get("/payments/:id", verifyToken, requirePermission('order_management'), paymentController.getPaymentById);
-router.post("/payments", verifyToken, requirePermission('order_management'), paymentController.addPayment);
-router.patch("/payments/:id/mark-paid", verifyToken, requirePermission('order_management'), paymentController.markAsPaid);
-router.patch("/payments/:id/verify", verifyToken, requirePermission('order_management'), paymentController.verifyPayment);
-router.patch("/payments/:id/mark-failed", verifyToken, requirePermission('order_management'), paymentController.markAsFailed);
-router.patch("/payments/:id/refund", verifyToken, requirePermission('order_management'), paymentController.refundPayment);
+router.get("/locations/pincodes", verifyToken, requirePermission('locations'), locationController.getAllPincodes);
+router.get("/locations/pincodes/city/:city_id", verifyToken, requirePermission('locations'), locationController.getPincodesByCity);
+router.get("/locations/suggestions", verifyToken, requirePermission('locations'), locationController.getSuggestions);
 
 // Dashboard routes
 router.get("/dashboard/stats", verifyToken, dashboardController.getDashboardStats);
 
+// ─── Settings Routes ───────────────────────────────────────────────────────────
+const brandingUploads = upload.fields([
+  { name: 'company_logo', maxCount: 1 },
+  { name: 'favicon', maxCount: 1 },
+  { name: 'login_logo', maxCount: 1 },
+  { name: 'login_bg', maxCount: 1 }
+]);
+
+// Public (no auth required - for login page branding/theme)
+router.get("/settings/public", settingsController.getPublicSettings);
+
+// Admin-only settings (requires settings_management permission)
+router.get("/settings", verifyToken, requirePermission('settings_management'), settingsController.getSettings);
+router.put("/settings/general", verifyToken, requirePermission('settings_management'), settingsController.updateGeneralSettings);
+router.put("/settings/branding", verifyToken, requirePermission('settings_management'), brandingUploads, settingsController.updateBrandingSettings);
+router.put("/settings/theme", verifyToken, requirePermission('settings_management'), settingsController.updateThemeSettings);
+router.put("/settings/company", verifyToken, requirePermission('settings_management'), settingsController.updateCompanySettings);
+router.put("/settings/email", verifyToken, requirePermission('settings_management'), settingsController.updateEmailSettings);
+router.post("/settings/email/test", verifyToken, requirePermission('settings_management'), settingsController.testEmailConfiguration);
+router.put("/settings/security", verifyToken, requirePermission('settings_management'), settingsController.updateSecuritySettings);
+router.put("/settings/system", verifyToken, requirePermission('settings_management'), settingsController.updateSystemSettings);
+
+// Audit Logs
+router.get("/settings/audit-logs", verifyToken, requirePermission('settings_management'), settingsController.getAuditLogs);
+
 module.exports = router;
+

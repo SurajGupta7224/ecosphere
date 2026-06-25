@@ -23,19 +23,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 // API Routes
 console.log("TRACE: Requiring admin routes...");
 const adminRoutes = require("./routes/index");
-console.log("TRACE: Requiring storefront routes...");
-const storefrontRoutes = require("./routes/Api");
 console.log("TRACE: Routes required successfully.");
-
-// Storefront routes (Public) - Priority for customer-facing paths
-app.use("/api", storefrontRoutes);
 
 // Admin routes (Protected) - Mounted on /api/admin to avoid conflicts
 app.use("/api/admin", adminRoutes); 
 
 // Root route
 app.get("/", (req, res) => {
-  res.send("Hommlie Shop API Server is running");
+  res.send("Ecosphere API Server is running");
 });
 
 const PORT = process.env.PORT || 5000;

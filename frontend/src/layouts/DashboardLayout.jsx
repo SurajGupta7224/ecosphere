@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import api, { IMAGE_BASE_URL } from '../api';
+import { useSettings } from '../context/SettingsContext';
 import {
   Users, UserCog, Key,
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
-  Image as ImageIcon, Layers, MapPin, ShoppingBag
+  Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -13,6 +14,13 @@ const DashboardLayout = () => {
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userPermissions = user.permissions || [];
+  const { settings, t } = useSettings();
+
+  // Dynamic theme values from settings
+  const sidebarBg  = settings?.theme?.sidebar_color || '#1e133c';
+  const navbarBg   = settings?.theme?.navbar_color  || '#ffffff';
+  const primaryColor = settings?.theme?.primary_color || '#6366f1';
+  const appName    = settings?.appName || 'Ecosphere';
 
   const [currentStatus, setCurrentStatus] = useState(user.profile_status || 'pending');
   const isVendor = user.role?.role_name?.toLowerCase().includes('vendor') || user.role?.role_name?.toLowerCase().includes('seller');
@@ -39,7 +47,7 @@ const DashboardLayout = () => {
       if (res.data.user) {
         const freshStatus = res.data.user.profile_status;
         setCurrentStatus(freshStatus);
-        
+
         // Update localStorage if status has changed
         if (freshStatus !== user.profile_status) {
           const updatedUser = { ...user, profile_status: freshStatus };
@@ -77,70 +85,65 @@ const DashboardLayout = () => {
 
   // Redefined menu to match Airowin style structure
   const sidebarItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard, isSubMenu: false },
-    { name: 'Profile', path: '/profile', icon: UserCircle, isSubMenu: false, req: 'profile' },
+    { name: t('dashboard'), path: '/', icon: LayoutDashboard, isSubMenu: false },
+    { name: t('profile'), path: '/profile', icon: UserCircle, isSubMenu: false, req: 'profile' },
     {
       id: 'catalog',
-      title: 'Catalog',
+      title: t('catalog'),
       icon: ImageIcon,
       isSubMenu: true,
       hidden: isVendor && !isApproved,
       items: [
-        { name: 'Categories', path: '/categories', req: 'category_management' },
-        { name: 'Sub-Categories', path: '/sub-categories', req: 'sub_category_management' },
-        { name: 'Products', path: '/products', req: 'product_management' },
-      ]
-    },
-    {
-      id: 'warehouse',
-      title: 'Warehouse',
-      icon: MapPin,
-      isSubMenu: true,
-      hidden: isVendor && !isApproved,
-      items: [
-        { name: 'Inventory Management', path: '/warehouse', req: 'warehouse_management' },
-      ]
-    },
-    {
-      id: 'order',
-      title: 'Order Management',
-      icon: ShoppingBag,
-      isSubMenu: true,
-      hidden: isVendor && !isApproved,
-      items: [
-        { name: 'Manual Order Booking', path: '/order-booking', req: 'order_management' },
-        { name: 'Order Processing', path: '/order-management', req: 'order_management' },
-        { name: 'Payment Management', path: '/payment-management', req: 'order_management' },
+        { name: t('categories'), path: '/categories', req: 'category_management' },
+        { name: t('sub_categories'), path: '/sub-categories', req: 'sub_category_management' },
       ]
     },
     {
       id: 'master',
-      title: 'General Master',
+      title: t('general_master'),
       icon: Settings,
       isSubMenu: true,
       hidden: isVendor && !isApproved,
       items: [
-        { name: 'Users', path: '/users', req: 'user_management' },
-        { name: 'Roles', path: '/roles', req: 'role_management' },
-        { name: 'Permissions', path: '/permissions', req: 'permission' },
+        { name: t('users'), path: '/users', req: 'user_management' },
+        { name: t('roles'), path: '/roles', req: 'role_management' },
+        { name: t('permissions'), path: '/permissions', req: 'permission' },
+        { name: t('locations'), path: '/locations', req: 'locations' }
       ]
-    }
+    },
+    { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
   ];
 
   return (
-    <div className="flex h-screen bg-[#f3f4f6] font-sans">
-      {/* Sidebar - Airowin Dark Purple Style */}
-      <div className={`bg-[#1e133c] text-white flex flex-col flex-shrink-0 shadow-xl z-20 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}>
+    <div className="flex h-screen font-sans" style={{ backgroundColor: 'var(--app-bg)' }}>
+      {/* Sidebar - dynamic bg from settings */}
+      <div
+        className={`text-white flex flex-col flex-shrink-0 shadow-xl z-20 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}
+        style={{ backgroundColor: sidebarBg }}
+      >
 
         {/* Logo Area */}
-        <div className="h-20 flex flex-col items-center justify-center border-b border-white/5 shrink-0 px-6 pt-4 pb-2">
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-0">Hommlie Shop</h1>
-          <p className="text-[9px] uppercase tracking-widest text-blue-300 mt-0">Admin Panel</p>
+        <div className="h-20 flex items-center justify-center border-b border-white/5 shrink-0 px-6">
+          {settings?.companyLogo ? (
+            <img
+              src={`${IMAGE_BASE_URL}/${settings.companyLogo}`}
+              alt={appName}
+              className="max-h-12 max-w-[180px] object-contain"
+            />
+          ) : (
+            <div className="text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-white mb-0">{appName}</h1>
+              <p className="text-[9px] uppercase tracking-widest text-blue-300 mt-0">{t('admin_panel')}</p>
+            </div>
+          )}
         </div>
 
         {/* Current Role Pill */}
         <div className="px-6 py-4">
-          <div className="bg-[#fde047] text-[#1e133c] font-bold text-xs uppercase tracking-widest py-2 rounded-full text-center flex justify-center items-center">
+          <div
+            className="font-bold text-xs uppercase tracking-widest py-2 rounded-full text-center flex justify-center items-center"
+            style={{ backgroundColor: primaryColor, color: '#ffffff' }}
+          >
             <Users className="w-3 h-3 mr-2" /> {user.role?.role_name || 'ADMIN'}
           </div>
         </div>
@@ -156,10 +159,11 @@ const DashboardLayout = () => {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`flex items-center px-4 py-3 rounded-lg text-sm transition-all duration-200 ${isActive
-                    ? 'text-white font-medium bg-white/10'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                    }`}
+                  className={`flex items-center px-4 py-3 rounded-lg text-sm transition-all duration-200 ${isActive ? 'font-medium' : 'hover:bg-white/5'}`}
+                  style={isActive
+                    ? { backgroundColor: 'var(--color-sidebar-active-bg)', color: 'var(--color-sidebar-active-text)' }
+                    : { color: 'var(--color-sidebar-text)' }
+                  }
                 >
                   <item.icon className={`w-4 h-4 mr-3 flex-shrink-0 opacity-80`} />
                   <span className="truncate">{item.name}</span>
@@ -174,7 +178,8 @@ const DashboardLayout = () => {
                 <div key={item.id} className="pt-2">
                   <button
                     onClick={() => toggleSection(item.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm hover:bg-white/5 transition-colors"
+                    style={{ color: 'var(--color-sidebar-text)' }}
                   >
                     <div className="flex items-center">
                       <item.icon className="w-4 h-4 mr-3 opacity-80" />
@@ -191,10 +196,11 @@ const DashboardLayout = () => {
                           <li key={sub.name}>
                             <Link
                               to={sub.path}
-                              className={`flex items-center pl-7 py-2.5 rounded-lg text-sm transition-all duration-200 ${isActive
-                                ? 'text-white font-medium bg-white/10'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                }`}
+                              className={`flex items-center pl-7 py-2.5 rounded-lg text-sm transition-all duration-200 ${isActive ? 'font-medium' : 'hover:bg-white/5'}`}
+                              style={isActive
+                                ? { backgroundColor: 'var(--color-sidebar-active-bg)', color: 'var(--color-sidebar-active-text)' }
+                                : { color: 'var(--color-sidebar-text)' }
+                              }
                             >
                               <span className="w-1.5 h-1.5 rounded-full mr-3 bg-current opacity-50"></span>
                               <span className="truncate">{sub.name}</span>
@@ -212,10 +218,13 @@ const DashboardLayout = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#f8f9fa]">
+      <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: 'var(--content-bg)' }}>
 
-        {/* Top Header - White Style */}
-        <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm z-10">
+        {/* Top Header - dynamic bg from settings */}
+        <header
+          className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0 shadow-sm z-10"
+          style={{ backgroundColor: navbarBg }}
+        >
           <div className="flex items-center">
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
               <Menu className="w-5 h-5" />
@@ -223,7 +232,7 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center space-x-6">
-            <button 
+            <button
               onClick={() => isAdmin && navigate('/users')}
               className="relative text-slate-400 hover:text-slate-600 transition-colors"
             >
@@ -263,14 +272,14 @@ const DashboardLayout = () => {
                   </div>
                   {hasAccess('profile') && (
                     <Link to="/profile" className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors" onClick={() => setIsProfileDropdownOpen(false)}>
-                      <UserCircle className="w-4 h-4 mr-2 text-slate-400" /> Profile
+                      <UserCircle className="w-4 h-4 mr-2 text-slate-400" /> {t('profile')}
                     </Link>
                   )}
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
                   >
-                    <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                    <LogOut className="w-4 h-4 mr-2" /> {t('sign_out')}
                   </button>
                 </div>
               )}

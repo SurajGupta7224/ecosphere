@@ -1,62 +1,66 @@
-const { SubCategory, Category } = require("../../models/index");
-const { Op } = require("sequelize");
+const { Category } = require("../../models/index");
+const subCategoryService = require("../../services/subCategoryService");
 
-// GET /api/sub-categories
+/**
+ * GET /api/sub-categories
+ * Fetches all sub-categories with category and variations data.
+ */
 const getAllSubCategories = async (req, res) => {
-  const { page = 1, limit = 10, search = '', status = '', category_id = '' } = req.query;
-  const offset = (page - 1) * limit;
-
-  const where = {};
-  if (search) {
-    where.name = { [Op.like]: `%${search}%` };
-  }
-  if (status !== '') {
-    where.status = status;
-  }
-  if (category_id !== '') {
-    where.category_id = category_id;
-  }
-
-  // Check if user is admin or has product_management permission
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
   const hasProductAccess = req.userPermissions?.includes('product_management');
-  
-  // If not admin AND doesn't have product access, filter by user_id
-  // If they have product access, they need to see ALL sub-categories to add products
-  if (!isAdmin && !hasProductAccess) {
-    where.user_id = req.user.id;
-  }
 
   try {
-    const { count, rows } = await SubCategory.findAndCountAll({
-      where,
-      include: [
-        {
-          model: Category,
-          as: "category",
-          attributes: ["id", "name"],
-        },
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [["id", "DESC"]],
-    });
-
-    return res.status(200).json({
-      subCategories: rows,
-      total: count,
-      pages: Math.ceil(count / limit),
-      currentPage: parseInt(page),
-    });
+    const result = await subCategoryService.getSubCategories(
+      req.query,
+      req.user.id,
+      isAdmin,
+      hasProductAccess
+    );
+    return res.status(200).json(result);
   } catch (err) {
     console.error("getAllSubCategories error:", err);
     return res.status(500).json({ message: "Failed to fetch sub-categories" });
   }
 };
 
-// POST /api/sub-categories
+/**
+ * Validate variation items helper.
+ */
+const validateVariations = (variations) => {
+  if (!Array.isArray(variations)) {
+    return "Variations must be an array";
+  }
+  for (let i = 0; i < variations.length; i++) {
+    const v = variations[i];
+    const rowNum = i + 1;
+    if (!v.variation_name || v.variation_name.trim() === '') {
+      return `Variation Name is required for row ${rowNum}`;
+    }
+    if (v.variation_name.length > 100) {
+      return `Variation Name cannot exceed 100 characters in row ${rowNum}`;
+    }
+    if (v.number_of_sr === undefined || v.number_of_sr === null || v.number_of_sr === '' || isNaN(Number(v.number_of_sr)) || Number(v.number_of_sr) <= 0) {
+      return `Number of SR must be greater than 0 in row ${rowNum}`;
+    }
+    if (v.schedule_after_days === undefined || v.schedule_after_days === null || v.schedule_after_days === '' || isNaN(Number(v.schedule_after_days)) || Number(v.schedule_after_days) <= 0) {
+      return `Schedule After Days must be greater than 0 in row ${rowNum}`;
+    }
+    if (v.per_kg_price === undefined || v.per_kg_price === null || v.per_kg_price === '' || isNaN(Number(v.per_kg_price)) || Number(v.per_kg_price) < 0) {
+      return `Par Kg Price must be greater than or equal to 0 in row ${rowNum}`;
+    }
+    if (!v.status || !['Active', 'Inactive'].includes(v.status)) {
+      return `Status must be 'Active' or 'Inactive' in row ${rowNum}`;
+    }
+  }
+  return null;
+};
+
+/**
+ * POST /api/sub-categories
+ * Creates a sub-category along with its variations.
+ */
 const createSubCategory = async (req, res) => {
-  const { category_id, name, slug, description, alt_tag, meta_title, meta_description, status } = req.body;
+  const { category_id, name, color, slug, description, alt_tag, meta_title, meta_description, status } = req.body;
   const image = req.files && req.files.subcategory_image ? req.files.subcategory_image[0].filename : null;
 
   if (!category_id) {
@@ -64,6 +68,24 @@ const createSubCategory = async (req, res) => {
   }
   if (!name || !slug) {
     return res.status(400).json({ message: "Name and Slug are required" });
+  }
+
+  // Parse variations
+  let variations = [];
+  if (req.body.variations) {
+    try {
+      variations = typeof req.body.variations === 'string' 
+        ? JSON.parse(req.body.variations) 
+        : req.body.variations;
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid variations format" });
+    }
+  }
+
+  // Validate variations
+  const varError = validateVariations(variations);
+  if (varError) {
+    return res.status(400).json({ message: varError });
   }
 
   // Verify the category exists
@@ -80,10 +102,10 @@ const createSubCategory = async (req, res) => {
   }
 
   try {
-    const subCategory = await SubCategory.create({
-      user_id: req.user.id, // Assign ownership
+    const subCategoryData = {
       category_id,
       name,
+      color,
       slug,
       description,
       image,
@@ -91,7 +113,13 @@ const createSubCategory = async (req, res) => {
       meta_title,
       meta_description,
       status: status !== undefined ? status : 1,
-    });
+    };
+
+    const subCategory = await subCategoryService.createSubCategory(
+      subCategoryData,
+      variations,
+      req.user.id
+    );
 
     return res.status(201).json({ message: "Sub-category created successfully", subCategory });
   } catch (err) {
@@ -103,104 +131,117 @@ const createSubCategory = async (req, res) => {
   }
 };
 
-// PUT /api/sub-categories/:id
+/**
+ * PUT /api/sub-categories/:id
+ * Updates a sub-category and its variations.
+ */
 const updateSubCategory = async (req, res) => {
   const { id } = req.params;
-  const { category_id, name, slug, description, alt_tag, meta_title, meta_description, status } = req.body;
+  const { category_id, name, color, slug, description, alt_tag, meta_title, meta_description, status } = req.body;
+
+  // Parse variations
+  let variations = undefined;
+  if (req.body.variations !== undefined) {
+    try {
+      variations = typeof req.body.variations === 'string' 
+        ? JSON.parse(req.body.variations) 
+        : req.body.variations;
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid variations format" });
+    }
+
+    // Validate variations
+    const varError = validateVariations(variations);
+    if (varError) {
+      return res.status(400).json({ message: varError });
+    }
+  }
+
+  const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+
+  if (category_id) {
+    const categoryWhereClause = { id: category_id };
+    if (!isAdmin) {
+      categoryWhereClause.user_id = req.user.id;
+    }
+    const categoryExists = await Category.findOne({ where: categoryWhereClause });
+    if (!categoryExists) {
+      return res.status(400).json({ message: "Selected category does not exist or access denied" });
+    }
+  }
 
   try {
-    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-    const whereClause = { id };
-    
-    // If not admin, only allow updating own subcategories
-    if (!isAdmin) {
-      whereClause.user_id = req.user.id;
-    }
-    
-    const subCategory = await SubCategory.findOne({ where: whereClause });
-    if (!subCategory) return res.status(404).json({ message: "Sub-category not found or access denied" });
-
-    if (category_id) {
-      const categoryWhereClause = { id: category_id };
-      if (!isAdmin) {
-        categoryWhereClause.user_id = req.user.id;
-      }
-      const categoryExists = await Category.findOne({ where: categoryWhereClause });
-      if (!categoryExists) {
-        return res.status(400).json({ message: "Selected category does not exist or access denied" });
-      }
-    }
-
-    const updateData = {
-      category_id: category_id || subCategory.category_id,
-      name: name || subCategory.name,
-      slug: slug || subCategory.slug,
-      description: description !== undefined ? description : subCategory.description,
-      alt_tag: alt_tag !== undefined ? alt_tag : subCategory.alt_tag,
-      meta_title: meta_title !== undefined ? meta_title : subCategory.meta_title,
-      meta_description: meta_description !== undefined ? meta_description : subCategory.meta_description,
-      status: status !== undefined ? status : subCategory.status,
-    };
+    const updateData = {};
+    if (category_id !== undefined) updateData.category_id = category_id;
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+    if (slug !== undefined) updateData.slug = slug;
+    if (description !== undefined) updateData.description = description;
+    if (alt_tag !== undefined) updateData.alt_tag = alt_tag;
+    if (meta_title !== undefined) updateData.meta_title = meta_title;
+    if (meta_description !== undefined) updateData.meta_description = meta_description;
+    if (status !== undefined) updateData.status = status;
 
     if (req.files && req.files.subcategory_image) {
       updateData.image = req.files.subcategory_image[0].filename;
     }
 
-    await subCategory.update(updateData);
+    const subCategory = await subCategoryService.updateSubCategory(
+      id,
+      updateData,
+      variations,
+      req.user.id,
+      isAdmin
+    );
+
     return res.status(200).json({ message: "Sub-category updated successfully", subCategory });
   } catch (err) {
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(400).json({ message: "Slug must be unique" });
+    }
+    if (err.message === "Sub-category not found or access denied") {
+      return res.status(404).json({ message: err.message });
     }
     console.error("updateSubCategory error:", err);
     return res.status(500).json({ message: "Failed to update sub-category" });
   }
 };
 
-// PATCH /api/sub-categories/:id/status
+/**
+ * PATCH /api/sub-categories/:id/status
+ * Toggles a sub-category's status.
+ */
 const toggleSubCategoryStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
 
   try {
-    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-    const whereClause = { id };
-    
-    // If not admin, only allow updating own subcategories
-    if (!isAdmin) {
-      whereClause.user_id = req.user.id;
-    }
-    
-    const subCategory = await SubCategory.findOne({ where: whereClause });
-    if (!subCategory) return res.status(404).json({ message: "Sub-category not found or access denied" });
-
-    await subCategory.update({ status });
+    await subCategoryService.toggleStatus(id, status, req.user.id, isAdmin);
     return res.status(200).json({ message: "Status updated successfully", status });
   } catch (err) {
+    if (err.message === "Sub-category not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     return res.status(500).json({ message: "Failed to update status" });
   }
 };
 
-// DELETE /api/sub-categories/:id  (soft delete)
+/**
+ * DELETE /api/sub-categories/:id
+ * Soft deletes a sub-category.
+ */
 const deleteSubCategory = async (req, res) => {
   const { id } = req.params;
+  const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
 
   try {
-    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-    const whereClause = { id };
-    
-    // If not admin, only allow deleting own subcategories
-    if (!isAdmin) {
-      whereClause.user_id = req.user.id;
-    }
-    
-    const subCategory = await SubCategory.findOne({ where: whereClause });
-    if (!subCategory) return res.status(404).json({ message: "Sub-category not found or access denied" });
-
-    // Soft delete via status = 0
-    await subCategory.update({ status: 0 });
+    await subCategoryService.deleteSubCategory(id, req.user.id, isAdmin);
     return res.status(200).json({ message: "Sub-category deleted successfully" });
   } catch (err) {
+    if (err.message === "Sub-category not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     return res.status(500).json({ message: "Failed to delete sub-category" });
   }
 };

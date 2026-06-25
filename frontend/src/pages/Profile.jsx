@@ -94,12 +94,11 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', password: '',
     pincode: '', country_id: '', state_id: '', city_id: '',
-    trade_name: '', company_type: '', pan_number: '', aadhaar_number: '', gst_number: '',
-    commission_percent: 0
+    company_type: '', pan_number: '', aadhaar_number: ''
   });
 
   const [fileData, setFileData] = useState({
-    profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null
+    profile_photo: null, pan_card_file: null, aadhaar_card_file: null
   });
 
   useEffect(() => {
@@ -130,12 +129,9 @@ const Profile = () => {
           country_id: user.country_id || '',
           state_id: user.state_id || '',
           city_id: user.city_id || '',
-          trade_name: user.trade_name || '',
           company_type: user.company_type || '',
           pan_number: user.pan_number || '',
-          aadhaar_number: user.aadhaar_number || '',
-          gst_number: user.gst_number || '',
-          commission_percent: user.commission_percent || 0
+          aadhaar_number: user.aadhaar_number || ''
         });
       } else {
         toast.error('User data not found');
@@ -374,7 +370,6 @@ const Profile = () => {
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                <InputField label="Trade Name" name="trade_name" value={formData.trade_name} onChange={handleInputChange} icon={Building} />
                 <SelectField 
                   label="Company Type" name="company_type" value={formData.company_type} onChange={handleInputChange} icon={Building}
                   options={[
@@ -386,19 +381,6 @@ const Profile = () => {
                 />
                 <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} icon={CreditCard} />
                 <InputField label="Aadhaar Number" name="aadhaar_number" value={formData.aadhaar_number} onChange={handleInputChange} icon={CreditCard} />
-                <InputField label="GST Number" name="gst_number" value={formData.gst_number} onChange={handleInputChange} icon={CreditCard} />
-                
-                {['vendor', 'seller', 'admin'].some(r => userData.role?.role_name?.toLowerCase().includes(r)) ? (
-                  <div className="mb-5">
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                      Commission Rate (%)
-                    </label>
-                    <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5 text-sm font-bold text-purple-700 flex items-center justify-between shadow-sm">
-                      <span>Standard Platform Fee</span>
-                      <span className="text-lg">{formData.commission_percent}%</span>
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </div>
 
@@ -458,7 +440,6 @@ const Profile = () => {
               <div className="space-y-6">
                 <DocumentPreview label="Pan Card" path={userData.pan_card_file} fieldName="pan_card_file" onFileChange={handleFileChange} />
                 <DocumentPreview label="Aadhaar Card" path={userData.aadhaar_card_file} fieldName="aadhaar_card_file" onFileChange={handleFileChange} />
-                <DocumentPreview label="GST Certificate" path={userData.gst_file} fieldName="gst_file" onFileChange={handleFileChange} />
               </div>
             </div>
 

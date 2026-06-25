@@ -7,16 +7,12 @@ import Users from './pages/Users';
 import Roles from './pages/Roles';
 import Permissions from './pages/Permissions';
 import Profile from './pages/Profile';
+import Unauthorized from './pages/Unauthorized';
+import Locations from './pages/Locations';
 import Categories from './pages/Categories';
 import SubCategories from './pages/SubCategories';
-import Products from './pages/Products';
-import WarehouseManagement from './pages/WarehouseManagement';
-import OrderBooking from './pages/OrderBooking';
-import OrderManagement from './pages/OrderManagement';
-import OrderDetails from './pages/OrderDetails';
-import PaymentManagement from './pages/PaymentManagement';
-import VendorProfile from './pages/VendorProfile';
-import Unauthorized from './pages/Unauthorized';
+import Settings from './pages/Settings';
+import { SettingsProvider } from './context/SettingsContext';
 
 function App() {
   const PrivateRoute = ({ children }) => {
@@ -28,7 +24,6 @@ function App() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const permissions = user.permissions || [];
 
-    // If a specific permission is strictly required to render this view, check it
     if (requiredPermission && !permissions.includes(requiredPermission)) {
       return <Navigate to="/unauthorized" replace />;
     }
@@ -37,7 +32,7 @@ function App() {
   };
 
   return (
-    <>
+    <SettingsProvider>
       <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -100,68 +95,28 @@ function App() {
               </RequirePermission>
             }
           />
-          <Route 
-            path="products" 
+          <Route
+            path="locations"
             element={
-              <RequirePermission requiredPermission="product_management">
-                <Products />
+              <RequirePermission requiredPermission="locations">
+                <Locations />
               </RequirePermission>
-            } 
+            }
           />
-          <Route 
-            path="warehouse" 
+          <Route
+            path="settings"
             element={
-              <RequirePermission requiredPermission="warehouse_management">
-                <WarehouseManagement />
+              <RequirePermission requiredPermission="settings_management">
+                <Settings />
               </RequirePermission>
-            } 
-          />
-          <Route 
-            path="order-booking" 
-            element={
-              <RequirePermission requiredPermission="order_management">
-                <OrderBooking />
-              </RequirePermission>
-            } 
-          />
-          <Route 
-            path="order-management" 
-            element={
-              <RequirePermission requiredPermission="order_management">
-                <OrderManagement />
-              </RequirePermission>
-            } 
-          />
-          <Route 
-            path="order-management/:id" 
-            element={
-              <RequirePermission requiredPermission="order_management">
-                <OrderDetails />
-              </RequirePermission>
-            } 
-          />
-          <Route 
-            path="vendor-profile/:id" 
-            element={
-              <RequirePermission requiredPermission="order_management">
-                <VendorProfile />
-              </RequirePermission>
-            } 
-          />
-          <Route 
-            path="payment-management" 
-            element={
-              <RequirePermission requiredPermission="order_management">
-                <PaymentManagement />
-              </RequirePermission>
-            } 
+            }
           />
         </Route>
 
         {/* Full Screen Unauthorized Error Page */}
         <Route path="/unauthorized" element={<Unauthorized />} />
       </Routes>
-    </>
+    </SettingsProvider>
   );
 }
 

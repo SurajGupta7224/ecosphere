@@ -101,15 +101,15 @@ const Users = () => {
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', password: '', role_id: 1,
     pincode: '', country_id: '', state_id: '', city_id: '',
-    trade_name: '', company_type: 'Individual', pan_number: '', aadhaar_number: '', gst_number: '',
-    status: 'active', profile_status: 'pending', commission_percent: 0
+    company_type: 'Individual', pan_number: '', aadhaar_number: '',
+    status: 'active', profile_status: 'pending'
   });
   
   const [fileData, setFileData] = useState({
-    profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null
+    profile_photo: null, pan_card_file: null, aadhaar_card_file: null
   });
   const [existingFiles, setExistingFiles] = useState({
-    profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null
+    profile_photo: null, pan_card_file: null, aadhaar_card_file: null
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -241,11 +241,11 @@ const Users = () => {
     setFormData({
       name: '', email: '', phone: '', password: '', role_id: roles[0]?.id || 1,
       pincode: '', country_id: '', state_id: '', city_id: '',
-      trade_name: '', company_type: 'Individual', pan_number: '', aadhaar_number: '', gst_number: '',
-      status: 'active', profile_status: 'pending', commission_percent: 0
+      company_type: 'Individual', pan_number: '', aadhaar_number: '',
+      status: 'active', profile_status: 'pending'
     });
-    setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null });
-    setExistingFiles({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null });
+    setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
+    setExistingFiles({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setIsFormOpen(true);
   };
 
@@ -258,18 +258,16 @@ const Users = () => {
       name: user.name || '', email: user.email || '', phone: user.phone || '', 
       role_id: user.role_id || roles[0]?.id || 1,
       pincode: '', country_id: user.country_id || '', state_id: user.state_id || '', city_id: user.city_id || '',
-      trade_name: user.trade_name || '', company_type: cType, 
-      pan_number: user.pan_number || '', aadhaar_number: user.aadhaar_number || '', gst_number: user.gst_number || '',
+      company_type: cType, 
+      pan_number: user.pan_number || '', aadhaar_number: user.aadhaar_number || '',
       status: user.status || 'active', profile_status: user.profile_status || 'pending',
-      commission_percent: user.commission_percent || 0,
       password: '' // Don't populate password
     });
-    setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null, gst_file: null });
+    setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setExistingFiles({
       profile_photo: user.profile_photo ? (user.profile_photo.startsWith('/uploads/') ? user.profile_photo : `/uploads/Profile_Photo/${user.profile_photo}`) : null,
       pan_card_file: user.pan_card_file ? (user.pan_card_file.startsWith('/uploads/') ? user.pan_card_file : `/uploads/Pan_Card/${user.pan_card_file}`) : null,
-      aadhaar_card_file: user.aadhaar_card_file ? (user.aadhaar_card_file.startsWith('/uploads/') ? user.aadhaar_card_file : `/uploads/Aadhaar_Card/${user.aadhaar_card_file}`) : null,
-      gst_file: user.gst_file ? (user.gst_file.startsWith('/uploads/') ? user.gst_file : `/uploads/GST/${user.gst_file}`) : null
+      aadhaar_card_file: user.aadhaar_card_file ? (user.aadhaar_card_file.startsWith('/uploads/') ? user.aadhaar_card_file : `/uploads/Aadhaar_Card/${user.aadhaar_card_file}`) : null
     });
     setIsFormOpen(true);
   };
@@ -367,17 +365,12 @@ const Users = () => {
                 <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} required placeholder="Email" />
                 <InputField label="Phone Number" name="phone" value={formData.phone} onChange={handleInputChange} required placeholder="Phone Number" />
                 
-                <InputField label="Trade Name" name="trade_name" value={formData.trade_name} onChange={handleInputChange} placeholder="Trade Name" />
                 <SelectField 
                   label="System Role" name="role_id" value={formData.role_id} onChange={handleInputChange} required 
                   options={roles.map(r => ({ value: r.id, label: r.role_name }))} 
                 />
                 <InputField label="Password" name="password" type="password" value={formData.password} onChange={handleInputChange} required={!isEditMode} placeholder={isEditMode ? "Leave blank to keep" : "Password"} />
                 
-                {roles.find(r => r.id == formData.role_id)?.role_name?.toLowerCase().includes('vendor') || roles.find(r => r.id == formData.role_id)?.role_name?.toLowerCase().includes('seller') ? (
-                  <InputField label="Vendor Commission (%)" name="commission_percent" type="number" value={formData.commission_percent} onChange={handleInputChange} placeholder="Commission %" />
-                ) : null}
-
                 <div className="relative">
                   <InputField label="Pincode" name="pincode" value={formData.pincode || ''} onChange={handlePincodeChange} placeholder="Enter 6-digit Pincode" />
                   {showSuggestions && pincodeSuggestions.length > 0 && (
@@ -414,12 +407,10 @@ const Users = () => {
 
                 <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} required placeholder="PAN Number" />
                 <InputField label="Aadhar Number" name="aadhaar_number" value={formData.aadhaar_number} onChange={handleInputChange} required placeholder="Aadhar Number" />
-                <InputField label="GST Number" name="gst_number" value={formData.gst_number} onChange={handleInputChange} placeholder="GST Number" />
                 
                 <FileField label="Upload Photo" name="profile_photo" onChange={handleFileChange} existingFile={existingFiles.profile_photo} onPreview={setPreviewImage} />
                 <FileField label="Upload Pan Card" name="pan_card_file" onChange={handleFileChange} existingFile={existingFiles.pan_card_file} onPreview={setPreviewImage} />
                 <FileField label="Upload Aadhar Card" name="aadhaar_card_file" onChange={handleFileChange} existingFile={existingFiles.aadhaar_card_file} onPreview={setPreviewImage} />
-                <FileField label="Upload GSTIN" name="gst_file" onChange={handleFileChange} existingFile={existingFiles.gst_file} onPreview={setPreviewImage} />
                 
                 <SelectField 
                   label="Account Status" name="status" value={formData.status} onChange={handleInputChange} required 
@@ -535,11 +526,6 @@ const Users = () => {
                         </td>
                         <td className="p-4 text-sm">
                           <div className="text-slate-600 truncate max-w-[200px]">{u.email}</div>
-                          {u.trade_name && (
-                            <div className="text-xs text-slate-500 mt-1 flex items-center">
-                              <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{u.trade_name}</span>
-                            </div>
-                          )}
                         </td>
                         <td className="p-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">

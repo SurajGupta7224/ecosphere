@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Role, Country, State, City } = require("../../models/index");
+const { User, Role, Country, State, City, SecuritySettings } = require("../../models/index");
 
 // GET /api/users — list all users with their roles
 const getAllUsers = async (req, res) => {
@@ -26,8 +26,8 @@ const createUser = async (req, res) => {
   const {
     name, email, phone, password, role_id,
     country_id, state_id, city_id,
-    trade_name, company_type, pan_number, aadhaar_number, gst_number,
-    status, profile_status, commission_percent
+    company_type, pan_number, aadhaar_number,
+    status, profile_status
   } = req.body;
 
   if (!name || !email || !password) {
@@ -35,6 +35,12 @@ const createUser = async (req, res) => {
   }
 
   try {
+    const security = await SecuritySettings.findByPk(1);
+    const minLength = security?.password_min_length || 8;
+    if (password.length < minLength) {
+      return res.status(400).json({ message: `Password must be at least ${minLength} characters long.` });
+    }
+
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
@@ -43,12 +49,11 @@ const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Extract file paths if uploaded
-    let profile_photo = null, pan_card_file = null, aadhaar_card_file = null, gst_file = null;
+    let profile_photo = null, pan_card_file = null, aadhaar_card_file = null;
     if (req.files) {
       if (req.files.profile_photo) profile_photo = req.files.profile_photo[0].filename;
       if (req.files.pan_card_file) pan_card_file = req.files.pan_card_file[0].filename;
       if (req.files.aadhaar_card_file) aadhaar_card_file = req.files.aadhaar_card_file[0].filename;
-      if (req.files.gst_file) gst_file = req.files.gst_file[0].filename;
     }
 
     const newUser = await User.create({
@@ -58,15 +63,12 @@ const createUser = async (req, res) => {
       country_id: country_id || null,
       state_id: state_id || null,
       city_id: city_id || null,
-      trade_name: trade_name || null,
       company_type: company_type || null,
       pan_number: pan_number || null,
       aadhaar_number: aadhaar_number || null,
-      gst_number: gst_number || null,
-      profile_photo, pan_card_file, aadhaar_card_file, gst_file,
+      profile_photo, pan_card_file, aadhaar_card_file,
       status: status || "active",
       profile_status: profile_status || "pending",
-      commission_percent: commission_percent || 0,
     });
 
     return res.status(201).json({
@@ -85,8 +87,8 @@ const updateUser = async (req, res) => {
   const {
     name, email, phone, password, role_id,
     country_id, state_id, city_id,
-    trade_name, company_type, pan_number, aadhaar_number, gst_number,
-    status, profile_status, commission_percent
+    company_type, pan_number, aadhaar_number,
+    status, profile_status
   } = req.body;
 
   try {
@@ -108,15 +110,17 @@ const updateUser = async (req, res) => {
       country_id: country_id || null,
       state_id: state_id || null,
       city_id: city_id || null,
-      trade_name: trade_name || null,
       company_type: company_type || null,
       pan_number: pan_number || null,
-      aadhaar_number: aadhaar_number || null,
-      gst_number: gst_number || null,
-      commission_percent: commission_percent || 0
+      aadhaar_number: aadhaar_number || null
     };
 
     if (password && password.trim() !== '') {
+      const security = await SecuritySettings.findByPk(1);
+      const minLength = security?.password_min_length || 8;
+      if (password.length < minLength) {
+        return res.status(400).json({ message: `Password must be at least ${minLength} characters long.` });
+      }
       updateData.password = await bcrypt.hash(password, 10);
     }
 
@@ -125,7 +129,6 @@ const updateUser = async (req, res) => {
       if (req.files.profile_photo) updateData.profile_photo = req.files.profile_photo[0].filename;
       if (req.files.pan_card_file) updateData.pan_card_file = req.files.pan_card_file[0].filename;
       if (req.files.aadhaar_card_file) updateData.aadhaar_card_file = req.files.aadhaar_card_file[0].filename;
-      if (req.files.gst_file) updateData.gst_file = req.files.gst_file[0].filename;
     }
 
     await user.update(updateData);
