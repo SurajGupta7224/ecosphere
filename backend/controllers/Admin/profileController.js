@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Role, Country, State, City, SecuritySettings } = require("../../models/index");
+const { User, Role, Corporation, Zone, Ward, SecuritySettings } = require("../../models/index");
 
 // GET /api/profile
 const getProfile = async (req, res) => {
@@ -8,9 +8,9 @@ const getProfile = async (req, res) => {
       attributes: { exclude: ["password"] },
       include: [
         { model: Role, as: "role", attributes: ["id", "role_name"] },
-        { model: Country, as: "country", attributes: ["id", "country_name"] },
-        { model: State, as: "state", attributes: ["id", "state_name"] },
-        { model: City, as: "city", attributes: ["id", "city_name"] }
+        { model: Corporation, as: "corporation", attributes: ["id", "corporation_name"] },
+        { model: Zone, as: "zone", attributes: ["id", "zone_name"] },
+        { model: Ward, as: "ward", attributes: ["id", "ward_name"] }
       ]
     });
     return res.status(200).json({ user });
@@ -24,7 +24,7 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   const { 
     name, email, phone, password, 
-    country_id, state_id, city_id,
+    corporation_id, zone_id, ward_id,
     company_type, pan_number, aadhaar_number
   } = req.body;
 
@@ -46,9 +46,9 @@ const updateProfile = async (req, res) => {
       name: name || user.name,
       email: email || user.email,
       phone: phone || user.phone,
-      country_id: country_id || user.country_id,
-      state_id: state_id || user.state_id,
-      city_id: city_id || user.city_id,
+      corporation_id: corporation_id !== undefined ? (corporation_id || null) : user.corporation_id,
+      zone_id: zone_id !== undefined ? (zone_id || null) : user.zone_id,
+      ward_id: ward_id !== undefined ? (ward_id || null) : user.ward_id,
       company_type: company_type || user.company_type,
       pan_number: pan_number || user.pan_number,
       aadhaar_number: aadhaar_number || user.aadhaar_number

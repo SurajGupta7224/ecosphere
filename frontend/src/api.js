@@ -21,7 +21,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 503) {
+    if (error.response && (error.response.status === 401 || error.response.status === 503)) {
       // If logged in, clear storage and redirect to login page
       const token = localStorage.getItem('token');
       if (token) {

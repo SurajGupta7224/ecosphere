@@ -8,9 +8,28 @@ require("dotenv").config();
 require("./config/db");
 // Load model associations
 const sequelize = require("./config/db");
-require("./models/index");
+const { SecuritySettings } = require("./models/index");
 
 const app = express();
+
+// Force HTTPS / SSL Redirect Middleware
+app.use(async (req, res, next) => {
+  try {
+    const isLocalhost = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+    if (!isLocalhost) {
+      const security = await SecuritySettings.findByPk(1);
+      if (security && security.force_https) {
+        const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+        if (!isHttps) {
+          return res.redirect(301, `https://${req.headers.host}${req.url}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Force HTTPS check error:", err);
+  }
+  next();
+});
 const server = http.createServer(app);
 
 app.use(cors());

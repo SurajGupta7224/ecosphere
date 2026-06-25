@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Role, Country, State, City, SecuritySettings } = require("../../models/index");
+const { User, Role, Corporation, Zone, Ward, SecuritySettings } = require("../../models/index");
 
 // GET /api/users — list all users with their roles
 const getAllUsers = async (req, res) => {
@@ -8,9 +8,9 @@ const getAllUsers = async (req, res) => {
       attributes: { exclude: ["password"] },
       include: [
         { model: Role, as: "role", attributes: ["id", "role_name"] },
-        { model: Country, as: "country", attributes: ["id", "country_name"] },
-        { model: State, as: "state", attributes: ["id", "state_name"] },
-        { model: City, as: "city", attributes: ["id", "city_name"] }
+        { model: Corporation, as: "corporation", attributes: ["id", "corporation_name"] },
+        { model: Zone, as: "zone", attributes: ["id", "zone_name"] },
+        { model: Ward, as: "ward", attributes: ["id", "ward_name"] }
       ],
       order: [["created_at", "DESC"]],
     });
@@ -25,7 +25,7 @@ const getAllUsers = async (req, res) => {
 const createUser = async (req, res) => {
   const {
     name, email, phone, password, role_id,
-    country_id, state_id, city_id,
+    corporation_id, zone_id, ward_id,
     company_type, pan_number, aadhaar_number,
     status, profile_status
   } = req.body;
@@ -60,9 +60,9 @@ const createUser = async (req, res) => {
       name, email, phone: phone || null,
       password: hashedPassword,
       role_id: role_id || 1,
-      country_id: country_id || null,
-      state_id: state_id || null,
-      city_id: city_id || null,
+      corporation_id: corporation_id || null,
+      zone_id: zone_id || null,
+      ward_id: ward_id || null,
       company_type: company_type || null,
       pan_number: pan_number || null,
       aadhaar_number: aadhaar_number || null,
@@ -86,7 +86,7 @@ const updateUser = async (req, res) => {
   const { id } = req.params;
   const {
     name, email, phone, password, role_id,
-    country_id, state_id, city_id,
+    corporation_id, zone_id, ward_id,
     company_type, pan_number, aadhaar_number,
     status, profile_status
   } = req.body;
@@ -107,9 +107,9 @@ const updateUser = async (req, res) => {
     // Prepare update data
     const updateData = {
       name, email, phone: phone || null, role_id, status, profile_status,
-      country_id: country_id || null,
-      state_id: state_id || null,
-      city_id: city_id || null,
+      corporation_id: corporation_id || null,
+      zone_id: zone_id || null,
+      ward_id: ward_id || null,
       company_type: company_type || null,
       pan_number: pan_number || null,
       aadhaar_number: aadhaar_number || null
@@ -197,9 +197,9 @@ const getUserById = async (req, res) => {
       attributes: { exclude: ["password"] },
       include: [
         { model: Role, as: "role", attributes: ["id", "role_name"] },
-        { model: Country, as: "country", attributes: ["id", "country_name"] },
-        { model: State, as: "state", attributes: ["id", "state_name"] },
-        { model: City, as: "city", attributes: ["id", "city_name"] }
+        { model: Corporation, as: "corporation", attributes: ["id", "corporation_name"] },
+        { model: Zone, as: "zone", attributes: ["id", "zone_name"] },
+        { model: Ward, as: "ward", attributes: ["id", "ward_name"] }
       ]
     });
     if (!user) return res.status(404).json({ message: "User not found" });

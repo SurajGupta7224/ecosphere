@@ -18,6 +18,12 @@ const EmailSettings = require("./emailSettingsModel");
 const SecuritySettings = require("./securitySettingsModel");
 const SystemSettings = require("./systemSettingsModel");
 const AuditLog = require("./auditLogModel");
+const Corporation = require("./corporationModel");
+const Zone = require("./zoneModel");
+const Ward = require("./wardModel");
+const CollectionEvent = require("./collectionEventModel");
+
+
 
 // User ↔ Role
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
@@ -35,10 +41,10 @@ State.belongsTo(Country, { foreignKey: "country_id", as: "country" });
 State.hasMany(City, { foreignKey: "state_id", as: "cities" });
 City.belongsTo(State, { foreignKey: "state_id", as: "state" });
 
-// User Locations
-User.belongsTo(Country, { foreignKey: "country_id", as: "country" });
-User.belongsTo(State, { foreignKey: "state_id", as: "state" });
-User.belongsTo(City, { foreignKey: "city_id", as: "city" });
+// User Location Mappings (BWG)
+User.belongsTo(Corporation, { foreignKey: "corporation_id", as: "corporation" });
+User.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
+User.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 
 // Pincode Locations
 Pincode.belongsTo(Country, { foreignKey: "country_id", as: "country" });
@@ -63,11 +69,38 @@ User.hasMany(SubCategory, { foreignKey: "user_id", as: "subCategories" });
 AuditLog.belongsTo(User, { foreignKey: "user_id", as: "user" });
 User.hasMany(AuditLog, { foreignKey: "user_id", as: "auditLogs" });
 
+// Corporation ↔ Zone
+Corporation.hasMany(Zone, { foreignKey: "corporation_id", as: "zones" });
+Zone.belongsTo(Corporation, { foreignKey: "corporation_id", as: "corporation" });
+
+// Corporation ↔ Ward
+Corporation.hasMany(Ward, { foreignKey: "corporation_id", as: "wards" });
+Ward.belongsTo(Corporation, { foreignKey: "corporation_id", as: "corporation" });
+
+// Zone ↔ Ward
+Zone.hasMany(Ward, { foreignKey: "zone_id", as: "wards" });
+Ward.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
+
+// Corporation ↔ CollectionEvent
+Corporation.hasMany(CollectionEvent, { foreignKey: "corporation_id", as: "collectionEvents" });
+CollectionEvent.belongsTo(Corporation, { foreignKey: "corporation_id", as: "corporation" });
+
+// Zone ↔ CollectionEvent
+Zone.hasMany(CollectionEvent, { foreignKey: "zone_id", as: "collectionEvents" });
+CollectionEvent.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
+
+// Ward ↔ CollectionEvent
+Ward.hasMany(CollectionEvent, { foreignKey: "ward_id", as: "collectionEvents" });
+CollectionEvent.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
+
+
+
 module.exports = { 
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
-  EmailSettings, SecuritySettings, SystemSettings, AuditLog
+  EmailSettings, SecuritySettings, SystemSettings, AuditLog,
+  Corporation, Zone, Ward, CollectionEvent
 };
 
 

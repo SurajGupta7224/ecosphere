@@ -12,7 +12,13 @@ import Locations from './pages/Locations';
 import Categories from './pages/Categories';
 import SubCategories from './pages/SubCategories';
 import Settings from './pages/Settings';
+import Corporations from './pages/Corporations';
+import Zones from './pages/Zones';
+import Wards from './pages/Wards';
+import CollectionEvents from './pages/CollectionEvents';
 import { SettingsProvider } from './context/SettingsContext';
+
+
 
 function App() {
   const PrivateRoute = ({ children }) => {
@@ -100,6 +106,38 @@ function App() {
             element={
               <RequirePermission requiredPermission="locations">
                 <Locations />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/corporation"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <Corporations />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/zone"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <Zones />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/ward"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <Wards />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/collection-event"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <CollectionEvents />
               </RequirePermission>
             }
           />

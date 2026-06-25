@@ -6,7 +6,7 @@ import api, { IMAGE_BASE_URL } from '../api';
 const InputField = ({ label, name, type="text", value, onChange, required=false, placeholder="" }) => (
   <div className="mb-4">
     <label className="block text-xs font-semibold text-slate-600 mb-1">
-      {label} {required && <span className="text-blue-500">*</span>}
+      {label} {required && <span className="text-[#7c3aed]">*</span>}
     </label>
     <input 
       type={type} 
@@ -23,7 +23,7 @@ const InputField = ({ label, name, type="text", value, onChange, required=false,
 const SelectField = ({ label, name, value, onChange, options, required=false, disabled=false, placeholder="Choose" }) => (
   <div className="mb-4">
     <label className="block text-xs font-semibold text-slate-600 mb-1">
-      {label} {required && <span className="text-blue-500">*</span>}
+      {label} {required && <span className="text-[#7c3aed]">*</span>}
     </label>
     <select 
       name={name} 
@@ -44,7 +44,7 @@ const SelectField = ({ label, name, value, onChange, options, required=false, di
 const FileField = ({ label, name, onChange, required=false, accept="image/*,.pdf", existingFile, onPreview }) => (
   <div className="mb-4">
     <label className="block text-xs font-semibold text-slate-600 mb-2">
-      {label} {required && <span className="text-blue-500">*</span>}
+      {label} {required && <span className="text-[#7c3aed]">*</span>}
     </label>
     <div className="flex items-center space-x-4">
       {existingFile && (
@@ -57,7 +57,7 @@ const FileField = ({ label, name, onChange, required=false, accept="image/*,.pdf
               onClick={() => onPreview(`${IMAGE_BASE_URL.replace('/uploads', '')}${existingFile}`)}
             />
           ) : (
-            <a href={`${IMAGE_BASE_URL.replace('/uploads', '')}${existingFile}`} target="_blank" rel="noreferrer" className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 hover:text-blue-600 transition-colors shadow-sm text-center px-1">
+            <a href={`${IMAGE_BASE_URL.replace('/uploads', '')}${existingFile}`} target="_blank" rel="noreferrer" className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 hover:text-[#7c3aed] transition-colors shadow-sm text-center px-1">
               VIEW DOC
             </a>
           )}
@@ -85,9 +85,12 @@ const FileField = ({ label, name, onChange, required=false, accept="image/*,.pdf
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
-  const [countries, setCountries] = useState([]);
-  const [states, setStates] = useState([]);
-  const [cities, setCities] = useState([]);
+  
+  // BWG Mappings dropdowns
+  const [corporations, setCorporations] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [wards, setWards] = useState([]);
+  
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -100,7 +103,7 @@ const Users = () => {
   
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', password: '', role_id: 1,
-    pincode: '', country_id: '', state_id: '', city_id: '',
+    corporation_id: '', zone_id: '', ward_id: '',
     company_type: 'Individual', pan_number: '', aadhaar_number: '',
     status: 'active', profile_status: 'pending'
   });
@@ -113,8 +116,6 @@ const Users = () => {
   });
   
   const [submitting, setSubmitting] = useState(false);
-  const [pincodeSuggestions, setPincodeSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Delete Modal State
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, name: '' });
@@ -125,18 +126,8 @@ const Users = () => {
   useEffect(() => {
     fetchUsers();
     fetchRoles();
-    fetchCountries();
+    fetchCorporations();
   }, []);
-
-  useEffect(() => {
-    if (formData.country_id) fetchStates(formData.country_id);
-    else setStates([]);
-  }, [formData.country_id]);
-
-  useEffect(() => {
-    if (formData.state_id) fetchCities(formData.state_id);
-    else setCities([]);
-  }, [formData.state_id]);
 
   const fetchUsers = async () => {
     try {
@@ -161,69 +152,54 @@ const Users = () => {
     }
   };
 
-  const fetchCountries = async () => {
+  const fetchCorporations = async () => {
     try {
-      const res = await api.get('/locations/countries');
-      setCountries(res.data.countries || []);
-    } catch (err) {}
+      const res = await api.get('/corporations?limit=1000&status=Active');
+      setCorporations(res.data.corporations || []);
+    } catch (err) {
+      console.error('Failed to fetch corporations', err);
+    }
   };
 
-  const fetchStates = async (countryId) => {
+  const fetchZones = async (corpId) => {
     try {
-      const res = await api.get(`/locations/states/${countryId}`);
-      setStates(res.data.states || []);
-    } catch (err) {}
+      const res = await api.get(`/corporations/${corpId}/zones`);
+      setZones(res.data.zones || []);
+    } catch (err) {
+      console.error('Failed to fetch zones', err);
+    }
   };
 
-  const fetchCities = async (stateId) => {
+  const fetchWards = async (zoneId) => {
     try {
-      const res = await api.get(`/locations/cities/${stateId}`);
-      setCities(res.data.cities || []);
-    } catch (err) {}
+      const res = await api.get(`/zones/${zoneId}/wards`);
+      setWards(res.data.wards || []);
+    } catch (err) {
+      console.error('Failed to fetch wards', err);
+    }
   };
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePincodeChange = async (e) => {
-    const code = e.target.value;
-    setFormData(prev => ({ ...prev, pincode: code }));
-    
-    if (code.length === 6) {
-      try {
-        const res = await api.get(`/locations/pincode/${code}`);
-        if (res.data.results) {
-          const results = res.data.results;
-          if (results.length === 1) {
-            const { country_id, state_id, city_id } = results[0];
-            setFormData(prev => ({ ...prev, country_id, state_id, city_id }));
-            toast.success("Location auto-filled successfully");
-            setShowSuggestions(false);
-          } else {
-            setPincodeSuggestions(results);
-            setShowSuggestions(true);
-            toast.success(`${results.length} areas found for this pincode`);
-          }
-        }
-      } catch (err) {
-        toast.error("Invalid Pincode or not found in system");
-        setShowSuggestions(false);
-      }
-    } else {
-      setShowSuggestions(false);
+  const handleCorporationChange = async (e) => {
+    const corpId = e.target.value;
+    setFormData(prev => ({ ...prev, corporation_id: corpId, zone_id: '', ward_id: '' }));
+    setZones([]);
+    setWards([]);
+    if (corpId) {
+      await fetchZones(corpId);
     }
   };
 
-  const selectPincodeResult = (res) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      country_id: res.country_id, 
-      state_id: res.state_id, 
-      city_id: res.city_id 
-    }));
-    setShowSuggestions(false);
-    toast.success(`Selected: ${res.city?.city_name || 'Area'}`);
+  const handleZoneChange = async (e) => {
+    const zoneId = e.target.value;
+    setFormData(prev => ({ ...prev, zone_id: zoneId, ward_id: '' }));
+    setWards([]);
+    if (zoneId) {
+      await fetchWards(zoneId);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -240,24 +216,42 @@ const Users = () => {
     setActiveTab('Individual');
     setFormData({
       name: '', email: '', phone: '', password: '', role_id: roles[0]?.id || 1,
-      pincode: '', country_id: '', state_id: '', city_id: '',
+      corporation_id: '', zone_id: '', ward_id: '',
       company_type: 'Individual', pan_number: '', aadhaar_number: '',
       status: 'active', profile_status: 'pending'
     });
+    setZones([]);
+    setWards([]);
     setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setExistingFiles({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setIsFormOpen(true);
   };
 
-  const openEditForm = (user) => {
+  const openEditForm = async (user) => {
     setIsEditMode(true);
     setEditingId(user.id);
     const cType = user.company_type || 'Individual';
     setActiveTab(cType);
+    
+    // Load dependent zones and wards based on user mapping
+    if (user.corporation_id) {
+      await fetchZones(user.corporation_id);
+    } else {
+      setZones([]);
+    }
+
+    if (user.zone_id) {
+      await fetchWards(user.zone_id);
+    } else {
+      setWards([]);
+    }
+
     setFormData({
       name: user.name || '', email: user.email || '', phone: user.phone || '', 
       role_id: user.role_id || roles[0]?.id || 1,
-      pincode: '', country_id: user.country_id || '', state_id: user.state_id || '', city_id: user.city_id || '',
+      corporation_id: user.corporation_id || '',
+      zone_id: user.zone_id || '',
+      ward_id: user.ward_id || '',
       company_type: cType, 
       pan_number: user.pan_number || '', aadhaar_number: user.aadhaar_number || '',
       status: user.status || 'active', profile_status: user.profile_status || 'pending',
@@ -341,7 +335,6 @@ const Users = () => {
     }
   };
 
-
   const filteredUsers = users.filter(u => {
     if (filter === 'all') return true;
     return u.profile_status === filter;
@@ -371,38 +364,17 @@ const Users = () => {
                 />
                 <InputField label="Password" name="password" type="password" value={formData.password} onChange={handleInputChange} required={!isEditMode} placeholder={isEditMode ? "Leave blank to keep" : "Password"} />
                 
-                <div className="relative">
-                  <InputField label="Pincode" name="pincode" value={formData.pincode || ''} onChange={handlePincodeChange} placeholder="Enter 6-digit Pincode" />
-                  {showSuggestions && pincodeSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-[-10px] max-h-48 overflow-y-auto">
-                      {pincodeSuggestions.map((res, idx) => (
-                        <div 
-                          key={idx} 
-                          onClick={() => selectPincodeResult(res)}
-                          className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
-                        >
-                          <p className="text-sm font-bold text-slate-800">
-                            {res.pincode} - {res.city?.area}, {res.city?.city_name}, {res.city?.district}, {res.city?.region}
-                          </p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tight">
-                            {res.state?.state_name} • {res.country?.country_name}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 <SelectField 
-                  label="Country" name="country_id" value={formData.country_id} onChange={handleInputChange} required placeholder="Country" disabled
-                  options={countries.map(c => ({ value: c.id, label: c.country_name }))} 
+                  label="Corporation" name="corporation_id" value={formData.corporation_id} onChange={handleCorporationChange} required placeholder="Select Corporation"
+                  options={corporations.map(c => ({ value: c.id, label: c.corporation_name }))} 
                 />
                 <SelectField 
-                  label="State" name="state_id" value={formData.state_id} onChange={handleInputChange} required disabled placeholder="State"
-                  options={states.map(s => ({ value: s.id, label: s.state_name }))} 
+                  label="Zone" name="zone_id" value={formData.zone_id} onChange={handleZoneChange} required placeholder="Select Zone" disabled={!formData.corporation_id}
+                  options={zones.map(z => ({ value: z.id, label: z.zone_name }))} 
                 />
                 <SelectField 
-                  label="City" name="city_id" value={formData.city_id} onChange={handleInputChange} required disabled placeholder="City"
-                  options={cities.map(c => ({ value: c.id, label: c.city_name }))} 
+                  label="Ward" name="ward_id" value={formData.ward_id} onChange={handleInputChange} required placeholder="Select Ward" disabled={!formData.zone_id}
+                  options={wards.map(w => ({ value: w.id, label: w.ward_name }))} 
                 />
 
                 <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} required placeholder="PAN Number" />
@@ -466,11 +438,11 @@ const Users = () => {
             </button>
             <button 
               onClick={() => setFilter('pending')}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center ${filter === 'pending' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center ${filter === 'pending' ? 'bg-[#7c3aed] text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
             >
               Pending Approval
               {users.filter(u => u.profile_status === 'pending').length > 0 && (
-                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${filter === 'pending' ? 'bg-white text-amber-500' : 'bg-amber-100 text-amber-600'}`}>
+                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${filter === 'pending' ? 'bg-white text-[#7c3aed]' : 'bg-purple-100 text-[#7c3aed]'}`}>
                   {users.filter(u => u.profile_status === 'pending').length}
                 </span>
               )}

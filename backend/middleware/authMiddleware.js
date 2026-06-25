@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User, Role, Permission, Customer, SystemSettings } = require("../models/index");
+const { User, Role, Permission, Customer, SystemSettings, SecuritySettings } = require("../models/index");
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -54,6 +54,19 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: "User account suspended." });
     }
 
+    // Enforce Single Session if allow_multiple_sessions is disabled
+    if (userType === 'user') {
+      const security = await SecuritySettings.findByPk(1);
+      if (security && !security.allow_multiple_sessions) {
+        if (decoded.session_token !== user.current_session_token) {
+          return res.status(401).json({
+            status: 0,
+            message: "Your session has been terminated because another login was started on a different device."
+          });
+        }
+      }
+    }
+
     req.user = user;
     req.userType = userType;
     req.userPermissions = userType === 'user' ? (user.role?.permissions?.map(p => p.permission_name) || []) : [];
@@ -76,8 +89,11 @@ const verifyToken = async (req, res, next) => {
 
     next();
   } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ status: 0, message: "Your session has expired. Please login again." });
+    }
     console.error("verifyToken auth block err", err);
-    return res.status(403).json({ message: "Invalid or expired token." });
+    return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
 

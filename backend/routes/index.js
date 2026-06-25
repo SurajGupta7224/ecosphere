@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 console.log("DEBUG: Loading API routes from routes/index.js");
 
-const { login } = require("../controllers/Admin/authController");
+const { login, generateCaptcha, verify2FA } = require("../controllers/Admin/authController");
 const settingsController = require("../controllers/Admin/settingsController");
 const { getAllUsers, createUser, updateUser, updateUserStatus, deleteUser, getRoles } = require("../controllers/Admin/userController");
 const roleController = require("../controllers/Admin/roleController");
@@ -11,6 +11,12 @@ const locationController = require("../controllers/Admin/locationController");
 const profileController = require("../controllers/Admin/profileController");
 const categoryController = require("../controllers/Admin/categoryController");
 const subCategoryController = require("../controllers/Admin/subCategoryController");
+const corporationController = require("../controllers/Admin/corporationController");
+const zoneController = require("../controllers/Admin/zoneController");
+const wardController = require("../controllers/Admin/wardController");
+const collectionEventController = require("../controllers/Admin/collectionEventController");
+
+
 
 const { verifyToken, requirePermission } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -33,6 +39,8 @@ const subCategoryUploads = upload.fields([
 
 // Auth routes (public)
 router.post("/auth/login", login);
+router.get("/auth/captcha", generateCaptcha);
+router.post("/auth/2fa/verify", verify2FA);
 
 // Profile routes
 router.get("/profile", verifyToken, requirePermission('profile'), profileController.getProfile);
@@ -83,6 +91,40 @@ router.get("/locations/pincode/:pincode", locationController.getPincodeDetails);
 router.get("/locations/pincodes", verifyToken, requirePermission('locations'), locationController.getAllPincodes);
 router.get("/locations/pincodes/city/:city_id", verifyToken, requirePermission('locations'), locationController.getPincodesByCity);
 router.get("/locations/suggestions", verifyToken, requirePermission('locations'), locationController.getSuggestions);
+
+// BWG Mapping routes
+router.get("/corporations", verifyToken, requirePermission('bwg_mapping'), corporationController.getAllCorporations);
+router.get("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.getCorporationById);
+router.post("/corporations", verifyToken, requirePermission('bwg_mapping'), corporationController.createCorporation);
+router.put("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.updateCorporation);
+router.patch("/corporations/:id/status", verifyToken, requirePermission('bwg_mapping'), corporationController.toggleCorporationStatus);
+router.delete("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.deleteCorporation);
+
+router.get("/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.getAllZones);
+router.get("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.getZoneById);
+router.post("/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.createZone);
+router.put("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.updateZone);
+router.patch("/zones/:id/status", verifyToken, requirePermission('bwg_mapping'), zoneController.toggleZoneStatus);
+router.delete("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.deleteZone);
+router.get("/corporations/:id/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.getZonesByCorporation);
+
+router.get("/wards", verifyToken, requirePermission('bwg_mapping'), wardController.getAllWards);
+router.get("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.getWardById);
+router.post("/wards", verifyToken, requirePermission('bwg_mapping'), wardController.createWard);
+router.put("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.updateWard);
+router.patch("/wards/:id/status", verifyToken, requirePermission('bwg_mapping'), wardController.toggleWardStatus);
+router.delete("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.deleteWard);
+router.get("/zones/:id/wards", verifyToken, requirePermission('bwg_mapping'), wardController.getWardsByZone);
+
+// Collection Event routes
+router.get("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getAllCollectionEvents);
+router.get("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getCollectionEventById);
+router.post("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.createCollectionEvent);
+router.put("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.updateCollectionEvent);
+router.patch("/collection-events/:id/status", verifyToken, requirePermission('bwg_mapping'), collectionEventController.toggleCollectionEventStatus);
+router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.deleteCollectionEvent);
+
+
 
 // Dashboard routes
 router.get("/dashboard/stats", verifyToken, dashboardController.getDashboardStats);

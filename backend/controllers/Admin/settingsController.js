@@ -33,6 +33,7 @@ exports.getPublicSettings = async (req, res) => {
     const [theme] = await ThemeSettings.findOrCreate({ where: { id: 1 } });
     const [app] = await AppSettings.findOrCreate({ where: { id: 1 } });
     const [system] = await SystemSettings.findOrCreate({ where: { id: 1 } });
+    const [security] = await SecuritySettings.findOrCreate({ where: { id: 1 } });
 
     res.json({
       success: true,
@@ -50,6 +51,7 @@ exports.getPublicSettings = async (req, res) => {
         supportEmail: branding.support_email,
         supportPhone: branding.support_phone,
         maintenanceMode: system.maintenance_mode,
+        captchaEnabled: security.captcha_enabled,
         theme: {
           theme_type: theme.theme_type,
           primary_color: theme.primary_color,
@@ -82,6 +84,9 @@ exports.getSettings = async (req, res) => {
     const [security] = await SecuritySettings.findOrCreate({ where: { id: 1 } });
     const [system] = await SystemSettings.findOrCreate({ where: { id: 1 } });
 
+    const securityJSON = security.toJSON();
+    securityJSON.min_password_length = securityJSON.password_min_length;
+
     res.json({
       success: true,
       settings: {
@@ -90,7 +95,7 @@ exports.getSettings = async (req, res) => {
         theme,
         company,
         email,
-        security,
+        security: securityJSON,
         system
       }
     });
@@ -240,6 +245,10 @@ exports.updateSecuritySettings = async (req, res) => {
   try {
     const settings = await SecuritySettings.findByPk(1);
     const oldValues = settings.toJSON();
+
+    if (req.body.min_password_length !== undefined) {
+      req.body.password_min_length = req.body.min_password_length;
+    }
 
     await settings.update(req.body);
     await writeAuditLog(req, "Update Security Settings", "Security", oldValues, settings.toJSON());

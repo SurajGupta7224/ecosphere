@@ -3,7 +3,7 @@ import { User, Mail, Phone, MapPin, Building, CreditCard, Save, X, Camera } from
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';
 
-const InputField = ({ label, name, type="text", value, onChange, required=false, icon: Icon }) => (
+const InputField = ({ label, name, type="text", value, onChange, required=false, icon: Icon, placeholder="" }) => (
   <div className="mb-5">
     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
       {label} {required && <span className="text-red-500">*</span>}
@@ -18,6 +18,7 @@ const InputField = ({ label, name, type="text", value, onChange, required=false,
         value={value || ''} 
         onChange={onChange} 
         required={required}
+        placeholder={placeholder}
         className="w-full bg-slate-50 border border-slate-200 focus:border-[#7c3aed] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none py-2.5 pl-10 pr-4 rounded-xl text-sm text-slate-800 transition-all placeholder:text-slate-400 shadow-sm" 
       />
     </div>
@@ -85,15 +86,15 @@ const Profile = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [countries, setCountries] = useState([]);
-  const [states, setStates] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [pincodeSuggestions, setPincodeSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // BWG Mappings dropdowns
+  const [corporations, setCorporations] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [wards, setWards] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', password: '',
-    pincode: '', country_id: '', state_id: '', city_id: '',
+    corporation_id: '', zone_id: '', ward_id: '',
     company_type: '', pan_number: '', aadhaar_number: ''
   });
 
@@ -103,16 +104,8 @@ const Profile = () => {
 
   useEffect(() => {
     fetchProfile();
-    fetchCountries();
+    fetchCorporations();
   }, []);
-
-  useEffect(() => {
-    if (formData.country_id) fetchStates(formData.country_id);
-  }, [formData.country_id]);
-
-  useEffect(() => {
-    if (formData.state_id) fetchCities(formData.state_id);
-  }, [formData.state_id]);
 
   const fetchProfile = async () => {
     try {
@@ -120,15 +113,23 @@ const Profile = () => {
       const user = res.data.user;
       if (user) {
         setUserData(user);
+        
+        // Pre-fetch dependent dropdown options based on current user location mapping
+        if (user.corporation_id) {
+          await fetchZones(user.corporation_id);
+        }
+        if (user.zone_id) {
+          await fetchWards(user.zone_id);
+        }
+
         setFormData({
           name: user.name || '',
           email: user.email || '',
           phone: user.phone || '',
           password: '',
-          pincode: '',
-          country_id: user.country_id || '',
-          state_id: user.state_id || '',
-          city_id: user.city_id || '',
+          corporation_id: user.corporation_id || '',
+          zone_id: user.zone_id || '',
+          ward_id: user.ward_id || '',
           company_type: user.company_type || '',
           pan_number: user.pan_number || '',
           aadhaar_number: user.aadhaar_number || ''
@@ -143,76 +144,61 @@ const Profile = () => {
     }
   };
 
-  const fetchCountries = async () => {
+  const fetchCorporations = async () => {
     try {
-      const res = await api.get('/locations/countries');
-      setCountries(res.data.countries || []);
-    } catch (err) {}
+      const res = await api.get('/corporations?limit=1000&status=Active');
+      setCorporations(res.data.corporations || []);
+    } catch (err) {
+      console.error('Failed to fetch corporations', err);
+    }
   };
 
-  const fetchStates = async (countryId) => {
+  const fetchZones = async (corpId) => {
     try {
-      const res = await api.get(`/locations/states/${countryId}`);
-      setStates(res.data.states || []);
-    } catch (err) {}
+      const res = await api.get(`/corporations/${corpId}/zones`);
+      setZones(res.data.zones || []);
+    } catch (err) {
+      console.error('Failed to fetch zones', err);
+    }
   };
 
-  const fetchCities = async (stateId) => {
+  const fetchWards = async (zoneId) => {
     try {
-      const res = await api.get(`/locations/cities/${stateId}`);
-      setCities(res.data.cities || []);
-    } catch (err) {}
+      const res = await api.get(`/zones/${zoneId}/wards`);
+      setWards(res.data.wards || []);
+    } catch (err) {
+      console.error('Failed to fetch wards', err);
+    }
   };
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePincodeChange = async (e) => {
-    const code = e.target.value;
-    setFormData(prev => ({ ...prev, pincode: code }));
-    
-    if (code.length === 6) {
-      try {
-        const res = await api.get(`/locations/pincode/${code}`);
-        if (res.data.results) {
-          const results = res.data.results;
-          if (results.length === 1) {
-            const { country_id, state_id, city_id } = results[0];
-            setFormData(prev => ({ ...prev, country_id, state_id, city_id }));
-            toast.success("Location auto-filled successfully");
-            setShowSuggestions(false);
-          } else {
-            setPincodeSuggestions(results);
-            setShowSuggestions(true);
-            toast.success(`${results.length} areas found for this pincode`);
-          }
-        }
-      } catch (err) {
-        toast.error("Invalid Pincode or not found in system");
-        setShowSuggestions(false);
-      }
-    } else {
-      setShowSuggestions(false);
+  const handleCorporationChange = async (e) => {
+    const corpId = e.target.value;
+    setFormData(prev => ({ ...prev, corporation_id: corpId, zone_id: '', ward_id: '' }));
+    setZones([]);
+    setWards([]);
+    if (corpId) {
+      await fetchZones(corpId);
     }
   };
 
-  const selectPincodeResult = (res) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      country_id: res.country_id, 
-      state_id: res.state_id, 
-      city_id: res.city_id 
-    }));
-    setShowSuggestions(false);
-    toast.success(`Selected: ${res.city?.city_name || 'Area'}`);
+  const handleZoneChange = async (e) => {
+    const zoneId = e.target.value;
+    setFormData(prev => ({ ...prev, zone_id: zoneId, ward_id: '' }));
+    setWards([]);
+    if (zoneId) {
+      await fetchWards(zoneId);
+    }
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setFileData({ ...fileData, [e.target.name]: file });
-      toast.success(`${e.target.name.replace('_', ' ')} selected`);
+      toast.success(`${e.target.name.replace(/_file|_photo/g, '').replace('_', ' ').toUpperCase()} selected`);
     }
   };
 
@@ -239,7 +225,7 @@ const Profile = () => {
       });
       toast.success(res.data.message);
       
-      // Update local storage user if needed
+      // Update local storage user details
       const currentLocalUser = JSON.parse(localStorage.getItem('user') || '{}');
       const updatedLocalUser = { 
         ...currentLocalUser, 
@@ -287,7 +273,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="w-full pb-12 px-0">
+    <div className="w-full pb-12 px-0 font-sans">
       {/* Header Profile Card */}
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden mb-8">
         <div className="h-40 bg-slate-100"></div>
@@ -297,7 +283,7 @@ const Profile = () => {
               <div className="w-40 h-40 rounded-3xl border-8 border-white bg-slate-100 shadow-2xl overflow-hidden group">
                 {userData.profile_photo ? (
                   <img 
-                    src={`${IMAGE_BASE_URL}/Profile_Photo/${userData.profile_photo}`} 
+                    src={`${IMAGE_BASE_URL.replace('/uploads', '')}/uploads/Profile_Photo/${userData.profile_photo}`} 
                     alt="Profile" 
                     className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
                   />
@@ -384,7 +370,7 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Location */}
+            {/* Location context (BWG Mapping) */}
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
               <div className="flex items-center mb-8 pb-4 border-b border-slate-50">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mr-4">
@@ -392,42 +378,21 @@ const Profile = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Location Context</h2>
-                  <p className="text-xs font-medium text-slate-400">Where you are located</p>
+                  <p className="text-xs font-medium text-slate-400">Where you are mapped</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                <div className="relative">
-                  <InputField label="Pincode" name="pincode" value={formData.pincode || ''} onChange={handlePincodeChange} icon={MapPin} />
-                  {showSuggestions && pincodeSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl mt-[-15px] max-h-48 overflow-y-auto">
-                      {pincodeSuggestions.map((res, idx) => (
-                        <div 
-                          key={idx} 
-                          onClick={() => selectPincodeResult(res)}
-                          className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
-                        >
-                          <p className="text-sm font-bold text-slate-800">
-                            {res.pincode} - {res.city?.area}, {res.city?.city_name}, {res.city?.district}, {res.city?.region}
-                          </p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tight">
-                            {res.state?.state_name} • {res.country?.country_name}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
                 <SelectField 
-                  label="Country" name="country_id" value={formData.country_id} onChange={handleInputChange} icon={MapPin} disabled
-                  options={countries.map(c => ({ value: c.id, label: c.country_name }))} 
+                  label="Corporation" name="corporation_id" value={formData.corporation_id} onChange={handleCorporationChange} icon={MapPin} required
+                  options={corporations.map(c => ({ value: c.id, label: c.corporation_name }))} 
                 />
                 <SelectField 
-                  label="State" name="state_id" value={formData.state_id} onChange={handleInputChange} icon={MapPin} disabled
-                  options={states.map(s => ({ value: s.id, label: s.state_name }))} 
+                  label="Zone" name="zone_id" value={formData.zone_id} onChange={handleZoneChange} icon={MapPin} required disabled={!formData.corporation_id}
+                  options={zones.map(z => ({ value: z.id, label: z.zone_name }))} 
                 />
                 <SelectField 
-                  label="City" name="city_id" value={formData.city_id} onChange={handleInputChange} icon={MapPin} disabled
-                  options={cities.map(c => ({ value: c.id, label: c.city_name }))} 
+                  label="Ward" name="ward_id" value={formData.ward_id} onChange={handleInputChange} icon={MapPin} required disabled={!formData.zone_id}
+                  options={wards.map(w => ({ value: w.id, label: w.ward_name }))} 
                 />
               </div>
             </div>

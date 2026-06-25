@@ -27,7 +27,7 @@ const DashboardLayout = () => {
   const isApproved = currentStatus === 'approved';
   const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
 
-  const [openSections, setOpenSections] = useState({ access: true, master: false, catalog: true });
+  const [openSections, setOpenSections] = useState({ access: true, master: false, catalog: true, bwg_mapping: false });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [pendingVendors, setPendingVendors] = useState(0);
@@ -109,6 +109,19 @@ const DashboardLayout = () => {
         { name: t('roles'), path: '/roles', req: 'role_management' },
         { name: t('permissions'), path: '/permissions', req: 'permission' },
         { name: t('locations'), path: '/locations', req: 'locations' }
+      ]
+    },
+    {
+      id: 'bwg_mapping',
+      title: t('bwg_mapping'),
+      icon: Layers,
+      isSubMenu: true,
+      hidden: isVendor && !isApproved,
+      items: [
+        { name: t('corporation'), path: '/bwg/corporation', req: 'bwg_mapping' },
+        { name: t('zone'), path: '/bwg/zone', req: 'bwg_mapping' },
+        { name: t('ward'), path: '/bwg/ward', req: 'bwg_mapping' },
+        { name: t('collection_event'), path: '/bwg/collection-event', req: 'bwg_mapping' }
       ]
     },
     { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
