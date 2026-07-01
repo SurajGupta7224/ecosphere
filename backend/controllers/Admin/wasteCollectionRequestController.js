@@ -16,10 +16,7 @@ const getWasteCollectionRequests = async (req, res) => {
   // Role-based visibility: Non-admins only see their own requests
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
   if (!isAdmin) {
-    where.customer_id = req.user.id;
-  } else {
-    // Admin can search by customer name
-    // (We will handle search query below)
+    where.user_id = req.user.id;
   }
 
   try {
@@ -70,11 +67,10 @@ const getWasteCollectionRequests = async (req, res) => {
 // POST /api/waste-collection-requests
 const createWasteCollectionRequest = async (req, res) => {
   const {
-    category_id,
-    subcategory_id,
     pickup_notes,
     pickup_date,
     pickup_time,
+    time_slot_id,
     
     customer_type,
     authorized_person_name,
@@ -91,7 +87,7 @@ const createWasteCollectionRequest = async (req, res) => {
     gst,
     pan,
     trade_license,
-    variations_data
+    subcategories
   } = req.body;
 
   // Validation
@@ -100,6 +96,40 @@ const createWasteCollectionRequest = async (req, res) => {
   }
 
   try {
+    const { TimeSlot } = require("../../models/index");
+    const loggedInId = req.user ? req.user.id : null;
+    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+
+    // Time Slot validations
+    if (time_slot_id) {
+      const timeSlot = await TimeSlot.findByPk(time_slot_id);
+      if (!timeSlot) {
+        return res.status(404).json({ message: "Selected time slot not found." });
+      }
+      if (timeSlot.status !== 'Active') {
+        return res.status(400).json({ message: "Selected time slot is inactive." });
+      }
+
+      // Check for duplicate user booking (same user/email/mobile, same date, same time slot)
+      const existingRequest = await WasteCollectionRequest.findOne({
+        where: {
+          [Op.or]: [
+            loggedInId ? { created_by: loggedInId } : null,
+            loggedInId ? { user_id: loggedInId } : null,
+            mobile_number ? { mobile_number } : null,
+            email ? { email } : null
+          ].filter(Boolean),
+          pickup_date,
+          time_slot_id,
+          status: { [Op.ne]: 'Rejected' }
+        }
+      });
+
+      if (existingRequest) {
+        return res.status(400).json({ message: "You have already booked this time slot for the selected date." });
+      }
+    }
+
     // Process uploaded images
     let imageUrls = [];
     if (req.files && req.files.images) {
@@ -107,67 +137,80 @@ const createWasteCollectionRequest = async (req, res) => {
     }
     const images = imageUrls.length > 0 ? JSON.stringify(imageUrls) : null;
 
-    // Parse variations data
-    let parsedVariations = [];
-    if (variations_data) {
-      parsedVariations = typeof variations_data === 'string' ? JSON.parse(variations_data) : variations_data;
+    // Parse subcategories data
+    let parsedSubcategories = [];
+    const sourceData = subcategories || req.body.variations_data;
+    if (sourceData) {
+      parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
     }
 
-    // Grab first variation details for table single-variation columns (backward compatibility)
-    const firstVar = parsedVariations[0] || {};
-    const variation_id = firstVar.variation_id ? parseInt(firstVar.variation_id) : null;
-    const suggested_weight = parseFloat(firstVar.suggested_weight || 0);
-    const suggested_price = parseFloat(firstVar.suggested_price || 0);
-    const manual_weight = firstVar.expected_waste ? parseFloat(firstVar.expected_waste) : null;
-    const final_weight = (manual_weight !== null && !isNaN(manual_weight) && manual_weight > 0) 
-      ? manual_weight 
-      : suggested_weight;
+    if (parsedSubcategories.length === 0) {
+      return res.status(400).json({ message: "Please select at least one subcategory." });
+    }
 
-    // Audit context if session exists
-    const loggedInId = req.user ? req.user.id : null;
-    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    // Generate single unique lead_id for this batch of requests
+    const leadId = "LD" + Date.now().toString() + Math.floor(1000 + Math.random() * 9000);
+    const createdRequests = [];
 
-    // Create waste collection request
-    const request = await WasteCollectionRequest.create({
-      customer_id: null, // Public standalone creation, no linked user record
-      category_id: category_id ? parseInt(category_id) : null,
-      subcategory_id: subcategory_id ? parseInt(subcategory_id) : null,
-      variation_id: variation_id,
-      suggested_weight: suggested_weight,
-      suggested_price: suggested_price,
-      manual_weight: manual_weight,
-      final_weight: final_weight,
-      pickup_notes: pickup_notes || null,
-      pickup_date: pickup_date,
-      pickup_time: pickup_time || null,
-      status: 'Pending',
-      images: images,
-      generated_by: loggedInId,
-      created_by: loggedInId,
-      created_by_type: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
-      request_source: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
+    for (const subItem of parsedSubcategories) {
+      const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
+      const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
+      const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
+      const expected_waste = parseFloat(subItem.expected_waste || 0);
+      const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
+      const suggested_price = parseFloat(subItem.suggested_price || 0);
 
-      customer_type: customer_type || null,
-      authorized_person_name: authorized_person_name || null,
-      mobile_number: mobile_number || null,
-      email: email || null,
-      address_search: address_search || null,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
-      waste_generator_name: waste_generator_name || null,
-      complete_address: complete_address || null,
-      area_sqm: area_sqm ? parseFloat(area_sqm) : null,
-      no_of_dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
-      registered_rwa: registered_rwa || null,
-      gst: gst || null,
-      pan: pan || null,
-      trade_license: trade_license || null,
-      variations_data: JSON.stringify(parsedVariations)
-    });
+      // Calculations
+      const monthly_waste = expected_waste * 30;
+      const yearly_waste = expected_waste * 365;
+      const monthly_price = monthly_waste * agreed_price;
+      const yearly_price = yearly_waste * agreed_price;
+
+      const request = await WasteCollectionRequest.create({
+        lead_id: leadId,
+        user_id: loggedInId,
+        customer_type: customer_type || null,
+        authorized_person_name: authorized_person_name || null,
+        mobile_number: mobile_number || null,
+        email: email || null,
+        waste_generator_name: waste_generator_name || null,
+        complete_address: complete_address || null,
+        area_sqm: area_sqm ? parseFloat(area_sqm) : null,
+        dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+        registered_rwa: registered_rwa || null,
+        gst_number: gst || null,
+        pan_number: pan || null,
+        trade_license: trade_license || null,
+        pickup_date: pickup_date,
+        time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
+
+        category_id,
+        subcategory_id,
+        variation_id,
+        expected_waste,
+        agreed_price,
+        suggested_price,
+        monthly_waste,
+        yearly_waste,
+        monthly_price,
+        yearly_price,
+
+        pickup_notes: pickup_notes || null,
+        pickup_time: pickup_time || null,
+        status: 'Pending',
+        images: images,
+        generated_by: loggedInId,
+        created_by: loggedInId,
+        created_by_type: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
+        request_source: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
+      });
+
+      createdRequests.push(request);
+    }
 
     return res.status(201).json({
       message: "Waste collection request generated successfully.",
-      request
+      requests: createdRequests
     });
   } catch (err) {
     console.error("createWasteCollectionRequest error:", err);
@@ -211,7 +254,7 @@ const getWasteCollectionRequestById = async (req, res) => {
 
     // Access control: non-admins can only see their own requests
     const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-    if (!isAdmin && request.customer_id !== req.user.id) {
+    if (!isAdmin && request.user_id !== req.user.id) {
       return res.status(403).json({ message: "Access denied" });
     }
 

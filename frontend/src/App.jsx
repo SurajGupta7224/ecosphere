@@ -17,6 +17,8 @@ import Zones from './pages/Zones';
 import Wards from './pages/Wards';
 import CollectionEvents from './pages/CollectionEvents';
 import WasteCollectionRequests from './pages/WasteCollectionRequests';
+import WasteCollectionRequestsList from './pages/WasteCollectionRequestsList';
+import TimeSlots from './pages/TimeSlots';
 import { SettingsProvider } from './context/SettingsContext';
 
 
@@ -151,6 +153,15 @@ function App() {
             }
           />
           <Route path="waste-collection-requests" element={<WasteCollectionRequests />} />
+          <Route path="waste-requests-list" element={<WasteCollectionRequestsList />} />
+          <Route
+            path="time-slots"
+            element={
+              <RequirePermission requiredPermission="time_slot_management">
+                <TimeSlots />
+              </RequirePermission>
+            }
+          />
         </Route>
 
         {/* Full Screen Unauthorized Error Page */}

@@ -216,6 +216,7 @@ const login = async (req, res) => {
         email: user.email,
         role_id: user.role_id,
         status: user.status,
+        profile_status: user.profile_status,
         profile_photo: user.profile_photo,
         role: user.role,
         permissions: permissionsInfo
@@ -321,6 +322,7 @@ const verify2FA = async (req, res) => {
         email: user.email,
         role_id: user.role_id,
         status: user.status,
+        profile_status: user.profile_status,
         profile_photo: user.profile_photo,
         role: user.role,
         permissions: permissionsInfo

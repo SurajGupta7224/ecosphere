@@ -5,7 +5,7 @@ const sequelize = require("../config/db");
 /**
  * Fetch all subcategories matching filter parameters.
  */
-const getSubCategories = async (params, userId, isAdmin, hasProductAccess) => {
+const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSubCategoryAccess) => {
   const { page = 1, limit = 10, search = '', status = '', category_id = '' } = params;
   const offset = (page - 1) * limit;
 
@@ -21,7 +21,7 @@ const getSubCategories = async (params, userId, isAdmin, hasProductAccess) => {
   }
 
   // Ownership security check
-  if (!isAdmin && !hasProductAccess) {
+  if (!isAdmin && !hasProductAccess && !hasSubCategoryAccess) {
     where.user_id = userId;
   }
 
@@ -95,9 +95,9 @@ const createSubCategory = async (subCategoryData, variations, userId) => {
 /**
  * Update a sub-category and synchronize its variations in a single transaction.
  */
-const updateSubCategory = async (id, subCategoryData, variations, userId, isAdmin) => {
+const updateSubCategory = async (id, subCategoryData, variations, userId, isAdmin, hasSubCategoryAccess) => {
   const whereClause = { id };
-  if (!isAdmin) {
+  if (!isAdmin && !hasSubCategoryAccess) {
     whereClause.user_id = userId;
   }
 
@@ -166,9 +166,9 @@ const updateSubCategory = async (id, subCategoryData, variations, userId, isAdmi
 /**
  * Toggle the status of a sub-category.
  */
-const toggleStatus = async (id, status, userId, isAdmin) => {
+const toggleStatus = async (id, status, userId, isAdmin, hasSubCategoryAccess) => {
   const whereClause = { id };
-  if (!isAdmin) {
+  if (!isAdmin && !hasSubCategoryAccess) {
     whereClause.user_id = userId;
   }
 
@@ -184,9 +184,9 @@ const toggleStatus = async (id, status, userId, isAdmin) => {
 /**
  * Soft delete a sub-category (status = 0).
  */
-const deleteSubCategory = async (id, userId, isAdmin) => {
+const deleteSubCategory = async (id, userId, isAdmin, hasSubCategoryAccess) => {
   const whereClause = { id };
-  if (!isAdmin) {
+  if (!isAdmin && !hasSubCategoryAccess) {
     whereClause.user_id = userId;
   }
 

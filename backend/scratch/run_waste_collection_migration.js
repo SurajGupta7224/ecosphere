@@ -4,6 +4,12 @@ const sequelize = require("../config/db");
 
 async function run() {
   try {
+    console.log("Dropping existing waste_collection_requests table if exists...");
+    try {
+      await sequelize.query("DROP TABLE IF EXISTS `waste_collection_requests`;");
+    } catch(err) {
+      console.warn("Table drop failed (may not exist or have active locks):", err);
+    }
     console.log("Running migration: create_waste_collection_requests_table.sql...");
     const filePath = path.join(__dirname, '../migrations/create_waste_collection_requests_table.sql');
     const sql = fs.readFileSync(filePath, 'utf8');

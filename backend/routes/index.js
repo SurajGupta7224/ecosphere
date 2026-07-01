@@ -17,6 +17,7 @@ const wardController = require("../controllers/Admin/wardController");
 const collectionEventController = require("../controllers/Admin/collectionEventController");
 const wasteCollectionRequestController = require("../controllers/Admin/wasteCollectionRequestController");
 const { acceptTnc } = require("../controllers/Admin/tncController");
+const timeSlotController = require("../controllers/Admin/timeSlotController");
 
 
 
@@ -135,6 +136,13 @@ router.get("/waste-collection-requests", verifyToken, requirePermission('waste_c
 router.get("/waste-collection-requests/:id", verifyToken, requirePermission('waste_collection_requests'), wasteCollectionRequestController.getWasteCollectionRequestById);
 router.post("/waste-collection-requests", requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
 
+// Time Slot routes
+router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);
+router.get("/time-slots/active", timeSlotController.getActiveTimeSlots);
+router.post("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.createTimeSlot);
+router.put("/time-slots/:id", verifyToken, requirePermission('time_slot_management'), timeSlotController.updateTimeSlot);
+router.patch("/time-slots/:id/status", verifyToken, requirePermission('time_slot_management'), timeSlotController.toggleTimeSlotStatus);
+router.delete("/time-slots/:id", verifyToken, requirePermission('time_slot_management'), timeSlotController.deleteTimeSlot);
 
 
 // Dashboard routes

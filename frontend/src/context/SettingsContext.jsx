@@ -24,6 +24,7 @@ const TRANSLATIONS = {
     ward: "Ward",
     collection_event: "Collection Event",
     waste_collection_requests: "Waste Collection Requests",
+    time_slot_management: "Time Slot Management",
     settings: "Settings",
     admin_panel: "Admin Panel",
     sign_out: "Sign Out",

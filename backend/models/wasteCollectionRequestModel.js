@@ -7,7 +7,11 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     primaryKey: true,
     autoIncrement: true,
   },
-  customer_id: {
+  lead_id: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+  },
+  user_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
@@ -15,9 +19,41 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
       key: 'id'
     }
   },
-  category_id: {
+  customer_type: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  authorized_person_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  mobile_number: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  email: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  waste_generator_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  area_sqm: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+  },
+  dwelling_units: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  complete_address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
     references: {
       model: 'categories',
       key: 'id'
@@ -25,7 +61,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   subcategory_id: {
     type: DataTypes.INTEGER,
-    allowNull: true,
+    allowNull: false,
     references: {
       model: 'sub_categories',
       key: 'id'
@@ -33,13 +69,18 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   variation_id: {
     type: DataTypes.BIGINT,
-    allowNull: true,
+    allowNull: false,
     references: {
       model: 'subcategory_variations',
       key: 'id'
     }
   },
-  suggested_weight: {
+  expected_waste: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+  },
+  agreed_price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
@@ -49,25 +90,62 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     allowNull: false,
     defaultValue: 0.00,
   },
-  manual_weight: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
-  final_weight: {
+  monthly_waste: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
   },
-  pickup_notes: {
-    type: DataTypes.TEXT,
+  yearly_waste: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+  },
+  monthly_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+  },
+  yearly_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+  },
+  registered_rwa: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  gst_number: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  pan_number: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  trade_license: {
+    type: DataTypes.STRING(255),
     allowNull: true,
   },
   pickup_date: {
     type: DataTypes.DATEONLY,
     allowNull: false,
   },
+  time_slot_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'time_slots',
+      key: 'id'
+    }
+  },
+  
+  // Additional fields for compatibility
+  pickup_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   pickup_time: {
-    type: DataTypes.STRING(20),
+    type: DataTypes.STRING(50),
     allowNull: true,
   },
   status: {
@@ -102,70 +180,6 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
       model: 'users',
       key: 'id'
     }
-  },
-  customer_type: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
-  authorized_person_name: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  mobile_number: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-  },
-  email: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  address_search: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  latitude: {
-    type: DataTypes.DECIMAL(10, 8),
-    allowNull: true,
-  },
-  longitude: {
-    type: DataTypes.DECIMAL(11, 8),
-    allowNull: true,
-  },
-  waste_generator_name: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  complete_address: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  area_sqm: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
-  no_of_dwelling_units: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-  },
-  registered_rwa: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  gst: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
-  pan: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
-  trade_license: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  variations_data: {
-    type: DataTypes.TEXT,
-    allowNull: true,
   }
 }, {
   tableName: "waste_collection_requests",

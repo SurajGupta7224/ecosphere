@@ -14,13 +14,13 @@ const getAllCategories = async (req, res) => {
     where.status = status;
   }
 
-  // Check if user is admin or has product_management permission
+  // Check if user is admin or has product_management or category_management permission
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
   const hasProductAccess = req.userPermissions?.includes('product_management');
+  const hasCategoryAccess = req.userPermissions?.includes('category_management');
   
-  // If not admin AND doesn't have product access, filter by user_id
-  // Actually, if they have product access, they need to see ALL categories to add products
-  if (!isAdmin && !hasProductAccess) {
+  // If not admin AND doesn't have product access AND doesn't have category access, filter by user_id
+  if (!isAdmin && !hasProductAccess && !hasCategoryAccess) {
     where.user_id = req.user.id;
   }
 
@@ -82,10 +82,11 @@ const updateCategory = async (req, res) => {
   
   try {
     const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    const hasCategoryAccess = req.userPermissions?.includes('category_management');
     const whereClause = { id };
     
-    // If not admin, only allow updating own categories
-    if (!isAdmin) {
+    // If not admin and doesn't have category access, only allow updating own categories
+    if (!isAdmin && !hasCategoryAccess) {
       whereClause.user_id = req.user.id;
     }
     
@@ -123,10 +124,11 @@ const toggleCategoryStatus = async (req, res) => {
 
   try {
     const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    const hasCategoryAccess = req.userPermissions?.includes('category_management');
     const whereClause = { id };
     
-    // If not admin, only allow updating own categories
-    if (!isAdmin) {
+    // If not admin and doesn't have category access, only allow updating own categories
+    if (!isAdmin && !hasCategoryAccess) {
       whereClause.user_id = req.user.id;
     }
     
@@ -146,10 +148,11 @@ const deleteCategory = async (req, res) => {
 
   try {
     const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    const hasCategoryAccess = req.userPermissions?.includes('category_management');
     const whereClause = { id };
     
-    // If not admin, only allow deleting own categories
-    if (!isAdmin) {
+    // If not admin and doesn't have category access, only allow deleting own categories
+    if (!isAdmin && !hasCategoryAccess) {
       whereClause.user_id = req.user.id;
     }
     

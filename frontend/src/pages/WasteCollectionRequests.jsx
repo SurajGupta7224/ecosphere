@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Image as ImageIcon, CheckCircle, Trash2, Calendar, Clock,
-  User, Phone, Mail, MapPin, Building, ShieldCheck, ClipboardCheck, FileText, ArrowLeft
+  User, Phone, Mail, MapPin, Building, ShieldCheck, ClipboardCheck, FileText, ArrowLeft,
+  Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 
 export default function WasteCollectionRequests() {
   const [subcategoryCards, setSubcategoryCards] = useState([]);
+  const [openDropdownCategoryId, setOpenDropdownCategoryId] = useState(null);
   
   const [formData, setFormData] = useState({
     // Section 1: Customer Details
@@ -36,9 +38,13 @@ export default function WasteCollectionRequests() {
     pickup_notes: '',
     pickup_date: '',
     pickup_time: '',
+    time_slot_id: '',
   });
 
   const navigate = useNavigate();
+
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [filePreviews, setFilePreviews] = useState([]);
@@ -185,16 +191,16 @@ export default function WasteCollectionRequests() {
         
         // Initialize cards for all active subcategories
         const cards = allSubCats.map(sc => {
-          const defaultVar = sc.variations?.[0] || null;
           return {
             subcategory_id: sc.id,
             subcategory_name: sc.name,
+            category_name: sc.category?.name || 'Waste Category',
             category_id: sc.category_id,
             color: sc.color || '#6366f1',
             variations: sc.variations || [],
-            selected_variation_id: defaultVar ? defaultVar.id : '',
+            selected_variation_id: '',
             expected_waste: '',
-            included: false
+            included: false // Default to false (not selected initially)
           };
         });
         setSubcategoryCards(cards);
@@ -211,12 +217,17 @@ export default function WasteCollectionRequests() {
     setSubcategoryCards(prev => prev.map(card => {
       if (card.subcategory_id === subcatId) {
         const nextIncluded = !card.included;
-        const selectedVar = card.variations.find(v => v.id === card.selected_variation_id);
-        const defaultWaste = selectedVar ? selectedVar.number_of_sr : '';
+        const defaultVar = card.variations?.[0] || null;
         return {
           ...card,
           included: nextIncluded,
-          expected_waste: nextIncluded ? (card.expected_waste || defaultWaste.toString()) : ''
+          selected_variation_id: nextIncluded 
+            ? (card.selected_variation_id || (defaultVar ? defaultVar.id : '')) 
+            : '',
+          custom_price: nextIncluded 
+            ? (card.custom_price || (defaultVar ? defaultVar.per_kg_price?.toString() || '' : '')) 
+            : '', // Pre-set to suggested price on toggle
+          expected_waste: nextIncluded ? card.expected_waste : ''
         };
       }
       return card;
@@ -227,18 +238,26 @@ export default function WasteCollectionRequests() {
   const handleSelectVariation = (subcatId, varId) => {
     setSubcategoryCards(prev => prev.map(card => {
       if (card.subcategory_id === subcatId) {
-        const selectedVar = card.variations.find(v => v.id === varId);
-        const defaultWaste = selectedVar ? selectedVar.number_of_sr : '';
+        const numericVarId = varId ? Number(varId) : '';
+        const selectedVar = card.variations.find(v => v.id == numericVarId) || null;
         return {
           ...card,
-          selected_variation_id: varId,
-          // If already included, update expected_waste to new default
-          expected_waste: card.included ? defaultWaste.toString() : card.expected_waste
+          selected_variation_id: numericVarId,
+          custom_price: selectedVar ? selectedVar.per_kg_price?.toString() || '' : '' // Pre-set to new variation's suggested price
         };
       }
       return card;
     }));
   };
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleCloseDropdown = () => {
+      setOpenDropdownCategoryId(null);
+    };
+    window.addEventListener('click', handleCloseDropdown);
+    return () => window.removeEventListener('click', handleCloseDropdown);
+  }, []);
 
   // Handle expected waste input change
   const handleCardWasteChange = (subcatId, val) => {
@@ -252,6 +271,44 @@ export default function WasteCollectionRequests() {
       return card;
     }));
   };
+
+  // Handle custom price change in a card
+  const handleCardPriceChange = (subcatId, val) => {
+    setSubcategoryCards(prev => prev.map(card => {
+      if (card.subcategory_id === subcatId) {
+        return {
+          ...card,
+          custom_price: val
+        };
+      }
+      return card;
+    }));
+  };
+
+  const fetchActiveTimeSlots = async (date) => {
+    setLoadingSlots(true);
+    try {
+      const res = await api.get('/time-slots/active', { params: { date } });
+      if (res.data.success) {
+        setTimeSlots(res.data.slots || []);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load time slots for the selected date.");
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.pickup_date) {
+      fetchActiveTimeSlots(formData.pickup_date);
+    } else {
+      setTimeSlots([]);
+    }
+    setFormData(prev => ({ ...prev, time_slot_id: '', pickup_time: '' }));
+  }, [formData.pickup_date]);
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -292,14 +349,15 @@ export default function WasteCollectionRequests() {
       pickup_notes: '',
       pickup_date: '',
       pickup_time: '',
+      time_slot_id: '',
     });
     setSubcategoryCards(prev => prev.map(card => {
-      const defaultVar = card.variations?.[0] || null;
       return {
         ...card,
-        selected_variation_id: defaultVar ? defaultVar.id : '',
+        selected_variation_id: '',
+        custom_price: '',
         expected_waste: '',
-        included: false
+        included: false // Reset to unselected
       };
     }));
     setSelectedFiles([]);
@@ -313,21 +371,34 @@ export default function WasteCollectionRequests() {
     // Field Validations
     const activeCards = subcategoryCards.filter(c => c.included);
     if (activeCards.length === 0) {
-      toast.error("Please include at least one waste category and enter the expected waste.");
+      toast.error("Please select at least one subcategory and complete its details.");
       return;
     }
 
-    // Validate active cards have a positive waste amount
     for (const card of activeCards) {
+      if (!card.selected_variation_id || !card.expected_waste || !card.custom_price) {
+        toast.error(`Please select a variation, expected waste, and price for ${card.subcategory_name}.`);
+        return;
+      }
       const val = parseFloat(card.expected_waste);
-      if (isNaN(val) || val <= 0) {
-        toast.error(`Please enter a valid Expected Waste (KG) for ${card.subcategory_name}.`);
+      if (isNaN(val) || val < 1) {
+        toast.error(`Please enter a valid Expected Waste (min 1 KG) for ${card.subcategory_name}.`);
+        return;
+      }
+      const priceVal = parseFloat(card.custom_price);
+      if (isNaN(priceVal) || priceVal < 0) {
+        toast.error(`Please enter a valid Price (min 0) for ${card.subcategory_name}.`);
         return;
       }
     }
 
     if (!formData.pickup_date) {
       toast.error("Preferred pickup date is required.");
+      return;
+    }
+
+    if (!formData.time_slot_id) {
+      toast.error("Please select an available time slot.");
       return;
     }
 
@@ -350,24 +421,27 @@ export default function WasteCollectionRequests() {
       }
     });
 
-    // Append backward-compatible category_id & subcategory_id using the first active card
-    const firstActive = activeCards[0];
-    payload.append('category_id', firstActive.category_id);
-    payload.append('subcategory_id', firstActive.subcategory_id);
+    // Build subcategories array
+    const subcategoriesData = activeCards.map(card => {
+      const selectedVar = card.variations.find(v => v.id == card.selected_variation_id);
+      const defaultVarPrice = selectedVar ? parseFloat(selectedVar.per_kg_price || 0) : 0;
+      const customPriceVal = parseFloat(card.custom_price);
+      const finalPrice = (!isNaN(customPriceVal) && customPriceVal >= 0 && card.custom_price !== '') 
+        ? customPriceVal 
+        : defaultVarPrice;
 
-    // Build variations_data array
-    const variationsData = activeCards.map(card => {
-      const selectedVar = card.variations.find(v => v.id === card.selected_variation_id);
+      const expectedWaste = parseFloat(card.expected_waste) || 0;
       return {
+        category_id: card.category_id,
+        subcategory_id: card.subcategory_id,
         variation_id: selectedVar.id,
-        variation_name: selectedVar.variation_name,
-        suggested_weight: parseFloat(selectedVar.number_of_sr || 0),
-        suggested_price: parseFloat(selectedVar.number_of_sr || 0) * parseFloat(selectedVar.per_kg_price || 0),
-        expected_waste: parseFloat(card.expected_waste)
+        expected_waste: expectedWaste,
+        custom_price: finalPrice,
+        suggested_price: defaultVarPrice
       };
     });
 
-    payload.append('variations_data', JSON.stringify(variationsData));
+    payload.append('subcategories', JSON.stringify(subcategoriesData));
 
     // Append Files
     selectedFiles.forEach(file => {
@@ -509,6 +583,21 @@ export default function WasteCollectionRequests() {
       </div>
     );
   }
+
+  // Group subcategories by category
+  const categoriesMap = {};
+  subcategoryCards.forEach(card => {
+    if (!categoriesMap[card.category_id]) {
+      categoriesMap[card.category_id] = {
+        category_id: card.category_id,
+        category_name: card.category_name,
+        color: card.color,
+        subcategories: []
+      };
+    }
+    categoriesMap[card.category_id].subcategories.push(card);
+  });
+  const groupedCategories = Object.values(categoriesMap);
 
   return (
     <div className="w-full pb-12 px-0 font-sans">
@@ -734,115 +823,247 @@ export default function WasteCollectionRequests() {
             <div className="space-y-6">
               
               {subcategoryCards.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-sm">
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   Loading waste categories...
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {subcategoryCards.map((card) => {
-                    const selectedVar = card.variations.find(v => v.id === card.selected_variation_id) || null;
-                    const suggestedWeight = selectedVar ? parseFloat(selectedVar.number_of_sr || 0) : 0;
-                    const suggestedPrice = selectedVar ? (parseFloat(selectedVar.number_of_sr || 0) * parseFloat(selectedVar.per_kg_price || 0)) : 0;
+                <div className="space-y-8">
+                  {/* Grouped Category Selection Controls */}
+                  <div className="space-y-6 pb-6 border-b border-slate-100">
+                    {groupedCategories.map((cat) => {
+                      const selectedSubcats = cat.subcategories.filter(s => s.included);
+                      const isOpen = openDropdownCategoryId === cat.category_id;
+
+                      return (
+                        <div key={cat.category_id} className="space-y-2 relative">
+                          {/* Category Header */}
+                          <h3 className="text-lg font-black text-emerald-800 tracking-tight">
+                            {cat.category_name}
+                          </h3>
+                          
+                          {/* Sub-Category Label */}
+                          <label className="block text-xs font-bold text-slate-700 mt-2 mb-1">
+                            Sub-Category
+                          </label>
+
+                          {/* Multiselect Box */}
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownCategoryId(isOpen ? null : cat.category_id);
+                            }}
+                            className="min-h-[50px] bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-2 flex flex-wrap gap-2 items-center cursor-pointer select-none transition-all focus-within:ring-2 focus-within:ring-violet-500/20"
+                          >
+                            {selectedSubcats.length === 0 ? (
+                              <span className="text-sm text-slate-400 pl-2">Select subcategories...</span>
+                            ) : (
+                              selectedSubcats.map((sub) => (
+                                <span
+                                  key={sub.subcategory_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleInclude(sub.subcategory_id);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                  <span className="font-bold">×</span>
+                                  {sub.subcategory_name}
+                                </span>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Dropdown Menu */}
+                          {isOpen && (
+                            <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                              {cat.subcategories.map((sub) => (
+                                <div
+                                  key={sub.subcategory_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleInclude(sub.subcategory_id);
+                                  }}
+                                  className={`px-4 py-2 text-sm font-medium cursor-pointer hover:bg-slate-50 flex items-center justify-between ${
+                                    sub.included ? 'text-violet-600 bg-violet-50/50' : 'text-slate-700'
+                                  }`}
+                                >
+                                  <span>{sub.subcategory_name}</span>
+                                  {sub.included && (
+                                    <span className="text-violet-600 font-bold">✓</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Render Cards only for selected subcategories */}
+                  {subcategoryCards.filter(c => c.included).map((card) => {
+                    const selectedVar = card.variations.find(v => v.id == card.selected_variation_id) || null;
+                    const expectedDaily = parseFloat(card.expected_waste) || 0;
+                    
+                    const defaultVarPrice = selectedVar ? parseFloat(selectedVar.per_kg_price || 0) : 0;
+                    const customPriceVal = parseFloat(card.custom_price);
+                    const finalPrice = (!isNaN(customPriceVal) && customPriceVal >= 0 && card.custom_price !== '')
+                      ? customPriceVal
+                      : defaultVarPrice;
+
+                    const estMonthlyWaste = expectedDaily * 30;
+                    const estYearlyWaste = expectedDaily * 365;
+
+                    const estMonthlyPrice = estMonthlyWaste * finalPrice;
+                    const estYearlyPrice = estYearlyWaste * finalPrice;
 
                     return (
                       <div
                         key={card.subcategory_id}
-                        style={{ borderColor: card.included ? card.color : '#e2e8f0' }}
-                        className={`border rounded-3xl p-5 space-y-4 transition-all duration-300 shadow-sm relative flex flex-col justify-between ${
-                          card.included 
-                            ? 'bg-white ring-4 ring-violet-500/5' 
-                            : 'bg-slate-50/50 opacity-70 hover:opacity-100 hover:border-slate-300'
-                        }`}
+                        className="bg-white border border-slate-200 hover:border-slate-300 rounded-[16px] p-6 space-y-6 transition-all duration-300 hover:shadow-md animate-in fade-in duration-300"
                       >
-                        {/* Card Top / Header */}
-                        <div>
-                          <div className="flex justify-between items-start border-b border-slate-100 pb-3">
-                            <div>
-                              <span 
-                                style={{ backgroundColor: `${card.color}15`, color: card.color, borderColor: `${card.color}30` }}
-                                className="text-[10px] font-black px-2 py-0.5 rounded-full border tracking-wide uppercase"
-                              >
-                                Waste Category
-                              </span>
-                              <h3 className="font-black text-slate-800 text-base mt-1.5 leading-tight">
-                                {card.subcategory_name}
-                              </h3>
-                            </div>
-                            
-                            {/* Checkbox / Switch toggle */}
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={card.included}
-                                onChange={() => handleToggleInclude(card.subcategory_id)}
-                                className="w-4 h-4 cursor-pointer accent-violet-600 rounded"
-                              />
-                              <span className="text-xs font-bold text-slate-500">Include</span>
-                            </label>
-                          </div>
-
-                          {/* Variation Selection Pills */}
-                          {card.variations.length > 0 && (
-                            <div className="mt-3.5 space-y-1.5">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                Select Plan / Variation
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {card.variations.map((v) => (
-                                  <button
-                                    key={v.id}
-                                    type="button"
-                                    onClick={() => handleSelectVariation(card.subcategory_id, v.id)}
-                                    className={`px-3 py-1 text-[11px] font-bold rounded-full border transition-all ${
-                                      card.selected_variation_id === v.id
-                                        ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
-                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                                    }`}
-                                  >
-                                    {v.variation_name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                        {/* Card Header */}
+                        <div className="border-b border-slate-100 pb-3">
+                          <h3 className="text-lg font-extrabold text-emerald-800 tracking-tight">
+                            {card.subcategory_name}
+                          </h3>
                         </div>
 
-                        {/* Card Info and Input */}
-                        <div className="space-y-4 mt-3 pt-3 border-t border-slate-100/80">
-                          {selectedVar && (
-                            <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500">
-                              <div>
-                                <span className="block text-slate-400 font-semibold uppercase">Suggested Wt.</span>
-                                <span className="font-bold text-slate-700 block mt-0.5">{suggestedWeight} KG</span>
-                              </div>
-                              <div>
-                                <span className="block text-slate-400 font-semibold uppercase">Suggested Price</span>
-                                <span className="font-bold text-slate-700 block mt-0.5">₹{suggestedPrice}</span>
-                              </div>
-                            </div>
-                          )}
+                        {/* 3-Column Fields Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          
+                          {/* 1. Variation Dropdown */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Variation
+                            </label>
+                            <select
+                              value={card.selected_variation_id}
+                              onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                            >
+                              <option value="">-Select Type-</option>
+                              {card.variations.map((v) => (
+                                <option key={v.id} value={v.id}>
+                                  {v.variation_name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                              Expected Waste (KG) {card.included && '*'}
+                          {/* 2. No. of Services (Suggested Weight) */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              No. of Services
+                            </label>
+                            <input
+                              type="text"
+                              disabled
+                              value={selectedVar ? selectedVar.number_of_sr || '0' : ''}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                            />
+                          </div>
+
+                          {/* 3. Scheduled Every */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Scheduled Every
+                            </label>
+                            <input
+                              type="text"
+                              disabled
+                              value={selectedVar ? `Every ${selectedVar.schedule_after_days || '1'} Days` : ''}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                            />
+                          </div>
+
+                          {/* 4. Expected Waste Per Day */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Expected Waste (KG Per Day) *
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="any"
+                              required
+                              disabled={!selectedVar}
+                              value={card.expected_waste}
+                              onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
+                              placeholder="Enter waste in KG per day"
+                              className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${
+                                selectedVar 
+                                  ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                              }`}
+                            />
+                          </div>
+
+                          {/* 5. Agreed Price - Editable */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Agreed Price *
                             </label>
                             <div className="relative">
                               <input
                                 type="number"
-                                disabled={!card.included}
-                                value={card.expected_waste}
-                                onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
-                                placeholder={selectedVar ? `Default: ${suggestedWeight}` : "Enter weight"}
-                                className={`w-full border rounded-xl py-2 px-3 outline-none focus:ring-4 transition-all text-xs font-semibold text-slate-800 ${
-                                  card.included 
-                                    ? 'bg-white border-slate-200 focus:ring-violet-50 focus:border-violet-400' 
-                                    : 'bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed'
+                                min="0"
+                                step="any"
+                                required
+                                disabled={!selectedVar}
+                                value={card.custom_price}
+                                onChange={e => handleCardPriceChange(card.subcategory_id, e.target.value)}
+                                placeholder="Enter price"
+                                className={`w-full border rounded-lg py-2.5 pl-3 pr-12 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${
+                                  selectedVar 
+                                    ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400' 
+                                    : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
                                 }`}
                               />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">KG</span>
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹/KG</span>
                             </div>
                           </div>
+
+                          {/* 6. Suggested Price */}
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Suggested Price
+                            </label>
+                            <input
+                              type="text"
+                              disabled
+                              value={selectedVar ? `₹${selectedVar.per_kg_price || '0'}/KG` : ''}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                            />
+                          </div>
+
                         </div>
+
+                        {/* Live Calculations Section */}
+                        {selectedVar && expectedDaily > 0 && (
+                          <div className="pt-4 border-t border-slate-100 space-y-4 animate-in fade-in duration-300">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Live Estimates</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Monthly Waste</span>
+                                <span className="font-extrabold text-slate-800 text-sm block mt-0.5">{estMonthlyWaste.toFixed(2).replace(/\.00$/, '')} KG</span>
+                              </div>
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Yearly Waste</span>
+                                <span className="font-extrabold text-slate-800 text-sm block mt-0.5">{estYearlyWaste.toFixed(2).replace(/\.00$/, '')} KG</span>
+                              </div>
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Monthly Price</span>
+                                <span className="font-extrabold text-purple-700 text-sm block mt-0.5">₹{estMonthlyPrice.toFixed(2).replace(/\.00$/, '')}</span>
+                              </div>
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase">Yearly Price</span>
+                                <span className="font-extrabold text-purple-700 text-sm block mt-0.5">₹{estYearlyPrice.toFixed(2).replace(/\.00$/, '')}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -941,14 +1162,79 @@ export default function WasteCollectionRequests() {
                     <input
                       type="text"
                       name="pickup_time"
+                      disabled
                       value={formData.pickup_time}
-                      onChange={handleInputChange}
-                      placeholder="e.g. 10:00 AM - 1:00 PM"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      placeholder="Select a time slot card below..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-sm font-semibold text-slate-500 cursor-not-allowed"
                     />
                   </div>
                 </div>
               </div>
+
+              {/* Selectable Time Slot Cards */}
+              {formData.pickup_date && (
+                <div className="space-y-3 pt-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Select Available Time Slot *
+                  </label>
+                  {loadingSlots ? (
+                    <div className="text-slate-400 text-xs flex items-center gap-2 py-2">
+                      <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+                      Loading available time slots...
+                    </div>
+                  ) : timeSlots.length === 0 ? (
+                    <div className="text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs font-bold flex items-center gap-2">
+                      <Info className="w-4 h-4 text-amber-500" />
+                      No active time slots are available for the selected date. Please choose another date.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {timeSlots.map((slot) => {
+                        const isSelected = formData.time_slot_id == slot.id;
+
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                time_slot_id: slot.id,
+                                pickup_time: `${slot.start_time_formatted} - ${slot.end_time_formatted}`
+                              }));
+                            }}
+                            className={`flex flex-col justify-center p-4 rounded-2xl border text-left transition-all duration-200 h-20 ${
+                              isSelected
+                                ? 'bg-violet-600 border-violet-600 text-white shadow-md'
+                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer text-slate-700'
+                            }`}
+                          >
+                            <div className="w-full">
+                              <div className="flex items-center justify-between">
+                                <span className="font-extrabold text-sm block truncate max-w-[80%]">
+                                  {slot.slot_name}
+                                </span>
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                  isSelected
+                                    ? 'border-white bg-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}>
+                                  {isSelected && (
+                                    <div className="w-2 h-2 rounded-full bg-violet-600" />
+                                  )}
+                                </div>
+                              </div>
+                              <span className={`text-[11px] font-bold block mt-1 ${isSelected ? 'text-violet-100' : 'text-slate-500'}`}>
+                                {slot.start_time_formatted} - {slot.end_time_formatted}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pickup Notes</label>
@@ -1023,3 +1309,4 @@ export default function WasteCollectionRequests() {
     </div>
   );
 }
+

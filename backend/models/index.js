@@ -23,6 +23,7 @@ const Zone = require("./zoneModel");
 const Ward = require("./wardModel");
 const CollectionEvent = require("./collectionEventModel");
 const WasteCollectionRequest = require("./wasteCollectionRequestModel");
+const TimeSlot = require("./timeSlotModel");
 
 
 
@@ -95,8 +96,8 @@ Ward.hasMany(CollectionEvent, { foreignKey: "ward_id", as: "collectionEvents" })
 CollectionEvent.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 
 // Waste Collection Request associations
-WasteCollectionRequest.belongsTo(User, { foreignKey: "customer_id", as: "customer" });
-User.hasMany(WasteCollectionRequest, { foreignKey: "customer_id", as: "wasteRequests" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "user_id", as: "customer" });
+User.hasMany(WasteCollectionRequest, { foreignKey: "user_id", as: "wasteRequests" });
 
 WasteCollectionRequest.belongsTo(Category, { foreignKey: "category_id", as: "category" });
 WasteCollectionRequest.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
@@ -105,13 +106,17 @@ WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_
 WasteCollectionRequest.belongsTo(User, { foreignKey: "generated_by", as: "creator" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "created_by", as: "creatorUser" });
 
+// Waste Collection Request ↔ TimeSlot
+WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
+TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wasteRequests" });
 
 module.exports = { 
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
-  Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest
+  Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
+  TimeSlot
 };
 
 

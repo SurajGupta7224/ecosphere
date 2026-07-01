@@ -8,13 +8,15 @@ const subCategoryService = require("../../services/subCategoryService");
 const getAllSubCategories = async (req, res) => {
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
   const hasProductAccess = req.userPermissions?.includes('product_management');
+  const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
 
   try {
     const result = await subCategoryService.getSubCategories(
       req.query,
       req.user.id,
       isAdmin,
-      hasProductAccess
+      hasProductAccess,
+      hasSubCategoryAccess
     );
     return res.status(200).json(result);
   } catch (err) {
@@ -90,9 +92,10 @@ const createSubCategory = async (req, res) => {
 
   // Verify the category exists
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+  const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
   const categoryWhereClause = { id: category_id };
   
-  if (!isAdmin) {
+  if (!isAdmin && !hasSubCategoryAccess) {
     categoryWhereClause.user_id = req.user.id;
   }
   
@@ -158,10 +161,11 @@ const updateSubCategory = async (req, res) => {
   }
 
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+  const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
 
   if (category_id) {
     const categoryWhereClause = { id: category_id };
-    if (!isAdmin) {
+    if (!isAdmin && !hasSubCategoryAccess) {
       categoryWhereClause.user_id = req.user.id;
     }
     const categoryExists = await Category.findOne({ where: categoryWhereClause });
@@ -191,7 +195,8 @@ const updateSubCategory = async (req, res) => {
       updateData,
       variations,
       req.user.id,
-      isAdmin
+      isAdmin,
+      hasSubCategoryAccess
     );
 
     return res.status(200).json({ message: "Sub-category updated successfully", subCategory });
@@ -215,9 +220,10 @@ const toggleSubCategoryStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+  const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
 
   try {
-    await subCategoryService.toggleStatus(id, status, req.user.id, isAdmin);
+    await subCategoryService.toggleStatus(id, status, req.user.id, isAdmin, hasSubCategoryAccess);
     return res.status(200).json({ message: "Status updated successfully", status });
   } catch (err) {
     if (err.message === "Sub-category not found or access denied") {
@@ -234,9 +240,10 @@ const toggleSubCategoryStatus = async (req, res) => {
 const deleteSubCategory = async (req, res) => {
   const { id } = req.params;
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+  const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
 
   try {
-    await subCategoryService.deleteSubCategory(id, req.user.id, isAdmin);
+    await subCategoryService.deleteSubCategory(id, req.user.id, isAdmin, hasSubCategoryAccess);
     return res.status(200).json({ message: "Sub-category deleted successfully" });
   } catch (err) {
     if (err.message === "Sub-category not found or access denied") {
