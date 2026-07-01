@@ -16,6 +16,7 @@ import Corporations from './pages/Corporations';
 import Zones from './pages/Zones';
 import Wards from './pages/Wards';
 import CollectionEvents from './pages/CollectionEvents';
+import WasteCollectionRequests from './pages/WasteCollectionRequests';
 import { SettingsProvider } from './context/SettingsContext';
 
 
@@ -149,6 +150,7 @@ function App() {
               </RequirePermission>
             }
           />
+          <Route path="waste-collection-requests" element={<WasteCollectionRequests />} />
         </Route>
 
         {/* Full Screen Unauthorized Error Page */}

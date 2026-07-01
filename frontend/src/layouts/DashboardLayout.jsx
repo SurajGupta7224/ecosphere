@@ -124,6 +124,7 @@ const DashboardLayout = () => {
         { name: t('collection_event'), path: '/bwg/collection-event', req: 'bwg_mapping' }
       ]
     },
+    { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
   ];
 

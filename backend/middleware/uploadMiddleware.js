@@ -12,6 +12,7 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'category_image') folderName = 'Category';
     if (file.fieldname === 'subcategory_image') folderName = 'SubCategory';
     if (file.fieldname === 'product_images') folderName = 'ProductImages';
+    if (file.fieldname === 'images') folderName = 'CollectionRequests';
     
     const dir = path.join(__dirname, "../public/uploads", folderName);
     if (!fs.existsSync(dir)) {

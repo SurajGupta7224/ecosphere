@@ -4,7 +4,17 @@ const { User, Role, Corporation, Zone, Ward, SecuritySettings } = require("../..
 // GET /api/users — list all users with their roles
 const getAllUsers = async (req, res) => {
   try {
+    const { role_id, status } = req.query;
+    const where = {};
+    if (role_id) {
+      where.role_id = parseInt(role_id);
+    }
+    if (status) {
+      where.status = status;
+    }
+
     const users = await User.findAll({
+      where,
       attributes: { exclude: ["password"] },
       include: [
         { model: Role, as: "role", attributes: ["id", "role_name"] },

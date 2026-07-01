@@ -15,6 +15,8 @@ const corporationController = require("../controllers/Admin/corporationControlle
 const zoneController = require("../controllers/Admin/zoneController");
 const wardController = require("../controllers/Admin/wardController");
 const collectionEventController = require("../controllers/Admin/collectionEventController");
+const wasteCollectionRequestController = require("../controllers/Admin/wasteCollectionRequestController");
+const { acceptTnc } = require("../controllers/Admin/tncController");
 
 
 
@@ -35,6 +37,10 @@ const categoryUploads = upload.fields([
 
 const subCategoryUploads = upload.fields([
   { name: 'subcategory_image', maxCount: 1 }
+]);
+
+const requestUploads = upload.fields([
+  { name: 'images', maxCount: 10 }
 ]);
 
 // Auth routes (public)
@@ -124,6 +130,11 @@ router.put("/collection-events/:id", verifyToken, requirePermission('bwg_mapping
 router.patch("/collection-events/:id/status", verifyToken, requirePermission('bwg_mapping'), collectionEventController.toggleCollectionEventStatus);
 router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.deleteCollectionEvent);
 
+// Waste Collection Request routes
+router.get("/waste-collection-requests", verifyToken, requirePermission('waste_collection_requests'), wasteCollectionRequestController.getWasteCollectionRequests);
+router.get("/waste-collection-requests/:id", verifyToken, requirePermission('waste_collection_requests'), wasteCollectionRequestController.getWasteCollectionRequestById);
+router.post("/waste-collection-requests", requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
+
 
 
 // Dashboard routes
@@ -153,6 +164,9 @@ router.put("/settings/system", verifyToken, requirePermission('settings_manageme
 
 // Audit Logs
 router.get("/settings/audit-logs", verifyToken, requirePermission('settings_management'), settingsController.getAuditLogs);
+
+// T&C Acceptance
+router.post("/tnc/accept", verifyToken, acceptTnc);
 
 module.exports = router;
 

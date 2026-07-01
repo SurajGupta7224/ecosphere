@@ -22,6 +22,7 @@ const Corporation = require("./corporationModel");
 const Zone = require("./zoneModel");
 const Ward = require("./wardModel");
 const CollectionEvent = require("./collectionEventModel");
+const WasteCollectionRequest = require("./wasteCollectionRequestModel");
 
 
 
@@ -93,6 +94,16 @@ CollectionEvent.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
 Ward.hasMany(CollectionEvent, { foreignKey: "ward_id", as: "collectionEvents" });
 CollectionEvent.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 
+// Waste Collection Request associations
+WasteCollectionRequest.belongsTo(User, { foreignKey: "customer_id", as: "customer" });
+User.hasMany(WasteCollectionRequest, { foreignKey: "customer_id", as: "wasteRequests" });
+
+WasteCollectionRequest.belongsTo(Category, { foreignKey: "category_id", as: "category" });
+WasteCollectionRequest.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
+WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_id", as: "variation" });
+
+WasteCollectionRequest.belongsTo(User, { foreignKey: "generated_by", as: "creator" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "created_by", as: "creatorUser" });
 
 
 module.exports = { 
@@ -100,7 +111,7 @@ module.exports = {
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
-  Corporation, Zone, Ward, CollectionEvent
+  Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest
 };
 
 
