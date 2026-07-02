@@ -153,7 +153,14 @@ function App() {
             }
           />
           <Route path="waste-collection-requests" element={<WasteCollectionRequests />} />
-          <Route path="waste-requests-list" element={<WasteCollectionRequestsList />} />
+          <Route
+            path="waste-requests-list"
+            element={
+              <RequirePermission requiredPermission="waste_requests_list">
+                <WasteCollectionRequestsList />
+              </RequirePermission>
+            }
+          />
           <Route
             path="time-slots"
             element={

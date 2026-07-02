@@ -27,8 +27,9 @@ function StatusBadge({ status }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value, iconColor = 'text-slate-400' }) {
+function InfoRow({ icon, label, value, iconColor = 'text-slate-400' }) {
   if (!value) return null;
+  const Icon = icon;
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-slate-50 last:border-0">
       <div className={`w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0 mt-0.5`}>
@@ -42,7 +43,8 @@ function InfoRow({ icon: Icon, label, value, iconColor = 'text-slate-400' }) {
   );
 }
 
-function SectionCard({ title, icon: Icon, iconColor = 'text-violet-600', children }) {
+function SectionCard({ title, icon, iconColor = 'text-violet-600', children }) {
+  const Icon = icon;
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
@@ -64,8 +66,6 @@ export default function WasteCollectionRequestsList() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  useEffect(() => { fetchRequests(); }, []);
-
   const fetchRequests = async () => {
     setLoading(true);
     try {
@@ -78,6 +78,12 @@ export default function WasteCollectionRequestsList() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchRequests();
+    });
+  }, []);
 
   // Group requests by lead_id
   const grouped = requests.reduce((acc, req) => {

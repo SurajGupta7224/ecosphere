@@ -126,7 +126,7 @@ const DashboardLayout = () => {
       ]
     },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
-    { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_collection_requests' },
+    { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },
     { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
   ];

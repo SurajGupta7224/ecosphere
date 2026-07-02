@@ -132,8 +132,8 @@ router.patch("/collection-events/:id/status", verifyToken, requirePermission('bw
 router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.deleteCollectionEvent);
 
 // Waste Collection Request routes
-router.get("/waste-collection-requests", verifyToken, requirePermission('waste_collection_requests'), wasteCollectionRequestController.getWasteCollectionRequests);
-router.get("/waste-collection-requests/:id", verifyToken, requirePermission('waste_collection_requests'), wasteCollectionRequestController.getWasteCollectionRequestById);
+router.get("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequests);
+router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequestById);
 router.post("/waste-collection-requests", requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
 
 // Time Slot routes

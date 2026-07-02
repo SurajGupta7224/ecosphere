@@ -301,12 +301,14 @@ export default function WasteCollectionRequests() {
   };
 
   useEffect(() => {
-    if (formData.pickup_date) {
-      fetchActiveTimeSlots(formData.pickup_date);
-    } else {
-      setTimeSlots([]);
-    }
-    setFormData(prev => ({ ...prev, time_slot_id: '', pickup_time: '' }));
+    Promise.resolve().then(() => {
+      if (formData.pickup_date) {
+        fetchActiveTimeSlots(formData.pickup_date);
+      } else {
+        setTimeSlots([]);
+      }
+      setFormData(prev => ({ ...prev, time_slot_id: '', pickup_time: '' }));
+    });
   }, [formData.pickup_date]);
 
 
