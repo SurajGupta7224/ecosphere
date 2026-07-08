@@ -145,6 +145,14 @@ router.patch("/time-slots/:id/status", verifyToken, requirePermission('time_slot
 router.delete("/time-slots/:id", verifyToken, requirePermission('time_slot_management'), timeSlotController.deleteTimeSlot);
 
 
+// Developer Module Generator Routes
+const moduleGeneratorController = require("../controllers/Admin/moduleGeneratorController");
+router.get("/developer/history", verifyToken, requirePermission("module_creation"), moduleGeneratorController.getHistory);
+router.delete("/developer/history/:id", verifyToken, requirePermission("module_creation"), moduleGeneratorController.deleteHistory);
+router.post("/developer/generate", verifyToken, requirePermission("module_creation"), moduleGeneratorController.generateModule);
+router.post("/developer/history/:id/rollback", verifyToken, requirePermission("module_creation"), moduleGeneratorController.rollbackModule);
+
+
 // Dashboard routes
 router.get("/dashboard/stats", verifyToken, dashboardController.getDashboardStats);
 
@@ -169,6 +177,7 @@ router.put("/settings/email", verifyToken, requirePermission('settings_managemen
 router.post("/settings/email/test", verifyToken, requirePermission('settings_management'), settingsController.testEmailConfiguration);
 router.put("/settings/security", verifyToken, requirePermission('settings_management'), settingsController.updateSecuritySettings);
 router.put("/settings/system", verifyToken, requirePermission('settings_management'), settingsController.updateSystemSettings);
+
 
 // Audit Logs
 router.get("/settings/audit-logs", verifyToken, requirePermission('settings_management'), settingsController.getAuditLogs);

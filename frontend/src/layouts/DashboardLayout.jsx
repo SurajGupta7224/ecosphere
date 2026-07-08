@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList
+  Clock, ClipboardList, Code2
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -128,6 +128,16 @@ const DashboardLayout = () => {
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },
+    {
+      id: 'developer',
+      title: 'Developer',
+      icon: Code2,
+      isSubMenu: true,
+      hidden: !isAdmin && !user.role?.role_name?.toLowerCase().includes('developer'),
+      items: [
+        { name: 'Module Creation', path: '/developer/module-creation', req: 'module_creation' }
+      ]
+    },
     { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
   ];
 

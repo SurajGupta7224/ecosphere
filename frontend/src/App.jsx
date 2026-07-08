@@ -20,6 +20,7 @@ import WasteCollectionRequests from './pages/WasteCollectionRequests';
 import WasteCollectionRequestsList from './pages/WasteCollectionRequestsList';
 import TimeSlots from './pages/TimeSlots';
 import { SettingsProvider } from './context/SettingsContext';
+import ModuleCreation from './pages/ModuleCreation';
 
 
 
@@ -162,6 +163,14 @@ function App() {
             }
           />
           <Route
+            path="developer/module-creation"
+            element={
+              <RequirePermission requiredPermission="module_creation">
+                <ModuleCreation />
+              </RequirePermission>
+            }
+          />
+          <Route
             path="time-slots"
             element={
               <RequirePermission requiredPermission="time_slot_management">
@@ -169,7 +178,7 @@ function App() {
               </RequirePermission>
             }
           />
-        </Route>
+</Route>
 
         {/* Full Screen Unauthorized Error Page */}
         <Route path="/unauthorized" element={<Unauthorized />} />

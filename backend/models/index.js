@@ -24,6 +24,7 @@ const Ward = require("./wardModel");
 const CollectionEvent = require("./collectionEventModel");
 const WasteCollectionRequest = require("./wasteCollectionRequestModel");
 const TimeSlot = require("./timeSlotModel");
+const ModuleGeneratorHistory = require("./moduleGeneratorHistoryModel");
 
 
 
@@ -110,13 +111,29 @@ WasteCollectionRequest.belongsTo(User, { foreignKey: "created_by", as: "creatorU
 WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
 TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wasteRequests" });
 
+// Module Generator History ↔ User
+ModuleGeneratorHistory.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+User.hasMany(ModuleGeneratorHistory, { foreignKey: "created_by", as: "generatedModules" });
+
+
+
+
+
+
+
+
+
 module.exports = { 
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
-  TimeSlot
+  TimeSlot, ModuleGeneratorHistory
+  
+  
+  
+  
 };
 
 
