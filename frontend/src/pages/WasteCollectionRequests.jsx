@@ -314,6 +314,11 @@ export default function WasteCollectionRequests() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'mobile_number') {
+      const sanitized = value.replace(/\D/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, [name]: sanitized }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -370,13 +375,75 @@ export default function WasteCollectionRequests() {
   const handleFormSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    // Field Validations
-    const activeCards = subcategoryCards.filter(c => c.included);
-    if (activeCards.length === 0) {
-      toast.error("Please select at least one subcategory and complete its details.");
+    // Required fields validations
+    if (!formData.customer_type) {
+      toast.error("Customer Type is required.");
+      return;
+    }
+    if (!formData.authorized_person_name?.trim()) {
+      toast.error("Authorized Person Name is required.");
+      return;
+    }
+    if (!formData.mobile_number?.trim()) {
+      toast.error("Mobile Number is required.");
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.mobile_number)) {
+      toast.error("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (!formData.email?.trim()) {
+      toast.error("Email is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!formData.address_search?.trim()) {
+      toast.error("Address Search is required.");
+      return;
+    }
+    if (!formData.latitude || !formData.longitude) {
+      toast.error("Coordinates (Latitude/Longitude) are required. Please search and select an address.");
+      return;
+    }
+    const latVal = parseFloat(formData.latitude);
+    const lngVal = parseFloat(formData.longitude);
+    if (isNaN(latVal) || latVal < -90 || latVal > 90) {
+      toast.error("Please enter a valid Latitude between -90 and 90.");
+      return;
+    }
+    if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
+      toast.error("Please enter a valid Longitude between -180 and 180.");
+      return;
+    }
+    if (!formData.waste_generator_name?.trim()) {
+      toast.error("Waste Generator Name is required.");
+      return;
+    }
+    if (formData.area_sqm) {
+      const areaVal = parseFloat(formData.area_sqm);
+      if (isNaN(areaVal) || areaVal <= 0) {
+        toast.error("Area (SqM) must be a positive number.");
+        return;
+      }
+    }
+    if (formData.no_of_dwelling_units) {
+      const unitsVal = parseInt(formData.no_of_dwelling_units);
+      if (isNaN(unitsVal) || unitsVal <= 0) {
+        toast.error("Dwelling Units must be a positive integer.");
+        return;
+      }
+    }
+    if (!formData.complete_address?.trim()) {
+      toast.error("Complete Address is required.");
       return;
     }
 
+    // Field Validations for active subcategory cards (Only validated if selected)
+    const activeCards = subcategoryCards.filter(c => c.included);
     for (const card of activeCards) {
       if (!card.selected_variation_id || !card.expected_waste || !card.custom_price) {
         toast.error(`Please select a variation, expected waste, and price for ${card.subcategory_name}.`);
@@ -394,24 +461,16 @@ export default function WasteCollectionRequests() {
       }
     }
 
-    if (!formData.pickup_date) {
-      toast.error("Preferred pickup date is required.");
-      return;
-    }
-
-    if (!formData.time_slot_id) {
-      toast.error("Please select an available time slot.");
-      return;
-    }
-
-    // Date validation
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(formData.pickup_date);
-    selectedDate.setHours(0, 0, 0, 0);
-    if (selectedDate < today) {
-      toast.error("Pickup date cannot be in the past.");
-      return;
+    // Date validation (Only if pickup date is provided)
+    if (formData.pickup_date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(formData.pickup_date);
+      selectedDate.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        toast.error("Pickup date cannot be in the past.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -1142,7 +1201,7 @@ export default function WasteCollectionRequests() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date *</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -1150,7 +1209,6 @@ export default function WasteCollectionRequests() {
                       name="pickup_date"
                       value={formData.pickup_date}
                       onChange={handleInputChange}
-                      required
                       min={new Date().toISOString().split('T')[0]}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-semibold text-slate-700 cursor-pointer"
                     />
@@ -1177,7 +1235,7 @@ export default function WasteCollectionRequests() {
               {formData.pickup_date && (
                 <div className="space-y-3 pt-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Select Available Time Slot *
+                    Select Available Time Slot
                   </label>
                   {loadingSlots ? (
                     <div className="text-slate-400 text-xs flex items-center gap-2 py-2">

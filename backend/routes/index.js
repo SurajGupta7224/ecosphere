@@ -134,7 +134,8 @@ router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapp
 // Waste Collection Request routes
 router.get("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequests);
 router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequestById);
-router.post("/waste-collection-requests", requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
+router.post("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
+router.put("/waste-collection-requests/lead/:leadId", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.updateWasteCollectionRequestByLeadId);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);
@@ -143,6 +144,14 @@ router.post("/time-slots", verifyToken, requirePermission('time_slot_management'
 router.put("/time-slots/:id", verifyToken, requirePermission('time_slot_management'), timeSlotController.updateTimeSlot);
 router.patch("/time-slots/:id/status", verifyToken, requirePermission('time_slot_management'), timeSlotController.toggleTimeSlotStatus);
 router.delete("/time-slots/:id", verifyToken, requirePermission('time_slot_management'), timeSlotController.deleteTimeSlot);
+
+
+// Developer Module Generator Routes
+const moduleGeneratorController = require("../controllers/Admin/moduleGeneratorController");
+router.get("/developer/history", verifyToken, requirePermission("module_creation"), moduleGeneratorController.getHistory);
+router.delete("/developer/history/:id", verifyToken, requirePermission("module_creation"), moduleGeneratorController.deleteHistory);
+router.post("/developer/generate", verifyToken, requirePermission("module_creation"), moduleGeneratorController.generateModule);
+router.post("/developer/history/:id/rollback", verifyToken, requirePermission("module_creation"), moduleGeneratorController.rollbackModule);
 
 
 // Dashboard routes
@@ -169,6 +178,7 @@ router.put("/settings/email", verifyToken, requirePermission('settings_managemen
 router.post("/settings/email/test", verifyToken, requirePermission('settings_management'), settingsController.testEmailConfiguration);
 router.put("/settings/security", verifyToken, requirePermission('settings_management'), settingsController.updateSecuritySettings);
 router.put("/settings/system", verifyToken, requirePermission('settings_management'), settingsController.updateSystemSettings);
+
 
 // Audit Logs
 router.get("/settings/audit-logs", verifyToken, requirePermission('settings_management'), settingsController.getAuditLogs);
