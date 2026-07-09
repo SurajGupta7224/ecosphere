@@ -181,7 +181,7 @@ const Dashboard = () => {
   };
 
   // Map tracking state & simulation hooks
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markersRef = useRef({});
@@ -194,29 +194,30 @@ const Dashboard = () => {
 
   const [selectedVehicle, setSelectedVehicle] = useState(vehicleCoords[0]);
 
-  // Load Leaflet resources dynamically
+  // Load Google Maps resources dynamically
   useEffect(() => {
-    // Check if Leaflet is already loaded
-    if (window.L) {
-      setLeafletLoaded(true);
+    if (window.google && window.google.maps) {
+      setGoogleLoaded(true);
       return;
     }
 
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setLeafletLoaded(true);
-    document.body.appendChild(script);
-
-    return () => {
-      // Clean up scripts & style sheets when component unmounts
-      if (document.head.contains(link)) document.head.removeChild(link);
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
+    if (!document.getElementById('google-maps-script')) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY || ''}&libraries=places`;
+      script.id = 'google-maps-script';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => setGoogleLoaded(true);
+      document.head.appendChild(script);
+    } else {
+      const check = setInterval(() => {
+        if (window.google && window.google.maps) {
+          setGoogleLoaded(true);
+          clearInterval(check);
+        }
+      }, 100);
+      return () => clearInterval(check);
+    }
   }, []);
 
   // Simulate vehicle movements
@@ -238,52 +239,75 @@ const Dashboard = () => {
 
   // Update map markers when vehicleCoords or selectedVehicle changes
   useEffect(() => {
-    if (!leafletLoaded || !mapRef.current) return;
+    if (!googleLoaded || !mapRef.current) return;
     
-    const L = window.L;
     if (!mapInstance.current) {
       // Center map in the general Bommanahalli/HSR Layout area
-      mapInstance.current = L.map(mapRef.current).setView([12.9023, 77.6242], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(mapInstance.current);
+      mapInstance.current = new window.google.maps.Map(mapRef.current, {
+        center: { lat: 12.9023, lng: 77.6242 },
+        zoom: 14,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [
+          { featureType: 'poi', stylers: [{ visibility: 'simplified' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] }
+        ]
+      });
     }
 
     vehicleCoords.forEach(v => {
       const isSelected = selectedVehicle.id === v.id;
       const markerColor = v.status === 'Idle' ? '#94a3b8' : isSelected ? '#7c3aed' : '#10b981';
       
-      const customIcon = L.divIcon({
-        className: 'custom-vehicle-icon',
-        html: `<div style="background-color: ${markerColor}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transition: all 0.3s ease;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M19 18h2a1 1 0 0 0 1-1v-5.14a2 2 0 0 0-.59-1.41L18.7 7.72A2 2 0 0 0 17.29 7H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-      });
+      const svgMarker = {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${markerColor}" stroke="white" stroke-width="2"/><g transform="translate(6, 6) scale(0.8)"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 18h2a1 1 0 0 0 1-1v-5.14a2 2 0 0 0-.59-1.41L18.7 7.72A2 2 0 0 0 17.29 7H14" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2" fill="white"/><circle cx="17" cy="18" r="2" fill="white"/></g></svg>`),
+        size: new window.google.maps.Size(32, 32),
+        origin: new window.google.maps.Point(0, 0),
+        anchor: new window.google.maps.Point(16, 16),
+        scaledSize: new window.google.maps.Size(32, 32)
+      };
+
+      const position = { lat: v.lat, lng: v.lng };
 
       if (markersRef.current[v.id]) {
-        markersRef.current[v.id].setLatLng([v.lat, v.lng]);
-        markersRef.current[v.id].setIcon(customIcon);
+        markersRef.current[v.id].setPosition(position);
+        markersRef.current[v.id].setIcon(svgMarker);
       } else {
-        const marker = L.marker([v.lat, v.lng], { icon: customIcon }).addTo(mapInstance.current);
-        marker.bindPopup(`<b>${v.name}</b><br/>Driver: ${v.driver}<br/>Status: ${v.status} (${v.speed})`);
-        marker.on('click', () => {
-          setSelectedVehicle(marker.vehicleRef);
+        const marker = new window.google.maps.Marker({
+          position,
+          map: mapInstance.current,
+          icon: svgMarker,
+          title: v.name
         });
-        marker.vehicleRef = v;
+
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `<div><b>${v.name}</b><br/>Driver: ${v.driver}<br/>Status: ${v.status} (${v.speed})</div>`
+        });
+
+        marker.addListener('click', () => {
+          setSelectedVehicle(v);
+          infoWindow.open(mapInstance.current, marker);
+        });
+
         markersRef.current[v.id] = marker;
+        markersRef.current[v.id].infoWindow = infoWindow;
       }
 
       if (isSelected) {
-        markersRef.current[v.id].setPopupContent(`<b>${v.name}</b><br/>Driver: ${v.driver}<br/>Status: ${v.status} (${v.speed})<br/>Load: ${v.load}`);
+        markersRef.current[v.id].infoWindow.setContent(
+          `<div><b>${v.name}</b><br/>Driver: ${v.driver}<br/>Status: ${v.status} (${v.speed})<br/>Load: ${v.load}</div>`
+        );
       }
     });
 
-  }, [leafletLoaded, vehicleCoords, selectedVehicle]);
+  }, [googleLoaded, vehicleCoords, selectedVehicle]);
 
   const selectVehicleOnMap = (v) => {
     setSelectedVehicle(v);
     if (mapInstance.current) {
-      mapInstance.current.setView([v.lat, v.lng], 15);
+      mapInstance.current.setCenter({ lat: v.lat, lng: v.lng });
+      mapInstance.current.setZoom(15);
     }
   };
 
@@ -447,81 +471,130 @@ const Dashboard = () => {
           <h2 className="text-base font-bold text-slate-700">{t('BWG_Operations') || 'Municipal Operations'}</h2>
           <p className="text-slate-400 text-[11px]">{t('BWG_description') || 'Track and manage municipal corporations, zones, wards, and scheduled collection events'}</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex flex-col lg:flex-row items-stretch gap-2.5">
+          {/* Bulk Waste Generator (BWG) */}
+          <div
+            onClick={() => navigate('/waste-requests-list')}
+            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
+          >
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                <Users className="w-5 h-5" />
+              </div>
+              <span className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
+            </div>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Bulk Waste Generator (BWG)
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-indigo-600 transition-colors">
+                {(stats.totalBWGs || 0).toLocaleString()}
+              </h3>
+            </div>
+          </div>
+
+          {/* Arrow 1 */}
+          <div className="hidden lg:flex items-center justify-center px-0.5">
+            <span className="text-slate-300/80 text-xl font-bold">→</span>
+          </div>
+
           {/* Municipal Corporations */}
           <div
             onClick={() => navigate('/bwg/corporation')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-[#7c3aed] group-hover:bg-[#7c3aed] group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <Building2 className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                <Building2 className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('corporation') || 'Corporation'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-[#7c3aed] transition-colors leading-none truncate">
-                  {(stats.totalCorporations || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Corporation
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-blue-600 transition-colors">
+                {(stats.totalCorporations || 0).toLocaleString()}
+              </h3>
+            </div>
+          </div>
+
+          {/* Arrow 2 */}
+          <div className="hidden lg:flex items-center justify-center px-0.5">
+            <span className="text-slate-300/80 text-xl font-bold">→</span>
           </div>
 
           {/* Zones */}
           <div
             onClick={() => navigate('/bwg/zone')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-amber-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-violet-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <Compass className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600 shadow-inner flex-shrink-0 group-hover:bg-violet-600 group-hover:text-white transition-all duration-300">
+                <Compass className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('zone') || 'Zone'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-amber-600 transition-colors leading-none truncate">
-                  {(stats.totalZones || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-violet-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Zone
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-violet-600 transition-colors">
+                {(stats.totalZones || 0).toLocaleString()}
+              </h3>
+            </div>
+          </div>
+
+          {/* Arrow 3 */}
+          <div className="hidden lg:flex items-center justify-center px-0.5">
+            <span className="text-slate-300/80 text-xl font-bold">→</span>
           </div>
 
           {/* Wards */}
           <div
             onClick={() => navigate('/bwg/ward')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <MapPin className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 shadow-inner flex-shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+                <MapPin className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('ward') || 'Ward'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-blue-600 transition-colors leading-none truncate">
-                  {(stats.totalWards || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Ward
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-purple-600 transition-colors">
+                {(stats.totalWards || 0).toLocaleString()}
+              </h3>
+            </div>
+          </div>
+
+          {/* Arrow 4 */}
+          <div className="hidden lg:flex items-center justify-center px-0.5">
+            <span className="text-slate-300/80 text-xl font-bold">→</span>
           </div>
 
           {/* Collection Events */}
           <div
             onClick={() => navigate('/bwg/collection-event')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <CalendarRange className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                <CalendarRange className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('collection_event') || 'Collection Event'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-emerald-600 transition-colors leading-none truncate">
-                  {(stats.totalCollectionEvents || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Collection Event
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-emerald-600 transition-colors">
+                {(stats.totalCollectionEvents || 0).toLocaleString()}
+              </h3>
+            </div>
           </div>
         </div>
       </div>
@@ -536,77 +609,85 @@ const Dashboard = () => {
           {/* Total Users */}
           <div
             onClick={() => navigate('/users')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-[#7c3aed] group-hover:bg-[#7c3aed] group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <Users className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-[#7c3aed] shadow-inner flex-shrink-0 group-hover:bg-[#7c3aed] group-hover:text-white transition-all duration-300">
+                <Users className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('total_users') || 'Total Users'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-[#7c3aed] transition-colors leading-none truncate">
-                  {(stats.totalUsers || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-[#7c3aed] group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Total Users
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-[#7c3aed] transition-colors">
+                {(stats.totalUsers || 0).toLocaleString()}
+              </h3>
+            </div>
           </div>
 
           {/* Active Roles */}
           <div
             onClick={() => navigate('/roles')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <Shield className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                <Shield className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('active_roles') || 'Active Roles'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-emerald-600 transition-colors leading-none truncate">
-                  {(stats.totalRoles || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Active Roles
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-emerald-600 transition-colors">
+                {(stats.totalRoles || 0).toLocaleString()}
+              </h3>
+            </div>
           </div>
 
           {/* Total Cities */}
           <div
             onClick={() => navigate('/locations')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <MapPin className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                <MapPin className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('total_cities') || 'Total Cities'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-blue-600 transition-colors leading-none truncate">
-                  {(stats.totalCities || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Total Cities
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-blue-600 transition-colors">
+                {(stats.totalCities || 0).toLocaleString()}
+              </h3>
+            </div>
           </div>
 
           {/* Total Pincodes */}
           <div
             onClick={() => navigate('/locations')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-orange-300 shadow-sm hover:shadow transition-all duration-300 flex items-center justify-between"
+            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-orange-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
           >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 shadow-inner flex-shrink-0">
-                <MapPin className="w-4.5 h-4.5" />
+            <div className="flex items-start justify-between w-full">
+              <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shadow-inner flex-shrink-0 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
+                <MapPin className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{t('total_pincodes') || 'Total Pincodes'}</p>
-                <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-orange-600 transition-colors leading-none truncate">
-                  {(stats.totalPincodes || 0).toLocaleString()}
-                </h3>
-              </div>
+              <span className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
             </div>
-            <span className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all text-xs flex-shrink-0">→</span>
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Total Pincodes
+              </p>
+              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-orange-600 transition-colors">
+                {(stats.totalPincodes || 0).toLocaleString()}
+              </h3>
+            </div>
           </div>
         </div>
       </div>
@@ -672,7 +753,7 @@ const Dashboard = () => {
           {/* Map Display */}
           <div className="flex-1 h-[400px] rounded-xl overflow-hidden relative border border-slate-100 bg-slate-50">
             <div ref={mapRef} className="w-full h-full z-10" />
-            {!leafletLoaded && (
+             {!googleLoaded && (
               <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                 <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-2"></div>
                 <p className="text-slate-500 text-xs font-medium">Loading Interactive Map...</p>

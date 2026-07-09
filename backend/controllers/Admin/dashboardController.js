@@ -1,4 +1,4 @@
-const { User, Role, Pincode, City, Corporation, Zone, Ward, CollectionEvent } = require("../../models/index");
+const { User, Role, Pincode, City, Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest } = require("../../models/index");
 
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -10,6 +10,12 @@ exports.getDashboardStats = async (req, res) => {
     const totalZones = await Zone.count();
     const totalWards = await Ward.count();
     const totalCollectionEvents = await CollectionEvent.count();
+    
+    // Count of distinct Bulk Waste Generators (BWGs)
+    const totalBWGs = await WasteCollectionRequest.count({
+      col: 'lead_id',
+      distinct: true
+    });
 
     res.json({
       success: true,
@@ -27,7 +33,8 @@ exports.getDashboardStats = async (req, res) => {
         totalCorporations,
         totalZones,
         totalWards,
-        totalCollectionEvents
+        totalCollectionEvents,
+        totalBWGs
       },
       pulse: {
         todayOrders: 0,
