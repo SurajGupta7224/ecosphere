@@ -134,7 +134,8 @@ router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapp
 // Waste Collection Request routes
 router.get("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequests);
 router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequestById);
-router.post("/waste-collection-requests", requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
+router.post("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
+router.put("/waste-collection-requests/lead/:leadId", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.updateWasteCollectionRequestByLeadId);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);
