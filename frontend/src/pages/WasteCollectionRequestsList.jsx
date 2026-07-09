@@ -10,11 +10,11 @@ import api from '../api';
 import toast from 'react-hot-toast';
 
 const STATUS_STYLES = {
-  Pending:   { bg: 'bg-amber-50',   border: 'border-amber-200',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
-  Approved:  { bg: 'bg-blue-50',    border: 'border-blue-200',   text: 'text-blue-700',   dot: 'bg-blue-500'   },
-  Verified:  { bg: 'bg-indigo-50',  border: 'border-indigo-200', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  Rejected:  { bg: 'bg-rose-50',    border: 'border-rose-200',   text: 'text-rose-700',   dot: 'bg-rose-500'   },
-  Completed: { bg: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-700',dot: 'bg-emerald-500'},
+  Pending: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500' },
+  Approved: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' },
+  Verified: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  Rejected: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' },
+  Completed: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
 };
 
 function StatusBadge({ status }) {
@@ -201,7 +201,7 @@ export default function WasteCollectionRequestsList() {
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 outline-none focus:border-violet-400 cursor-pointer"
         >
           <option value="">All Statuses</option>
-          {['Pending','Verified','Approved','Rejected','Completed'].map(s => (
+          {['Pending', 'Verified', 'Approved', 'Rejected', 'Completed'].map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
@@ -391,18 +391,18 @@ export default function WasteCollectionRequestsList() {
 
               {/* Section 1: Customer Details */}
               <SectionCard title="Customer Details" icon={User} iconColor="text-violet-600">
-                <InfoRow icon={User}     label="Customer Type"          value={selectedGroup?.first?.customer_type}         iconColor="text-violet-500" />
-                <InfoRow icon={User}     label="Authorized Person Name" value={selectedGroup?.first?.authorized_person_name} iconColor="text-violet-500" />
-                <InfoRow icon={Phone}    label="Mobile Number"          value={selectedGroup?.first?.mobile_number}         iconColor="text-green-500" />
-                <InfoRow icon={Mail}     label="Email"                  value={selectedGroup?.first?.email}                 iconColor="text-blue-500" />
+                <InfoRow icon={User} label="Customer Type" value={selectedGroup?.first?.customer_type} iconColor="text-violet-500" />
+                <InfoRow icon={User} label="Authorized Person Name" value={selectedGroup?.first?.authorized_person_name} iconColor="text-violet-500" />
+                <InfoRow icon={Phone} label="Mobile Number" value={selectedGroup?.first?.mobile_number} iconColor="text-green-500" />
+                <InfoRow icon={Mail} label="Email" value={selectedGroup?.first?.email} iconColor="text-blue-500" />
               </SectionCard>
 
               {/* Section 2: Property / Generator Details */}
               <SectionCard title="Property & Generator Details" icon={Building} iconColor="text-blue-600">
-                <InfoRow icon={Building} label="Waste Generator Name" value={selectedGroup?.first?.waste_generator_name}  iconColor="text-blue-500" />
-                <InfoRow icon={Home}     label="Area (SqM)"           value={selectedGroup?.first?.area_sqm ? `${selectedGroup.first.area_sqm} SqM` : null} iconColor="text-blue-400" />
-                <InfoRow icon={Hash}     label="Dwelling Units"        value={selectedGroup?.first?.dwelling_units?.toString()} iconColor="text-blue-400" />
-                <InfoRow icon={MapPin}   label="Complete Address"      value={selectedGroup?.first?.complete_address}      iconColor="text-rose-500" />
+                <InfoRow icon={Building} label="Waste Generator Name" value={selectedGroup?.first?.waste_generator_name} iconColor="text-blue-500" />
+                <InfoRow icon={Home} label="Area (SqM)" value={selectedGroup?.first?.area_sqm ? `${selectedGroup.first.area_sqm} SqM` : null} iconColor="text-blue-400" />
+                <InfoRow icon={Hash} label="Dwelling Units" value={selectedGroup?.first?.dwelling_units?.toString()} iconColor="text-blue-400" />
+                <InfoRow icon={MapPin} label="Complete Address" value={selectedGroup?.first?.complete_address} iconColor="text-rose-500" />
               </SectionCard>
 
               {/* Section 3: Subcategories Breakdown */}
@@ -410,9 +410,9 @@ export default function WasteCollectionRequestsList() {
                 <div className="space-y-3 pt-1">
                   {selectedGroup?.items.map((item, idx) => {
                     const monthly_waste = parseFloat(item.monthly_waste || 0);
-                    const yearly_waste  = parseFloat(item.yearly_waste  || 0);
+                    const yearly_waste = parseFloat(item.yearly_waste || 0);
                     const monthly_price = parseFloat(item.monthly_price || 0);
-                    const yearly_price  = parseFloat(item.yearly_price  || 0);
+                    const yearly_price = parseFloat(item.yearly_price || 0);
                     return (
                       <div key={idx} className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
                         {/* Cat / Subcat header */}
@@ -433,12 +433,12 @@ export default function WasteCollectionRequestsList() {
                         <div className="grid grid-cols-2 gap-2">
                           {[
                             { label: 'Expected Waste/Day', value: `${parseFloat(item.expected_waste).toFixed(2)} KG`, color: 'text-blue-700' },
-                            { label: 'Agreed Price/KG',    value: `₹${parseFloat(item.agreed_price).toFixed(2)}`,   color: 'text-purple-700' },
-                            { label: 'Suggested Price/KG', value: `₹${parseFloat(item.suggested_price).toFixed(2)}`,color: 'text-slate-600' },
-                            { label: 'Monthly Waste',      value: `${monthly_waste.toFixed(2)} KG`,                 color: 'text-slate-700' },
-                            { label: 'Yearly Waste',       value: `${yearly_waste.toFixed(2)} KG`,                  color: 'text-slate-700' },
-                            { label: 'Monthly Price',      value: `₹${monthly_price.toFixed(2)}`,                   color: 'text-purple-700' },
-                            { label: 'Yearly Price',       value: `₹${yearly_price.toFixed(2)}`,                    color: 'text-purple-700' },
+                            { label: 'Agreed Price/KG', value: `₹${parseFloat(item.agreed_price).toFixed(2)}`, color: 'text-purple-700' },
+                            { label: 'Suggested Price/KG', value: `₹${parseFloat(item.suggested_price).toFixed(2)}`, color: 'text-slate-600' },
+                            { label: 'Monthly Waste', value: `${monthly_waste.toFixed(2)} KG`, color: 'text-slate-700' },
+                            { label: 'Yearly Waste', value: `${yearly_waste.toFixed(2)} KG`, color: 'text-slate-700' },
+                            { label: 'Monthly Price', value: `₹${monthly_price.toFixed(2)}`, color: 'text-purple-700' },
+                            { label: 'Yearly Price', value: `₹${yearly_price.toFixed(2)}`, color: 'text-purple-700' },
                           ].map(cell => (
                             <div key={cell.label} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5">
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{cell.label}</p>
@@ -454,18 +454,18 @@ export default function WasteCollectionRequestsList() {
 
               {/* Section 4: License Details */}
               <SectionCard title="License & Legal Details" icon={ShieldCheck} iconColor="text-amber-600">
-                <InfoRow icon={Building}  label="Registered RWA" value={selectedGroup?.first?.registered_rwa}   iconColor="text-amber-500" />
-                <InfoRow icon={FileText}  label="GST Number"     value={selectedGroup?.first?.gst_number}      iconColor="text-amber-500" />
-                <InfoRow icon={FileText}  label="PAN Number"     value={selectedGroup?.first?.pan_number}      iconColor="text-amber-500" />
-                <InfoRow icon={Tag}       label="Trade License"  value={selectedGroup?.first?.trade_license}   iconColor="text-amber-500" />
+                <InfoRow icon={Building} label="Registered RWA" value={selectedGroup?.first?.registered_rwa} iconColor="text-amber-500" />
+                <InfoRow icon={FileText} label="GST Number" value={selectedGroup?.first?.gst_number} iconColor="text-amber-500" />
+                <InfoRow icon={FileText} label="PAN Number" value={selectedGroup?.first?.pan_number} iconColor="text-amber-500" />
+                <InfoRow icon={Tag} label="Trade License" value={selectedGroup?.first?.trade_license} iconColor="text-amber-500" />
               </SectionCard>
 
               {/* Section 5: Pickup & Notes */}
               <SectionCard title="Pickup & Additional Details" icon={Calendar} iconColor="text-indigo-600">
-                <InfoRow icon={Calendar} label="Preferred Pickup Date" value={selectedGroup?.first?.pickup_date}          iconColor="text-indigo-500" />
-                <InfoRow icon={Clock}    label="Preferred Pickup Time" value={selectedGroup?.first?.pickup_time}          iconColor="text-indigo-500" />
-                <InfoRow icon={Info}     label="Pickup Notes"          value={selectedGroup?.first?.pickup_notes}         iconColor="text-slate-500" />
-                <InfoRow icon={User}     label="Request Source"        value={selectedGroup?.first?.request_source}       iconColor="text-slate-500" />
+                <InfoRow icon={Calendar} label="Preferred Pickup Date" value={selectedGroup?.first?.pickup_date} iconColor="text-indigo-500" />
+                <InfoRow icon={Clock} label="Preferred Pickup Time" value={selectedGroup?.first?.pickup_time} iconColor="text-indigo-500" />
+                <InfoRow icon={Info} label="Pickup Notes" value={selectedGroup?.first?.pickup_notes} iconColor="text-slate-500" />
+                <InfoRow icon={User} label="Request Source" value={selectedGroup?.first?.request_source} iconColor="text-slate-500" />
               </SectionCard>
 
             </div>
