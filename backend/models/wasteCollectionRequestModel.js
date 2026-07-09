@@ -53,7 +53,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   category_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'categories',
       key: 'id'
@@ -61,7 +61,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   subcategory_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'sub_categories',
       key: 'id'
@@ -69,7 +69,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   variation_id: {
     type: DataTypes.BIGINT,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'subcategory_variations',
       key: 'id'
@@ -77,37 +77,37 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   expected_waste: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   agreed_price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   suggested_price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   monthly_waste: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   yearly_waste: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   monthly_price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   yearly_price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
   },
   registered_rwa: {
@@ -128,7 +128,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   },
   pickup_date: {
     type: DataTypes.DATEONLY,
-    allowNull: false,
+    allowNull: true,
   },
   time_slot_id: {
     type: DataTypes.BIGINT,
@@ -138,7 +138,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
       key: 'id'
     }
   },
-  
+
   // Additional fields for compatibility
   pickup_notes: {
     type: DataTypes.TEXT,
@@ -180,6 +180,18 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
       model: 'users',
       key: 'id'
     }
+  },
+  latitude: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  longitude: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  address_search: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   }
 }, {
   tableName: "waste_collection_requests",

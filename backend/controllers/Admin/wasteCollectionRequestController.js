@@ -90,9 +90,30 @@ const createWasteCollectionRequest = async (req, res) => {
     subcategories
   } = req.body;
 
-  // Validation
-  if (!pickup_date) {
-    return res.status(400).json({ message: "Preferred pickup date is required." });
+  // Validation for Step 1 (Customer Details) & Step 2 (Property Details)
+  if (!customer_type) {
+    return res.status(400).json({ message: "Customer type is required." });
+  }
+  if (!authorized_person_name) {
+    return res.status(400).json({ message: "Authorized person name is required." });
+  }
+  if (!mobile_number) {
+    return res.status(400).json({ message: "Mobile number is required." });
+  }
+  if (!email) {
+    return res.status(400).json({ message: "Email is required." });
+  }
+  if (!address_search) {
+    return res.status(400).json({ message: "Address search is required." });
+  }
+  if (!latitude || !longitude) {
+    return res.status(400).json({ message: "Location coordinates (latitude & longitude) are required." });
+  }
+  if (!waste_generator_name) {
+    return res.status(400).json({ message: "Waste generator name is required." });
+  }
+  if (!complete_address) {
+    return res.status(400).json({ message: "Complete address is required." });
   }
 
   try {
@@ -101,7 +122,7 @@ const createWasteCollectionRequest = async (req, res) => {
     const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
 
     // Time Slot validations
-    if (time_slot_id) {
+    if (time_slot_id && pickup_date) {
       const timeSlot = await TimeSlot.findByPk(time_slot_id);
       if (!timeSlot) {
         return res.status(404).json({ message: "Selected time slot not found." });
@@ -144,28 +165,71 @@ const createWasteCollectionRequest = async (req, res) => {
       parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
     }
 
-    if (parsedSubcategories.length === 0) {
-      return res.status(400).json({ message: "Please select at least one subcategory." });
-    }
-
     // Generate single unique lead_id for this batch of requests
     const leadId = "LD" + Date.now().toString() + Math.floor(1000 + Math.random() * 9000);
     const createdRequests = [];
 
-    for (const subItem of parsedSubcategories) {
-      const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
-      const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
-      const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
-      const expected_waste = parseFloat(subItem.expected_waste || 0);
-      const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
-      const suggested_price = parseFloat(subItem.suggested_price || 0);
+    if (parsedSubcategories && parsedSubcategories.length > 0) {
+      for (const subItem of parsedSubcategories) {
+        const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
+        const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
+        const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
+        const expected_waste = parseFloat(subItem.expected_waste || 0);
+        const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
+        const suggested_price = parseFloat(subItem.suggested_price || 0);
 
-      // Calculations
-      const monthly_waste = expected_waste * 30;
-      const yearly_waste = expected_waste * 365;
-      const monthly_price = monthly_waste * agreed_price;
-      const yearly_price = yearly_waste * agreed_price;
+        // Calculations
+        const monthly_waste = expected_waste * 30;
+        const yearly_waste = expected_waste * 365;
+        const monthly_price = monthly_waste * agreed_price;
+        const yearly_price = yearly_waste * agreed_price;
 
+        const request = await WasteCollectionRequest.create({
+          lead_id: leadId,
+          user_id: loggedInId,
+          customer_type: customer_type || null,
+          authorized_person_name: authorized_person_name || null,
+          mobile_number: mobile_number || null,
+          email: email || null,
+          waste_generator_name: waste_generator_name || null,
+          complete_address: complete_address || null,
+          area_sqm: area_sqm ? parseFloat(area_sqm) : null,
+          dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+          registered_rwa: registered_rwa || null,
+          gst_number: gst || null,
+          pan_number: pan || null,
+          trade_license: trade_license || null,
+          pickup_date: pickup_date || null,
+          time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          address_search: address_search || null,
+
+          category_id,
+          subcategory_id,
+          variation_id,
+          expected_waste,
+          agreed_price,
+          suggested_price,
+          monthly_waste,
+          yearly_waste,
+          monthly_price,
+          yearly_price,
+
+          pickup_notes: pickup_notes || null,
+          pickup_time: pickup_time || null,
+          status: 'Pending',
+          images: images,
+          generated_by: loggedInId,
+          created_by: loggedInId,
+          created_by_type: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
+          request_source: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
+        });
+
+        createdRequests.push(request);
+      }
+    } else {
+      // Create a single request with null subcategory details (since expected waste is optional)
       const request = await WasteCollectionRequest.create({
         lead_id: leadId,
         user_id: loggedInId,
@@ -181,19 +245,22 @@ const createWasteCollectionRequest = async (req, res) => {
         gst_number: gst || null,
         pan_number: pan || null,
         trade_license: trade_license || null,
-        pickup_date: pickup_date,
+        pickup_date: pickup_date || null,
         time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        address_search: address_search || null,
 
-        category_id,
-        subcategory_id,
-        variation_id,
-        expected_waste,
-        agreed_price,
-        suggested_price,
-        monthly_waste,
-        yearly_waste,
-        monthly_price,
-        yearly_price,
+        category_id: null,
+        subcategory_id: null,
+        variation_id: null,
+        expected_waste: 0,
+        agreed_price: 0,
+        suggested_price: 0,
+        monthly_waste: 0,
+        yearly_waste: 0,
+        monthly_price: 0,
+        yearly_price: 0,
 
         pickup_notes: pickup_notes || null,
         pickup_time: pickup_time || null,
@@ -265,8 +332,222 @@ const getWasteCollectionRequestById = async (req, res) => {
   }
 };
 
+const updateWasteCollectionRequestByLeadId = async (req, res) => {
+  const { leadId } = req.params;
+  const {
+    customer_type,
+    authorized_person_name,
+    mobile_number,
+    email,
+    address_search,
+    latitude,
+    longitude,
+    waste_generator_name,
+    complete_address,
+    area_sqm,
+    no_of_dwelling_units,
+    registered_rwa,
+    gst,
+    pan,
+    trade_license,
+    pickup_date,
+    time_slot_id,
+    pickup_notes,
+    pickup_time,
+    subcategories
+  } = req.body;
+
+  // Validation for Step 1 (Customer Details) & Step 2 (Property Details)
+  if (!customer_type) {
+    return res.status(400).json({ message: "Customer type is required." });
+  }
+  if (!authorized_person_name) {
+    return res.status(400).json({ message: "Authorized person name is required." });
+  }
+  if (!mobile_number) {
+    return res.status(400).json({ message: "Mobile number is required." });
+  }
+  if (!email) {
+    return res.status(400).json({ message: "Email is required." });
+  }
+  if (!address_search) {
+    return res.status(400).json({ message: "Address search is required." });
+  }
+  if (!latitude || !longitude) {
+    return res.status(400).json({ message: "Location coordinates (latitude & longitude) are required." });
+  }
+  if (!waste_generator_name) {
+    return res.status(400).json({ message: "Waste generator name is required." });
+  }
+  if (!complete_address) {
+    return res.status(400).json({ message: "Complete address is required." });
+  }
+
+  try {
+    const { TimeSlot } = require("../../models/index");
+
+    // Fetch existing request records for this leadId
+    const existingRequests = await WasteCollectionRequest.findAll({
+      where: { lead_id: leadId }
+    });
+
+    if (existingRequests.length === 0) {
+      return res.status(404).json({ message: "Waste collection request not found." });
+    }
+
+    const firstExisting = existingRequests[0];
+    const originalCreatedBy = firstExisting.created_by;
+    const originalCreatedByType = firstExisting.created_by_type;
+    const originalRequestSource = firstExisting.request_source;
+    const originalGeneratedBy = firstExisting.generated_by;
+    const originalUserId = firstExisting.user_id;
+    const originalStatus = firstExisting.status;
+    const originalImages = firstExisting.images;
+    const originalCreatedAt = firstExisting.created_at;
+
+    // Time Slot validations
+    if (time_slot_id && pickup_date) {
+      const timeSlot = await TimeSlot.findByPk(time_slot_id);
+      if (!timeSlot) {
+        return res.status(404).json({ message: "Selected time slot not found." });
+      }
+      if (timeSlot.status !== 'Active') {
+        return res.status(400).json({ message: "Selected time slot is inactive." });
+      }
+    }
+
+    // Parse subcategories data
+    let parsedSubcategories = [];
+    if (subcategories) {
+      parsedSubcategories = typeof subcategories === 'string' ? JSON.parse(subcategories) : subcategories;
+    }
+
+    // Perform database operations inside a Sequelize transaction
+    const sequelizeInstance = WasteCollectionRequest.sequelize;
+    await sequelizeInstance.transaction(async (t) => {
+      // Delete existing records for this lead
+      await WasteCollectionRequest.destroy({
+        where: { lead_id: leadId },
+        transaction: t
+      });
+
+      if (parsedSubcategories && parsedSubcategories.length > 0) {
+        for (const subItem of parsedSubcategories) {
+          const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
+          const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
+          const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
+          const expected_waste = parseFloat(subItem.expected_waste || 0);
+          const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
+          const suggested_price = parseFloat(subItem.suggested_price || 0);
+
+          // Calculations
+          const monthly_waste = expected_waste * 30;
+          const yearly_waste = expected_waste * 365;
+          const monthly_price = monthly_waste * agreed_price;
+          const yearly_price = yearly_waste * agreed_price;
+
+          await WasteCollectionRequest.create({
+            lead_id: leadId,
+            user_id: originalUserId,
+            customer_type,
+            authorized_person_name,
+            mobile_number,
+            email,
+            waste_generator_name,
+            complete_address,
+            area_sqm: area_sqm ? parseFloat(area_sqm) : null,
+            dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+            registered_rwa: registered_rwa || null,
+            gst_number: gst || null,
+            pan_number: pan || null,
+            trade_license: trade_license || null,
+            pickup_date: pickup_date || null,
+            time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            address_search: address_search || null,
+
+            category_id,
+            subcategory_id,
+            variation_id,
+            expected_waste,
+            agreed_price,
+            suggested_price,
+            monthly_waste,
+            yearly_waste,
+            monthly_price,
+            yearly_price,
+
+            pickup_notes: pickup_notes || null,
+            pickup_time: pickup_time || null,
+            status: originalStatus,
+            images: originalImages,
+            generated_by: originalGeneratedBy,
+            created_by: originalCreatedBy,
+            created_by_type: originalCreatedByType,
+            request_source: originalRequestSource,
+            created_at: originalCreatedAt
+          }, { transaction: t });
+        }
+      } else {
+        // Create single request with null subcategory details
+        await WasteCollectionRequest.create({
+          lead_id: leadId,
+          user_id: originalUserId,
+          customer_type,
+          authorized_person_name,
+          mobile_number,
+          email,
+          waste_generator_name,
+          complete_address,
+          area_sqm: area_sqm ? parseFloat(area_sqm) : null,
+          dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+          registered_rwa: registered_rwa || null,
+          gst_number: gst || null,
+          pan_number: pan || null,
+          trade_license: trade_license || null,
+          pickup_date: pickup_date || null,
+          time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          address_search: address_search || null,
+
+          category_id: null,
+          subcategory_id: null,
+          variation_id: null,
+          expected_waste: 0,
+          agreed_price: 0,
+          suggested_price: 0,
+          monthly_waste: 0,
+          yearly_waste: 0,
+          monthly_price: 0,
+          yearly_price: 0,
+
+          pickup_notes: pickup_notes || null,
+          pickup_time: pickup_time || null,
+          status: originalStatus,
+          images: originalImages,
+          generated_by: originalGeneratedBy,
+          created_by: originalCreatedBy,
+          created_by_type: originalCreatedByType,
+          request_source: originalRequestSource,
+          created_at: originalCreatedAt
+        }, { transaction: t });
+      }
+    });
+
+    return res.status(200).json({
+      message: "Waste collection request updated successfully."
+    });
+  } catch (err) {
+    console.error("updateWasteCollectionRequestByLeadId error:", err);
+    return res.status(500).json({ message: "Failed to update waste collection request." });
+  }
+};
+
 module.exports = {
   getWasteCollectionRequests,
   createWasteCollectionRequest,
-  getWasteCollectionRequestById
+  getWasteCollectionRequestById,
+  updateWasteCollectionRequestByLeadId
 };
