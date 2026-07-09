@@ -1,4 +1,4 @@
-const { User, Role, Pincode, City } = require("../../models/index");
+const { User, Role, Pincode, City, Corporation, Zone, Ward, CollectionEvent } = require("../../models/index");
 
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -6,6 +6,10 @@ exports.getDashboardStats = async (req, res) => {
     const totalRoles = await Role.count();
     const totalPincodes = await Pincode.count();
     const totalCities = await City.count();
+    const totalCorporations = await Corporation.count();
+    const totalZones = await Zone.count();
+    const totalWards = await Ward.count();
+    const totalCollectionEvents = await CollectionEvent.count();
 
     res.json({
       success: true,
@@ -19,7 +23,11 @@ exports.getDashboardStats = async (req, res) => {
         totalUsers,
         totalRoles,
         totalPincodes,
-        totalCities
+        totalCities,
+        totalCorporations,
+        totalZones,
+        totalWards,
+        totalCollectionEvents
       },
       pulse: {
         todayOrders: 0,
