@@ -402,8 +402,29 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
     const originalGeneratedBy = firstExisting.generated_by;
     const originalUserId = firstExisting.user_id;
     const originalStatus = firstExisting.status;
-    const originalImages = firstExisting.images;
     const originalCreatedAt = firstExisting.created_at;
+
+    // Dynamically calculate final list of images
+    let finalImages = [];
+    if (req.body.existing_images) {
+      try {
+        finalImages = typeof req.body.existing_images === 'string' ? JSON.parse(req.body.existing_images) : req.body.existing_images;
+      } catch (err) {
+        console.error("Failed to parse existing_images:", err);
+      }
+    } else if (firstExisting.images) {
+      try {
+        finalImages = JSON.parse(firstExisting.images) || [];
+      } catch (err) {
+        finalImages = [];
+      }
+    }
+
+    if (req.files && req.files.images) {
+      const newImages = req.files.images.map(f => f.filename);
+      finalImages = [...finalImages, ...newImages];
+    }
+    const imagesToSave = finalImages.length > 0 ? JSON.stringify(finalImages) : null;
 
     // Time Slot validations
     if (time_slot_id && pickup_date) {
@@ -481,7 +502,7 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
             pickup_notes: pickup_notes || null,
             pickup_time: pickup_time || null,
             status: originalStatus,
-            images: originalImages,
+            images: imagesToSave,
             generated_by: originalGeneratedBy,
             created_by: originalCreatedBy,
             created_by_type: originalCreatedByType,
@@ -526,7 +547,7 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
           pickup_notes: pickup_notes || null,
           pickup_time: pickup_time || null,
           status: originalStatus,
-          images: originalImages,
+          images: imagesToSave,
           generated_by: originalGeneratedBy,
           created_by: originalCreatedBy,
           created_by_type: originalCreatedByType,

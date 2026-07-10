@@ -48,8 +48,8 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Check status (handle both 'active' string for User and 1 for Customer)
-    const isActive = userType === 'user' ? user.status === 'active' : user.status == 1;
+    // Check status (handle both 'active' string for User and 1/active for Customer)
+    const isActive = userType === 'user' ? user.status === 'active' : (user.status == 1 || user.status === 'active');
     if (!isActive) {
       return res.status(401).json({ message: "User account suspended." });
     }

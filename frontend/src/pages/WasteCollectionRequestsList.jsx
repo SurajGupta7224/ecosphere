@@ -4,9 +4,9 @@ import {
   User, Phone, Mail, MapPin, Building, Calendar, Clock,
   ShieldCheck, FileText, Layers, ChevronRight, Info,
   CheckCircle, XCircle, AlertCircle, Package, TrendingUp,
-  IndianRupee, Weight, Tag, Home, Hash, Edit3, Save, MoreVertical
+  IndianRupee, Weight, Tag, Home, Hash, Edit3, Save, MoreVertical, Trash2, Image as ImageIcon
 } from 'lucide-react';
-import api from '../api';
+import api, { IMAGE_BASE_URL } from '../api';
 import toast from 'react-hot-toast';
 
 const STATUS_STYLES = {
@@ -88,6 +88,12 @@ export default function WasteCollectionRequestsList() {
   const [categories, setCategories] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [editSubcategoryCards, setEditSubcategoryCards] = useState([]);
+  
+  // File management states for editing
+  const [editSelectedFiles, setEditSelectedFiles] = useState([]);
+  const [editFilePreviews, setEditFilePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+
   const [editFormData, setEditFormData] = useState({
     customer_type: 'Individual',
     authorized_person_name: '',
@@ -120,6 +126,19 @@ export default function WasteCollectionRequestsList() {
     if (!isEditing || !selectedGroup) return;
 
     const first = selectedGroup.first || {};
+
+    let parsedImages = [];
+    if (first.images) {
+      try {
+        parsedImages = typeof first.images === 'string' ? JSON.parse(first.images) : first.images;
+      } catch (err) {
+        console.error("Failed to parse images:", err);
+      }
+    }
+    setExistingImages(parsedImages || []);
+    setEditSelectedFiles([]);
+    setEditFilePreviews([]);
+
     setEditFormData({
       customer_type: first.customer_type || 'Individual',
       authorized_person_name: first.authorized_person_name || '',
@@ -345,6 +364,24 @@ export default function WasteCollectionRequestsList() {
     }));
   };
 
+  const handleEditFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setEditSelectedFiles(prev => [...prev, ...files]);
+
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setEditFilePreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeEditFile = (index) => {
+    setEditSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    URL.revokeObjectURL(editFilePreviews[index]);
+    setEditFilePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (imgName) => {
+    setExistingImages(prev => prev.filter(img => img !== imgName));
+  };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
 
@@ -456,20 +493,34 @@ export default function WasteCollectionRequestsList() {
 
     setSaving(true);
 
-    const payload = {
-      ...editFormData,
-      subcategories: activeCards.map(card => ({
-        category_id: card.category_id,
-        subcategory_id: card.subcategory_id,
-        variation_id: card.selected_variation_id,
-        expected_waste: parseFloat(card.expected_waste) || 0,
-        custom_price: parseFloat(card.custom_price) || 0,
-        suggested_price: parseFloat(card.variations.find(v => v.id == card.selected_variation_id)?.per_kg_price || 0)
-      }))
-    };
+    const payload = new FormData();
+    Object.keys(editFormData).forEach(key => {
+      if (editFormData[key] !== undefined && editFormData[key] !== null) {
+        payload.append(key, editFormData[key]);
+      }
+    });
+
+    const subList = activeCards.map(card => ({
+      category_id: card.category_id,
+      subcategory_id: card.subcategory_id,
+      variation_id: card.selected_variation_id,
+      expected_waste: parseFloat(card.expected_waste) || 0,
+      custom_price: parseFloat(card.custom_price) || 0,
+      suggested_price: parseFloat(card.variations.find(v => v.id == card.selected_variation_id)?.per_kg_price || 0)
+    }));
+    payload.append('subcategories', JSON.stringify(subList));
+    payload.append('existing_images', JSON.stringify(existingImages));
+
+    editSelectedFiles.forEach(file => {
+      payload.append('images', file);
+    });
 
     try {
-      await api.put(`/waste-collection-requests/lead/${selectedGroup.lead_id}`, payload);
+      await api.put(`/waste-collection-requests/lead/${selectedGroup.lead_id}`, payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       toast.success("Waste collection request updated successfully!");
       setIsEditing(false);
       fetchRequests();
@@ -1035,7 +1086,7 @@ export default function WasteCollectionRequestsList() {
                   <ShieldCheck className="w-4 h-4 text-violet-500" /> Section 4: License Details (Optional)
                 </h3>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Registered RWA</label>
                     <input
@@ -1089,7 +1140,7 @@ export default function WasteCollectionRequestsList() {
                   <Calendar className="w-4 h-4 text-violet-500" /> Section 5: Additional Details (Optional)
                 </h3>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Preferred Pickup Date</label>
                     <input
@@ -1136,7 +1187,7 @@ export default function WasteCollectionRequestsList() {
                     </div>
                   )}
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pickup Notes</label>
                     <textarea
                       name="pickup_notes"
@@ -1146,6 +1197,60 @@ export default function WasteCollectionRequestsList() {
                       placeholder="Provide landmarks, instructions..."
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 outline-none text-xs font-medium text-slate-700 resize-none focus:border-violet-400"
                     />
+                  </div>
+
+                  <div className="sm:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Manage Waste Photos</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      
+                      {/* Upload Box */}
+                      <div className="relative h-24 border-2 border-dashed border-slate-200 hover:border-violet-400 transition-colors bg-slate-50/50 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center text-slate-400 p-2">
+                        <ImageIcon className="w-6 h-6 mb-1 opacity-50 text-slate-400" />
+                        <span className="text-[9px] font-bold">Add Photo</span>
+                        <input
+                          type="file"
+                          onChange={handleEditFileChange}
+                          multiple
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Render Existing Images */}
+                      {existingImages.map((imgName, idx) => (
+                        <div key={`exist-${idx}`} className="relative h-24 border border-slate-200 rounded-xl bg-slate-100 overflow-hidden">
+                          <img 
+                            src={`${IMAGE_BASE_URL}/CollectionRequests/${imgName}`} 
+                            alt="Existing Waste Pic" 
+                            className="w-full h-full object-cover" 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(imgName)}
+                            className="absolute top-1.5 right-1.5 p-1 bg-rose-500 text-white rounded-full opacity-90 hover:opacity-100 shadow-md transition-all active:scale-90"
+                            title="Remove Photo"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Render New Previews */}
+                      {editFilePreviews.map((url, idx) => (
+                        <div key={`new-${idx}`} className="relative h-24 border border-slate-200 rounded-xl bg-slate-100 overflow-hidden">
+                          <img src={url} alt="New Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeEditFile(idx)}
+                            className="absolute top-1.5 right-1.5 p-1 bg-rose-500 text-white rounded-full opacity-90 hover:opacity-100 shadow-md transition-all active:scale-90"
+                            title="Remove Photo"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                    </div>
                   </div>
                 </div>
               </div>

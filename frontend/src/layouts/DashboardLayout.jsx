@@ -107,6 +107,7 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: t('users'), path: '/users', req: 'user_management' },
+        { name: t('customers') || 'Customers', path: '/customers', req: 'user_management' },
         { name: t('roles'), path: '/roles', req: 'role_management' },
         { name: t('permissions'), path: '/permissions', req: 'permission' },
         { name: t('locations'), path: '/locations', req: 'locations' }

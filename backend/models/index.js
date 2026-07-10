@@ -25,6 +25,7 @@ const CollectionEvent = require("./collectionEventModel");
 const WasteCollectionRequest = require("./wasteCollectionRequestModel");
 const TimeSlot = require("./timeSlotModel");
 const ModuleGeneratorHistory = require("./moduleGeneratorHistoryModel");
+const Customer = require("./customerModel");
 
 
 
@@ -129,11 +130,7 @@ module.exports = {
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
-  TimeSlot, ModuleGeneratorHistory
-  
-  
-  
-  
+  TimeSlot, ModuleGeneratorHistory, Customer
 };
 
 

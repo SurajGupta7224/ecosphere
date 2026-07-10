@@ -21,6 +21,7 @@ import WasteCollectionRequestsList from './pages/WasteCollectionRequestsList';
 import TimeSlots from './pages/TimeSlots';
 import { SettingsProvider } from './context/SettingsContext';
 import ModuleCreation from './pages/ModuleCreation';
+import Customers from './pages/Customers';
 
 
 
@@ -62,6 +63,14 @@ function App() {
             element={
               <RequirePermission requiredPermission="user_management">
                 <Users />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="customers"
+            element={
+              <RequirePermission requiredPermission="user_management">
+                <Customers />
               </RequirePermission>
             }
           />

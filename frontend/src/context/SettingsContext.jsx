@@ -580,7 +580,24 @@ const DEFAULTS = {
     card_bg_color: '#ffffff',
     button_color: '#6366f1',
     text_color: '#1e293b',
+    font_family: 'Inter',
   }
+};
+
+// ── Load Google Fonts dynamically ─────────────────────────────────────────────
+const loadGoogleFont = (fontName) => {
+  if (!fontName) return;
+  const systemFonts = ['system-ui', 'sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New'];
+  if (systemFonts.includes(fontName)) return;
+
+  const id = `google-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+  if (document.getElementById(id)) return;
+
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700;800&display=swap`;
+  document.head.appendChild(link);
 };
 
 // ── Determine if dark mode should be active ───────────────────────────────────
@@ -609,7 +626,7 @@ export const SettingsProvider = ({ children }) => {
       root.classList.remove('dark');
     }
 
-    // 2. Set CSS variables for dynamic colors
+    // 2. Set CSS variables for dynamic colors & fonts
     root.style.setProperty('--color-primary',   theme.primary_color   || '#6366f1');
     root.style.setProperty('--color-secondary', theme.secondary_color || '#8b5cf6');
     root.style.setProperty('--color-sidebar',   theme.sidebar_color   || '#1e133c');
@@ -620,6 +637,10 @@ export const SettingsProvider = ({ children }) => {
     root.style.setProperty('--color-card-bg',   theme.card_bg_color   || (dark ? '#1e293b' : '#ffffff'));
     root.style.setProperty('--color-button',    theme.button_color    || '#6366f1');
     root.style.setProperty('--color-text',      theme.text_color      || (dark ? '#f1f5f9' : '#1e293b'));
+
+    const activeFont = theme.font_family || 'Inter';
+    loadGoogleFont(activeFont);
+    root.style.setProperty('--font-family', `'${activeFont}'`);
 
     // 3. Update content backgrounds
     if (dark) {

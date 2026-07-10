@@ -16,6 +16,7 @@ ThemeSettings.init(
     card_bg_color: { type: DataTypes.STRING, defaultValue: '#ffffff' },
     button_color: { type: DataTypes.STRING, defaultValue: '#7c3aed' },
     text_color: { type: DataTypes.STRING, defaultValue: '#ffffff' },
+    font_family: { type: DataTypes.STRING, defaultValue: 'Inter' },
   },
   {
     sequelize,
