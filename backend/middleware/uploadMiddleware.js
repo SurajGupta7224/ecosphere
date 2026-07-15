@@ -8,11 +8,21 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'profile_photo' || file.fieldname === 'profile_pic') folderName = 'ProfilePics';
     if (file.fieldname === 'pan_card_file') folderName = 'Pan_Card';
     if (file.fieldname === 'aadhaar_card_file') folderName = 'Aadhaar_Card';
-    if (file.fieldname === 'gst_file') folderName = 'GST';
     if (file.fieldname === 'category_image') folderName = 'Category';
     if (file.fieldname === 'subcategory_image') folderName = 'SubCategory';
     if (file.fieldname === 'product_images') folderName = 'ProductImages';
-    if (file.fieldname === 'images') folderName = 'CollectionRequests';
+    if ([
+      'images', 
+      'mom_agreement_file', 
+      'po_copy_file', 
+      'email_copy_file', 
+      'rwa_file', 
+      'gst_file', 
+      'pan_file', 
+      'trade_license_file'
+    ].includes(file.fieldname)) {
+      folderName = 'CollectionRequests';
+    }
     
     const dir = path.join(__dirname, "../public/uploads", folderName);
     if (!fs.existsSync(dir)) {

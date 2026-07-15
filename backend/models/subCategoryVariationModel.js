@@ -32,6 +32,11 @@ const SubCategoryVariation = sequelize.define("SubCategoryVariation", {
     defaultValue: 0.00,
     allowNull: false,
   },
+  bulk_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: false,
+  },
   status: {
     type: DataTypes.ENUM('Active', 'Inactive'),
     defaultValue: 'Active',

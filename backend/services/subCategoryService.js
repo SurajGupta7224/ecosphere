@@ -72,6 +72,7 @@ const createSubCategory = async (subCategoryData, variations, userId) => {
         number_of_sr: parseInt(v.number_of_sr),
         schedule_after_days: parseInt(v.schedule_after_days),
         per_kg_price: parseFloat(v.per_kg_price || 0),
+        bulk_price: parseFloat(v.bulk_price || 0),
         status: v.status || 'Active',
         display_order: v.display_order !== undefined ? parseInt(v.display_order) : index,
       }));
@@ -134,6 +135,7 @@ const updateSubCategory = async (id, subCategoryData, variations, userId, isAdmi
           number_of_sr: parseInt(v.number_of_sr),
           schedule_after_days: parseInt(v.schedule_after_days),
           per_kg_price: parseFloat(v.per_kg_price || 0),
+          bulk_price: parseFloat(v.bulk_price || 0),
           status: v.status || 'Active',
           display_order: v.display_order !== undefined ? parseInt(v.display_order) : i,
         };

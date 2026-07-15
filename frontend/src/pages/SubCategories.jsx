@@ -124,6 +124,7 @@ const SubCategories = () => {
         number_of_sr: '',
         schedule_after_days: '',
         per_kg_price: '',
+        bulk_price: '',
         status: 'Active',
         display_order: newOrder
       }
@@ -134,7 +135,8 @@ const SubCategories = () => {
         variation_name: '',
         number_of_sr: '',
         schedule_after_days: '',
-        per_kg_price: ''
+        per_kg_price: '',
+        bulk_price: ''
       }
     ]);
   };
@@ -197,6 +199,17 @@ const SubCategories = () => {
         rowErrors.per_kg_price = 'Must be ≥ 0';
       } else {
         rowErrors.per_kg_price = '';
+      }
+    }
+
+    if (field === 'bulk_price') {
+      const num = Number(value);
+      if (value === '') {
+        rowErrors.bulk_price = 'Required';
+      } else if (isNaN(num) || num < 0) {
+        rowErrors.bulk_price = 'Must be ≥ 0';
+      } else {
+        rowErrors.bulk_price = '';
       }
     }
 
@@ -280,6 +293,15 @@ const SubCategories = () => {
         isValid = false;
       }
 
+      const numBulkPrice = Number(v.bulk_price);
+      if (v.bulk_price === '' || v.bulk_price === undefined || v.bulk_price === null) {
+        rowErrors.bulk_price = 'Required';
+        isValid = false;
+      } else if (isNaN(numBulkPrice) || numBulkPrice < 0) {
+        rowErrors.bulk_price = 'Must be ≥ 0';
+        isValid = false;
+      }
+
       return rowErrors;
     });
 
@@ -325,6 +347,7 @@ const SubCategories = () => {
       number_of_sr: v.number_of_sr,
       schedule_after_days: v.schedule_after_days,
       per_kg_price: v.per_kg_price !== undefined ? v.per_kg_price : '',
+      bulk_price: v.bulk_price !== undefined ? v.bulk_price : '',
       status: v.status,
       display_order: v.display_order
     })));
@@ -332,6 +355,7 @@ const SubCategories = () => {
       variation_name: '',
       number_of_sr: '',
       per_kg_price: '',
+      bulk_price: '',
       schedule_after_days: ''
     })));
 
@@ -618,6 +642,7 @@ const SubCategories = () => {
                           <th className="p-3 w-32">Number of SR *</th>
                           <th className="p-3 w-44">Schedule After Days *</th>
                           <th className="p-3 w-36">Par Kg Price *</th>
+                          <th className="p-3 w-36">Bulk Price *</th>
                           <th className="p-3 w-36">Status *</th>
                           <th className="p-3 w-12 text-center">Action</th>
                         </tr>
@@ -727,6 +752,31 @@ const SubCategories = () => {
                               {variationErrors[index]?.per_kg_price && (
                                 <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
                                   {variationErrors[index].per_kg_price}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Bulk Price */}
+                            <td className="p-3">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={v.bulk_price}
+                                  onChange={(e) => handleVariationChange(index, 'bulk_price', e.target.value)}
+                                  placeholder="0.00"
+                                  className={`w-full bg-slate-50 border rounded-xl py-2 pl-7 pr-3 outline-none text-xs transition-all ${
+                                    variationErrors[index]?.bulk_price
+                                      ? 'border-red-300 focus:ring-4 focus:ring-red-50 focus:border-red-400'
+                                      : 'border-slate-200 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
+                                  }`}
+                                />
+                              </div>
+                              {variationErrors[index]?.bulk_price && (
+                                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">
+                                  {variationErrors[index].bulk_price}
                                 </p>
                               )}
                             </td>

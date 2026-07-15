@@ -18,6 +18,8 @@ const collectionEventController = require("../controllers/Admin/collectionEventC
 const wasteCollectionRequestController = require("../controllers/Admin/wasteCollectionRequestController");
 const { acceptTnc } = require("../controllers/Admin/tncController");
 const timeSlotController = require("../controllers/Admin/timeSlotController");
+const businessRegionController = require("../controllers/Admin/businessRegionController");
+const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
 
 
 
@@ -41,7 +43,20 @@ const subCategoryUploads = upload.fields([
 ]);
 
 const requestUploads = upload.fields([
-  { name: 'images', maxCount: 10 }
+  { name: 'images', maxCount: 10 },
+  { name: 'mom_agreement_file', maxCount: 1 },
+  { name: 'po_copy_file', maxCount: 1 },
+  { name: 'email_copy_file', maxCount: 1 },
+  { name: 'rwa_file', maxCount: 1 },
+  { name: 'gst_file', maxCount: 1 },
+  { name: 'pan_file', maxCount: 1 },
+  { name: 'trade_license_file', maxCount: 1 }
+]);
+
+const subRegionUploads = upload.fields([
+  { name: 'gstn_file', maxCount: 1 },
+  { name: 'agri_licence_file', maxCount: 1 },
+  { name: 'shop_establishment_file', maxCount: 1 }
 ]);
 
 // Auth routes (public)
@@ -100,28 +115,45 @@ router.get("/locations/pincodes/city/:city_id", verifyToken, requirePermission('
 router.get("/locations/suggestions", verifyToken, requirePermission('locations'), locationController.getSuggestions);
 
 // BWG Mapping routes
-router.get("/corporations", verifyToken, requirePermission('bwg_mapping'), corporationController.getAllCorporations);
+router.get("/corporations", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), corporationController.getAllCorporations);
 router.get("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.getCorporationById);
 router.post("/corporations", verifyToken, requirePermission('bwg_mapping'), corporationController.createCorporation);
 router.put("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.updateCorporation);
 router.patch("/corporations/:id/status", verifyToken, requirePermission('bwg_mapping'), corporationController.toggleCorporationStatus);
 router.delete("/corporations/:id", verifyToken, requirePermission('bwg_mapping'), corporationController.deleteCorporation);
 
-router.get("/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.getAllZones);
+router.get("/zones", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), zoneController.getAllZones);
 router.get("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.getZoneById);
 router.post("/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.createZone);
 router.put("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.updateZone);
 router.patch("/zones/:id/status", verifyToken, requirePermission('bwg_mapping'), zoneController.toggleZoneStatus);
 router.delete("/zones/:id", verifyToken, requirePermission('bwg_mapping'), zoneController.deleteZone);
-router.get("/corporations/:id/zones", verifyToken, requirePermission('bwg_mapping'), zoneController.getZonesByCorporation);
+router.get("/corporations/:id/zones", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), zoneController.getZonesByCorporation);
 
-router.get("/wards", verifyToken, requirePermission('bwg_mapping'), wardController.getAllWards);
+router.get("/wards", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), wardController.getAllWards);
 router.get("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.getWardById);
 router.post("/wards", verifyToken, requirePermission('bwg_mapping'), wardController.createWard);
 router.put("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.updateWard);
 router.patch("/wards/:id/status", verifyToken, requirePermission('bwg_mapping'), wardController.toggleWardStatus);
 router.delete("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.deleteWard);
-router.get("/zones/:id/wards", verifyToken, requirePermission('bwg_mapping'), wardController.getWardsByZone);
+router.get("/zones/:id/wards", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), wardController.getWardsByZone);
+
+// Business Region & Sub Region routes
+router.get("/business-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessRegionController.getAllBusinessRegions);
+router.get("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.getBusinessRegionById);
+router.post("/business-regions", verifyToken, requirePermission('bwg_mapping'), businessRegionController.createBusinessRegion);
+router.put("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.updateBusinessRegion);
+router.patch("/business-regions/:id/status", verifyToken, requirePermission('bwg_mapping'), businessRegionController.toggleBusinessRegionStatus);
+router.delete("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.deleteBusinessRegion);
+
+router.get("/business-sub-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getAllBusinessSubRegions);
+router.get("/business-sub-regions/next-code", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.getNextBranchCode);
+router.get("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.getBusinessSubRegionById);
+router.post("/business-sub-regions", verifyToken, requirePermission('bwg_mapping'), subRegionUploads, businessSubRegionController.createBusinessSubRegion);
+router.put("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), subRegionUploads, businessSubRegionController.updateBusinessSubRegion);
+router.patch("/business-sub-regions/:id/status", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.toggleBusinessSubRegionStatus);
+router.delete("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.deleteBusinessSubRegion);
+router.get("/business-regions/:id/sub-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getSubRegionsByRegion);
 
 // Collection Event routes
 router.get("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getAllCollectionEvents);
@@ -133,9 +165,12 @@ router.delete("/collection-events/:id", verifyToken, requirePermission('bwg_mapp
 
 // Waste Collection Request routes
 router.get("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequests);
+router.get("/waste-collection-requests/resolve-map-link", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.resolveMapLink);
+router.get("/waste-collection-requests/search-mobile", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.searchRequestByMobile);
 router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteCollectionRequestController.getWasteCollectionRequestById);
 router.post("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
 router.put("/waste-collection-requests/lead/:leadId", verifyToken, requirePermission(['waste_requests_list']), requestUploads, wasteCollectionRequestController.updateWasteCollectionRequestByLeadId);
+router.patch("/waste-collection-requests/lead/:leadId/status", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.updateWasteCollectionRequestStatus);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);

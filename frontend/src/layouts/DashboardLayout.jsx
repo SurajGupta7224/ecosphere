@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Code2
+  Clock, ClipboardList, Code2, Globe
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -41,6 +41,16 @@ const DashboardLayout = () => {
       return () => clearInterval(interval);
     }
   }, [isAdmin]);
+
+  // Route protection for pending accounts (redirect non-admins to dashboard/profile)
+  useEffect(() => {
+    if (!isAdmin && !isApproved) {
+      const allowedPaths = ['/', '/profile'];
+      if (!allowedPaths.includes(location.pathname)) {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [location.pathname, isAdmin, isApproved, navigate]);
 
   const fetchProfileStatus = async () => {
     try {
@@ -126,6 +136,17 @@ const DashboardLayout = () => {
         { name: t('collection_event'), path: '/bwg/collection-event', req: 'bwg_mapping' }
       ]
     },
+    {
+      id: 'business_regions_dropdown',
+      title: 'Business Region',
+      icon: Globe,
+      isSubMenu: true,
+      hidden: isVendor && !isApproved,
+      items: [
+        { name: 'Business Region', path: '/bwg/business-region', req: 'bwg_mapping' },
+        { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'bwg_mapping' }
+      ]
+    },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },
@@ -142,8 +163,18 @@ const DashboardLayout = () => {
     { name: t('settings'), path: '/settings', icon: SlidersHorizontal, isSubMenu: false, req: 'settings_management' }
   ];
 
+  // Filter sidebar items for pending non-admin accounts
+  const allowedSidebarItems = sidebarItems.map(item => {
+    if (!isAdmin && !isApproved) {
+      if (item.path !== '/' && item.path !== '/profile') {
+        return { ...item, hidden: true };
+      }
+    }
+    return item;
+  });
+
   return (
-    <div className="flex h-screen font-sans" style={{ backgroundColor: 'var(--app-bg)' }}>
+    <div className="flex h-screen overflow-hidden font-sans" style={{ backgroundColor: 'var(--app-bg)' }}>
       {/* Sidebar - dynamic bg from settings */}
       <div
         className={`text-white flex flex-col flex-shrink-0 shadow-xl z-20 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}
@@ -178,7 +209,7 @@ const DashboardLayout = () => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2 custom-scrollbar px-3 space-y-1">
-          {sidebarItems.map((item) => {
+          {allowedSidebarItems.map((item) => {
             if (item.hidden) return null;
             if (!item.isSubMenu) {
               if (item.req && !hasAccess(item.req)) return null;

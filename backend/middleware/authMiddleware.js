@@ -87,6 +87,29 @@ const verifyToken = async (req, res, next) => {
       console.error("Maintenance check error in verifyToken:", err);
     }
 
+    // Check if user is pending approval
+    if (userType === 'user') {
+      const isApproved = user.profile_status === 'approved';
+      const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
+      if (!isApproved && !isAdmin) {
+        // Only allow profile retrieval/update, T&C acceptance, dashboard stats, and location dropdowns
+        const allowedPrefixes = [
+          '/profile',
+          '/tnc',
+          '/corporations',
+          '/zones',
+          '/dashboard'
+        ];
+        const isAllowed = allowedPrefixes.some(prefix => req.path.startsWith(prefix));
+        if (!isAllowed) {
+          return res.status(403).json({
+            status: 0,
+            message: "Access Denied: Your account is pending approval. You cannot perform this action."
+          });
+        }
+      }
+    }
+
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError") {

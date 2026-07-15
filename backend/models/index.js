@@ -26,6 +26,8 @@ const WasteCollectionRequest = require("./wasteCollectionRequestModel");
 const TimeSlot = require("./timeSlotModel");
 const ModuleGeneratorHistory = require("./moduleGeneratorHistoryModel");
 const Customer = require("./customerModel");
+const BusinessRegion = require("./businessRegionModel");
+const BusinessSubRegion = require("./businessSubRegionModel");
 
 
 
@@ -101,12 +103,15 @@ CollectionEvent.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "user_id", as: "customer" });
 User.hasMany(WasteCollectionRequest, { foreignKey: "user_id", as: "wasteRequests" });
 
+WasteCollectionRequest.belongsTo(Customer, { foreignKey: "customer_id", as: "customerModel" });
+Customer.hasMany(WasteCollectionRequest, { foreignKey: "customer_id", as: "wasteRequests" });
+
 WasteCollectionRequest.belongsTo(Category, { foreignKey: "category_id", as: "category" });
 WasteCollectionRequest.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
 WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_id", as: "variation" });
 
-WasteCollectionRequest.belongsTo(User, { foreignKey: "generated_by", as: "creator" });
-WasteCollectionRequest.belongsTo(User, { foreignKey: "created_by", as: "creatorUser" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
 
 // Waste Collection Request ↔ TimeSlot
 WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
@@ -116,13 +121,9 @@ TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wast
 ModuleGeneratorHistory.belongsTo(User, { foreignKey: "created_by", as: "creator" });
 User.hasMany(ModuleGeneratorHistory, { foreignKey: "created_by", as: "generatedModules" });
 
-
-
-
-
-
-
-
+// BusinessRegion ↔ BusinessSubRegion
+BusinessRegion.hasMany(BusinessSubRegion, { foreignKey: "business_region_id", as: "subRegions" });
+BusinessSubRegion.belongsTo(BusinessRegion, { foreignKey: "business_region_id", as: "businessRegion" });
 
 module.exports = { 
   User, Role, Permission, RolePermission,
@@ -130,7 +131,8 @@ module.exports = {
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
-  TimeSlot, ModuleGeneratorHistory, Customer
+  TimeSlot, ModuleGeneratorHistory, Customer,
+  BusinessRegion, BusinessSubRegion
 };
 
 

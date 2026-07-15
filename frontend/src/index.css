@@ -264,3 +264,13 @@ button, a {
 .hover\:bg-indigo-100:hover {
   background-color: color-mix(in srgb, var(--color-button) 15%, transparent) !important;
 }
+
+/* Global Hiding of Input Number spinner arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+input[type=number] {
+  -moz-appearance: textfield !important;
+}

@@ -34,17 +34,8 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check email uniqueness if changed
-    if (email && email !== user.email) {
-      const existing = await User.findOne({ where: { email } });
-      if (existing) {
-        return res.status(409).json({ message: "Email already registered to another user" });
-      }
-    }
-
     const updateData = {
       name: name || user.name,
-      email: email || user.email,
       phone: phone || user.phone,
       corporation_id: corporation_id !== undefined ? (corporation_id || null) : user.corporation_id,
       zone_id: zone_id !== undefined ? (zone_id || null) : user.zone_id,
