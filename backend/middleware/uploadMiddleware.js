@@ -8,7 +8,20 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'profile_photo' || file.fieldname === 'profile_pic') folderName = 'ProfilePics';
     if (file.fieldname === 'pan_card_file') folderName = 'Pan_Card';
     if (file.fieldname === 'aadhaar_card_file') folderName = 'Aadhaar_Card';
+    if ([
+      'aadhaar_front_image',
+      'aadhaar_back_image',
+      'pan_card_image',
+      'driving_license_front_image',
+      'driving_license_back_image',
+      'police_verification_image',
+      'medical_certificate_image',
+      'eyesight_certificate_image'
+    ].includes(file.fieldname)) {
+      folderName = 'Employees';
+    }
     if (file.fieldname === 'category_image') folderName = 'Category';
+
     if (file.fieldname === 'subcategory_image') folderName = 'SubCategory';
     if (file.fieldname === 'product_images') folderName = 'ProductImages';
     if ([

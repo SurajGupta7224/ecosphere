@@ -861,20 +861,21 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
   }, []);
 
   const renderEditDocumentUploadField = (file, setFile, existingFilename, title = "Upload Document", accept = ".pdf,image/*", containerId = "") => {
-    const isNewImage = file && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
-    const newPreviewUrl = file ? URL.createObjectURL(file) : '';
+    const isNewFile = file instanceof File;
+    const isNewImage = isNewFile && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
+    const newPreviewUrl = isNewFile ? URL.createObjectURL(file) : '';
 
-    const hasExisting = !file && existingFilename;
+    const hasExisting = file !== 'clear' && !isNewFile && existingFilename;
     const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif)$/i.test(existingFilename);
     const existingPreviewUrl = hasExisting ? `${IMAGE_BASE_URL}/CollectionRequests/${existingFilename}` : '';
 
-    const showFile = file || hasExisting;
+    const showFile = isNewFile || hasExisting;
 
     return (
       <div id={containerId} className="relative w-full h-36 border border-slate-200 rounded-2xl bg-slate-50/50 overflow-hidden group transition-all mt-2">
         {showFile ? (
           <div className="w-full h-full relative animate-in fade-in duration-200">
-            {file ? (
+            {isNewFile ? (
               isNewImage ? (
                 <img src={newPreviewUrl} alt={title} className="w-full h-full object-cover" />
               ) : (
@@ -898,7 +899,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => window.open(file ? newPreviewUrl : existingPreviewUrl, '_blank')}
+                onClick={() => window.open(isNewFile ? newPreviewUrl : existingPreviewUrl, '_blank')}
                 className="px-3.5 py-2 bg-white/95 hover:bg-white text-slate-800 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 View Document
@@ -906,11 +907,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
               <button
                 type="button"
                 onClick={() => {
-                  if (file) {
-                    setFile(null);
-                  } else {
-                    toast.success("To replace, simply upload a new file below.");
-                  }
+                  setFile('clear');
                 }}
                 className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
@@ -938,6 +935,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       </div>
     );
   };
+
 
   const handleEditFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -1207,13 +1205,14 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     }
 
     // Append individual documents if updated
-    if (editMomFile) payload.append('mom_agreement_file', editMomFile);
-    if (editPoFile) payload.append('po_copy_file', editPoFile);
-    if (editRwaFile) payload.append('rwa_file', editRwaFile);
-    if (editGstFile) payload.append('gst_file', editGstFile);
-    if (editPanFile) payload.append('pan_file', editPanFile);
-    if (editTradeFile) payload.append('trade_license_file', editTradeFile);
-    if (editEmailFile) payload.append('email_copy_file', editEmailFile);
+    if (editMomFile && editMomFile !== 'clear') payload.append('mom_agreement_file', editMomFile);
+    if (editPoFile && editPoFile !== 'clear') payload.append('po_copy_file', editPoFile);
+    if (editRwaFile && editRwaFile !== 'clear') payload.append('rwa_file', editRwaFile);
+    if (editGstFile && editGstFile !== 'clear') payload.append('gst_file', editGstFile);
+    if (editPanFile && editPanFile !== 'clear') payload.append('pan_file', editPanFile);
+    if (editTradeFile && editTradeFile !== 'clear') payload.append('trade_license_file', editTradeFile);
+    if (editEmailFile && editEmailFile !== 'clear') payload.append('email_copy_file', editEmailFile);
+
 
     const subList = activeCards.map(card => ({
       category_id: card.category_id,

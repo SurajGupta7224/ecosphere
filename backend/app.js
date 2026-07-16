@@ -61,13 +61,38 @@ const PORT = process.env.PORT || 5000;
 // Sync Database and then Start Server
 console.log("Starting database synchronization...");
 sequelize.sync()
-  .then(() => {
+  .then(async () => {
     console.log(" Database synced successfully");
+
+    // Seed aggregator_employee permission if not exists
+    try {
+      const { Permission, RolePermission } = require("./models/index");
+      const [perm, created] = await Permission.findOrCreate({
+        where: { permission_name: 'aggregator_employee' }
+      });
+      if (created) {
+        console.log("Seeded 'aggregator_employee' permission successfully.");
+      }
+
+      // Associate permission with Admin role (role_id = 1)
+      const roleId = 1;
+      const association = await RolePermission.findOne({
+        where: { role_id: roleId, permission_id: perm.id }
+      });
+      if (!association) {
+        await RolePermission.create({ role_id: roleId, permission_id: perm.id });
+        console.log("Associated 'aggregator_employee' permission with Admin role.");
+      }
+
+    } catch (err) {
+      console.error("Error seeding employee permission:", err);
+    }
 
     server.listen(PORT, () => {
       console.log(` Server running on port ${PORT}`);
     });
   })
+
   .catch((err) => {
     console.error(" Database sync failed. Server not started.");
     console.error(err);
