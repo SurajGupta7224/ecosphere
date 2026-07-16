@@ -15,12 +15,15 @@ import Settings from './pages/Settings';
 import Corporations from './pages/Corporations';
 import Zones from './pages/Zones';
 import Wards from './pages/Wards';
+import BusinessRegions from './pages/BusinessRegions';
+import BusinessSubRegions from './pages/BusinessSubRegions';
 import CollectionEvents from './pages/CollectionEvents';
 import WasteCollectionRequests from './pages/WasteCollectionRequests';
 import WasteCollectionRequestsList from './pages/WasteCollectionRequestsList';
 import TimeSlots from './pages/TimeSlots';
 import { SettingsProvider } from './context/SettingsContext';
 import ModuleCreation from './pages/ModuleCreation';
+import Customers from './pages/Customers';
 
 
 
@@ -62,6 +65,14 @@ function App() {
             element={
               <RequirePermission requiredPermission="user_management">
                 <Users />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="customers"
+            element={
+              <RequirePermission requiredPermission="user_management">
+                <Customers />
               </RequirePermission>
             }
           />
@@ -134,6 +145,22 @@ function App() {
             element={
               <RequirePermission requiredPermission="bwg_mapping">
                 <Wards />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/business-region"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <BusinessRegions />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="bwg/business-sub-region"
+            element={
+              <RequirePermission requiredPermission="bwg_mapping">
+                <BusinessSubRegions />
               </RequirePermission>
             }
           />

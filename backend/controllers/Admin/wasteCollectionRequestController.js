@@ -1,5 +1,6 @@
-const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation } = require("../../models/index");
+const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation, Customer } = require("../../models/index");
 const { Op } = require("sequelize");
+const axios = require("axios");
 
 // GET /api/waste-collection-requests
 const getWasteCollectionRequests = async (req, res) => {
@@ -7,7 +8,7 @@ const getWasteCollectionRequests = async (req, res) => {
   const offset = (page - 1) * limit;
 
   const where = {};
-  
+
   // Status filter
   if (status !== '') {
     where.status = status;
@@ -44,7 +45,17 @@ const getWasteCollectionRequests = async (req, res) => {
         {
           model: SubCategoryVariation,
           as: "variation",
-          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price"]
+          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price", "bulk_price"]
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "name", "email"]
+        },
+        {
+          model: User,
+          as: "rejector",
+          attributes: ["id", "name", "email"]
         }
       ],
       limit: parseInt(limit),
@@ -71,9 +82,8 @@ const createWasteCollectionRequest = async (req, res) => {
     pickup_date,
     pickup_time,
     time_slot_id,
-    
+
     customer_type,
-    authorized_person_name,
     mobile_number,
     email,
     address_search,
@@ -87,15 +97,49 @@ const createWasteCollectionRequest = async (req, res) => {
     gst,
     pan,
     trade_license,
-    subcategories
+    subcategories,
+
+    // New B2B / location columns
+    site_request,
+    service_center_type,
+    employee_name,
+    billing_type,
+    business_region,
+    business_sub_region,
+    branch_code,
+    business_lead,
+    customer_legal_name,
+    customer_trade_name,
+    contact_person,
+    designation,
+    phone_number_2,
+    email_2,
+    others_note,
+    google_map_link,
+    landmark,
+    city,
+    state,
+    pincode,
+    country,
+    billing_address_different,
+    audit_requirement,
+    technician_assign,
+    technician,
+    total_order_value,
+    discount,
+    discounted_price,
+    sez,
+    taxibility,
+    sector,
+    final_price
   } = req.body;
 
   // Validation for Step 1 (Customer Details) & Step 2 (Property Details)
   if (!customer_type) {
     return res.status(400).json({ message: "Customer type is required." });
   }
-  if (!authorized_person_name) {
-    return res.status(400).json({ message: "Authorized person name is required." });
+  if (!contact_person) {
+    return res.status(400).json({ message: "Contact person name is required." });
   }
   if (!mobile_number) {
     return res.status(400).json({ message: "Mobile number is required." });
@@ -135,7 +179,6 @@ const createWasteCollectionRequest = async (req, res) => {
       const existingRequest = await WasteCollectionRequest.findOne({
         where: {
           [Op.or]: [
-            loggedInId ? { created_by: loggedInId } : null,
             loggedInId ? { user_id: loggedInId } : null,
             mobile_number ? { mobile_number } : null,
             email ? { email } : null
@@ -158,11 +201,119 @@ const createWasteCollectionRequest = async (req, res) => {
     }
     const images = imageUrls.length > 0 ? JSON.stringify(imageUrls) : null;
 
+    let momAgreementFile = null;
+    if (req.files && req.files.mom_agreement_file && req.files.mom_agreement_file[0]) {
+      momAgreementFile = req.files.mom_agreement_file[0].filename;
+    } else if (req.body.mom_agreement_file) {
+      momAgreementFile = req.body.mom_agreement_file;
+    }
+
+    let poCopyFile = null;
+    if (req.files && req.files.po_copy_file && req.files.po_copy_file[0]) {
+      poCopyFile = req.files.po_copy_file[0].filename;
+    } else if (req.body.po_copy_file) {
+      poCopyFile = req.body.po_copy_file;
+    }
+
+    let emailCopyFile = null;
+    if (req.files && req.files.email_copy_file && req.files.email_copy_file[0]) {
+      emailCopyFile = req.files.email_copy_file[0].filename;
+    } else if (req.body.email_copy_file) {
+      emailCopyFile = req.body.email_copy_file;
+    }
+
+    // MOM is always required
+    if (!momAgreementFile) {
+      return res.status(400).json({ message: "MOM (Agreement) Copy is always required." });
+    }
+
+    // PO Copy or Email Copy is required
+    if (!poCopyFile && !emailCopyFile) {
+      return res.status(400).json({ message: "At least one document is required: PO Copy or Email Copy." });
+    }
+
+    let rwaFile = null;
+    if (req.files && req.files.rwa_file && req.files.rwa_file[0]) {
+      rwaFile = req.files.rwa_file[0].filename;
+    } else if (req.body.rwa_file) {
+      rwaFile = req.body.rwa_file;
+    }
+
+    let gstFile = null;
+    if (req.files && req.files.gst_file && req.files.gst_file[0]) {
+      gstFile = req.files.gst_file[0].filename;
+    } else if (req.body.gst_file) {
+      gstFile = req.body.gst_file;
+    }
+
+    let panFile = null;
+    if (req.files && req.files.pan_file && req.files.pan_file[0]) {
+      panFile = req.files.pan_file[0].filename;
+    } else if (req.body.pan_file) {
+      panFile = req.body.pan_file;
+    }
+
+    let tradeLicenseFile = null;
+    if (req.files && req.files.trade_license_file && req.files.trade_license_file[0]) {
+      tradeLicenseFile = req.files.trade_license_file[0].filename;
+    } else if (req.body.trade_license_file) {
+      tradeLicenseFile = req.body.trade_license_file;
+    }
+
+    let billingDetails = null;
+    if (billing_address_different === 'true' || billing_address_different === true || req.body.billing_address_different === 'true' || req.body.billing_address_different === true) {
+      const details = {
+        customer_legal_name: req.body.billing_customer_legal_name || null,
+        customer_trade_name: req.body.billing_customer_trade_name || null,
+        contact_person: req.body.billing_contact_person || null,
+        designation: req.body.billing_designation || null,
+        phone_number_1: req.body.billing_phone_number_1 || null,
+        phone_number_2: req.body.billing_phone_number_2 || null,
+        email: req.body.billing_email || null,
+        email_2: req.body.billing_email_2 || null,
+        gstn: req.body.billing_gstn || null,
+        complete_address: req.body.billing_complete_address || null,
+        others: req.body.billing_others || null,
+        city: req.body.billing_city || null,
+        state: req.body.billing_state || null,
+        pincode: req.body.billing_pincode || null,
+        landmark: req.body.billing_landmark || null,
+        country: req.body.billing_country || null,
+      };
+      billingDetails = JSON.stringify(details);
+    }
+
     // Parse subcategories data
     let parsedSubcategories = [];
     const sourceData = subcategories || req.body.variations_data;
     if (sourceData) {
       parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
+    }
+
+    // Look up or create customer in customers table
+    let customerId = null;
+    if (email || mobile_number) {
+      let existingCust = await Customer.findOne({
+        where: {
+          [Op.or]: [
+            email ? { email } : null,
+            mobile_number ? { mobile: mobile_number } : null
+          ].filter(Boolean)
+        }
+      });
+      if (existingCust) {
+        customerId = existingCust.id;
+      } else {
+        const newCust = await Customer.create({
+          customer_name: contact_person || waste_generator_name || 'B2B Customer',
+          mobile: mobile_number || null,
+          email: email || null,
+          customer_type: 'admin',
+          created_by: 'admin',
+          status: 'active'
+        });
+        customerId = newCust.id;
+      }
     }
 
     // Generate single unique lead_id for this batch of requests
@@ -174,21 +325,29 @@ const createWasteCollectionRequest = async (req, res) => {
         const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
         const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
         const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
-        const expected_waste = parseFloat(subItem.expected_waste || 0);
-        const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
-        const suggested_price = parseFloat(subItem.suggested_price || 0);
+        const expected_waste = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.expected_waste || 0);
+        const agreed_price = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.custom_price || subItem.agreed_price || 0);
+        const suggested_price = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.suggested_price || 0);
 
         // Calculations
-        const monthly_waste = expected_waste * 30;
-        const yearly_waste = expected_waste * 365;
-        const monthly_price = monthly_waste * agreed_price;
-        const yearly_price = yearly_waste * agreed_price;
+        let monthly_waste = expected_waste * 30;
+        let yearly_waste = expected_waste * 365;
+        let monthly_price = monthly_waste * agreed_price;
+        let yearly_price = yearly_waste * agreed_price;
+
+        if (subItem.pricing_mode === 'Bulk') {
+          monthly_waste = 0;
+          yearly_waste = 0;
+          monthly_price = parseFloat(subItem.bulk_monthly_price || 0);
+          yearly_price = parseFloat(subItem.bulk_yearly_price || 0);
+        }
 
         const request = await WasteCollectionRequest.create({
           lead_id: leadId,
           user_id: loggedInId,
+          customer_id: customerId,
           customer_type: customer_type || null,
-          authorized_person_name: authorized_person_name || null,
+          contact_person: contact_person || null,
           mobile_number: mobile_number || null,
           email: email || null,
           waste_generator_name: waste_generator_name || null,
@@ -205,6 +364,40 @@ const createWasteCollectionRequest = async (req, res) => {
           longitude: longitude || null,
           address_search: address_search || null,
 
+          // New B2B / location columns
+          site_request: site_request || null,
+          service_center_type: service_center_type || null,
+          employee_name: employee_name || null,
+          billing_type: billing_type || null,
+          business_region: business_region || null,
+          business_sub_region: business_sub_region || null,
+          branch_code: branch_code || null,
+          business_lead: business_lead || null,
+          customer_legal_name: customer_legal_name || null,
+          customer_trade_name: customer_trade_name || null,
+          contact_person_additional: contact_person || null,
+          designation: designation || null,
+          phone_number_2: phone_number_2 || null,
+          email_2: email_2 || null,
+          others_note: others_note || null,
+          google_map_link: google_map_link || null,
+          landmark: landmark || null,
+          city: city || null,
+          state: state || null,
+          pincode: pincode || null,
+          country: country || null,
+          billing_address_different: billing_address_different !== undefined ? billing_address_different : false,
+          audit_requirement: audit_requirement || null,
+          technician_assign: technician_assign || null,
+          technician: technician || null,
+          total_order_value: total_order_value ? parseFloat(total_order_value) : 0.00,
+          discount: discount ? parseFloat(discount) : 0.00,
+          discounted_price: discounted_price ? parseFloat(discounted_price) : 0.00,
+          sez: sez || null,
+          taxibility: taxibility || null,
+          sector: sector || null,
+          final_price: final_price ? parseFloat(final_price) : 0.00,
+
           category_id,
           subcategory_id,
           variation_id,
@@ -220,8 +413,14 @@ const createWasteCollectionRequest = async (req, res) => {
           pickup_time: pickup_time || null,
           status: 'Pending',
           images: images,
-          generated_by: loggedInId,
-          created_by: loggedInId,
+          mom_agreement_file: momAgreementFile,
+          po_copy_file: poCopyFile,
+          email_copy_file: emailCopyFile,
+          billing_details: billingDetails,
+          rwa_file: rwaFile,
+          gst_file: gstFile,
+          pan_file: panFile,
+          trade_license_file: tradeLicenseFile,
           created_by_type: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
           request_source: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
         });
@@ -233,8 +432,9 @@ const createWasteCollectionRequest = async (req, res) => {
       const request = await WasteCollectionRequest.create({
         lead_id: leadId,
         user_id: loggedInId,
+        customer_id: customerId,
         customer_type: customer_type || null,
-        authorized_person_name: authorized_person_name || null,
+        contact_person: contact_person || null,
         mobile_number: mobile_number || null,
         email: email || null,
         waste_generator_name: waste_generator_name || null,
@@ -251,6 +451,40 @@ const createWasteCollectionRequest = async (req, res) => {
         longitude: longitude || null,
         address_search: address_search || null,
 
+        // New B2B / location columns
+        site_request: site_request || null,
+        service_center_type: service_center_type || null,
+        employee_name: employee_name || null,
+        billing_type: billing_type || null,
+        business_region: business_region || null,
+        business_sub_region: business_sub_region || null,
+        branch_code: branch_code || null,
+        business_lead: business_lead || null,
+        customer_legal_name: customer_legal_name || null,
+        customer_trade_name: customer_trade_name || null,
+        contact_person_additional: contact_person || null,
+        designation: designation || null,
+        phone_number_2: phone_number_2 || null,
+        email_2: email_2 || null,
+        others_note: others_note || null,
+        google_map_link: google_map_link || null,
+        landmark: landmark || null,
+        city: city || null,
+        state: state || null,
+        pincode: pincode || null,
+        country: country || null,
+        billing_address_different: billing_address_different !== undefined ? billing_address_different : false,
+        audit_requirement: audit_requirement || null,
+        technician_assign: technician_assign || null,
+        technician: technician || null,
+        total_order_value: total_order_value ? parseFloat(total_order_value) : 0.00,
+        discount: discount ? parseFloat(discount) : 0.00,
+        discounted_price: discounted_price ? parseFloat(discounted_price) : 0.00,
+        sez: sez || null,
+        taxibility: taxibility || null,
+        sector: sector || null,
+        final_price: final_price ? parseFloat(final_price) : 0.00,
+
         category_id: null,
         subcategory_id: null,
         variation_id: null,
@@ -266,8 +500,14 @@ const createWasteCollectionRequest = async (req, res) => {
         pickup_time: pickup_time || null,
         status: 'Pending',
         images: images,
-        generated_by: loggedInId,
-        created_by: loggedInId,
+        mom_agreement_file: momAgreementFile,
+        po_copy_file: poCopyFile,
+        email_copy_file: emailCopyFile,
+        billing_details: billingDetails,
+        rwa_file: rwaFile,
+        gst_file: gstFile,
+        pan_file: panFile,
+        trade_license_file: tradeLicenseFile,
         created_by_type: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
         request_source: loggedInId ? (isAdmin ? 'Admin' : 'Customer') : 'Customer',
       });
@@ -310,7 +550,17 @@ const getWasteCollectionRequestById = async (req, res) => {
         {
           model: SubCategoryVariation,
           as: "variation",
-          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price"]
+          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price", "bulk_price"]
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "name", "email"]
+        },
+        {
+          model: User,
+          as: "rejector",
+          attributes: ["id", "name", "email"]
         }
       ]
     });
@@ -336,7 +586,6 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
   const { leadId } = req.params;
   const {
     customer_type,
-    authorized_person_name,
     mobile_number,
     email,
     address_search,
@@ -354,15 +603,50 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
     time_slot_id,
     pickup_notes,
     pickup_time,
-    subcategories
+    subcategories,
+
+    // B2B fields
+    site_request,
+    service_center_type,
+    employee_name,
+    billing_type,
+    business_region,
+    business_sub_region,
+    branch_code,
+    business_lead,
+    customer_legal_name,
+    customer_trade_name,
+    contact_person,
+    designation,
+    phone_number_2,
+    email_2,
+    others_note,
+    google_map_link,
+    landmark,
+    city,
+    state,
+    pincode,
+    country,
+    billing_address_different,
+    billing_details,
+    audit_requirement,
+    technician_assign,
+    technician,
+    total_order_value,
+    discount,
+    discounted_price,
+    sez,
+    taxibility,
+    sector,
+    final_price
   } = req.body;
 
   // Validation for Step 1 (Customer Details) & Step 2 (Property Details)
   if (!customer_type) {
     return res.status(400).json({ message: "Customer type is required." });
   }
-  if (!authorized_person_name) {
-    return res.status(400).json({ message: "Authorized person name is required." });
+  if (!contact_person) {
+    return res.status(400).json({ message: "Contact person name is required." });
   }
   if (!mobile_number) {
     return res.status(400).json({ message: "Mobile number is required." });
@@ -396,14 +680,41 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
     }
 
     const firstExisting = existingRequests[0];
-    const originalCreatedBy = firstExisting.created_by;
     const originalCreatedByType = firstExisting.created_by_type;
     const originalRequestSource = firstExisting.request_source;
-    const originalGeneratedBy = firstExisting.generated_by;
     const originalUserId = firstExisting.user_id;
     const originalStatus = firstExisting.status;
-    const originalImages = firstExisting.images;
     const originalCreatedAt = firstExisting.created_at;
+
+    // Dynamically calculate final list of images
+    let finalImages = [];
+    if (req.body.existing_images) {
+      try {
+        finalImages = typeof req.body.existing_images === 'string' ? JSON.parse(req.body.existing_images) : req.body.existing_images;
+      } catch (err) {
+        console.error("Failed to parse existing_images:", err);
+      }
+    } else if (firstExisting.images) {
+      try {
+        finalImages = JSON.parse(firstExisting.images) || [];
+      } catch (err) {
+        finalImages = [];
+      }
+    }
+
+    if (req.files && req.files.images) {
+      const newImages = req.files.images.map(f => f.filename);
+      finalImages = [...finalImages, ...newImages];
+    }
+    const imagesToSave = finalImages.length > 0 ? JSON.stringify(finalImages) : null;
+
+    const momAgreementFile = req.files && req.files.mom_agreement_file ? req.files.mom_agreement_file[0].filename : firstExisting.mom_agreement_file;
+    const poCopyFile = req.files && req.files.po_copy_file ? req.files.po_copy_file[0].filename : firstExisting.po_copy_file;
+    const rwaFile = req.files && req.files.rwa_file ? req.files.rwa_file[0].filename : firstExisting.rwa_file;
+    const gstFile = req.files && req.files.gst_file ? req.files.gst_file[0].filename : firstExisting.gst_file;
+    const panFile = req.files && req.files.pan_file ? req.files.pan_file[0].filename : firstExisting.pan_file;
+    const tradeLicenseFile = req.files && req.files.trade_license_file ? req.files.trade_license_file[0].filename : firstExisting.trade_license_file;
+    const emailCopyFile = req.files && req.files.email_copy_file ? req.files.email_copy_file[0].filename : firstExisting.email_copy_file;
 
     // Time Slot validations
     if (time_slot_id && pickup_date) {
@@ -436,21 +747,28 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
           const category_id = subItem.category_id ? parseInt(subItem.category_id) : null;
           const subcategory_id = subItem.subcategory_id ? parseInt(subItem.subcategory_id) : null;
           const variation_id = subItem.variation_id ? parseInt(subItem.variation_id) : null;
-          const expected_waste = parseFloat(subItem.expected_waste || 0);
-          const agreed_price = parseFloat(subItem.custom_price || subItem.agreed_price || 0);
-          const suggested_price = parseFloat(subItem.suggested_price || 0);
+          const expected_waste = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.expected_waste || 0);
+          const agreed_price = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.custom_price || subItem.agreed_price || 0);
+          const suggested_price = subItem.pricing_mode === 'Bulk' ? 0 : parseFloat(subItem.suggested_price || 0);
 
           // Calculations
-          const monthly_waste = expected_waste * 30;
-          const yearly_waste = expected_waste * 365;
-          const monthly_price = monthly_waste * agreed_price;
-          const yearly_price = yearly_waste * agreed_price;
+          let monthly_waste = expected_waste * 30;
+          let yearly_waste = expected_waste * 365;
+          let monthly_price = monthly_waste * agreed_price;
+          let yearly_price = yearly_waste * agreed_price;
+
+          if (subItem.pricing_mode === 'Bulk') {
+            monthly_waste = 0;
+            yearly_waste = 0;
+            monthly_price = parseFloat(subItem.bulk_monthly_price || 0);
+            yearly_price = parseFloat(subItem.bulk_yearly_price || 0);
+          }
 
           await WasteCollectionRequest.create({
             lead_id: leadId,
             user_id: originalUserId,
-            customer_type,
-            authorized_person_name,
+            customer_type: customer_type || null,
+            contact_person,
             mobile_number,
             email,
             waste_generator_name,
@@ -481,11 +799,53 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
             pickup_notes: pickup_notes || null,
             pickup_time: pickup_time || null,
             status: originalStatus,
-            images: originalImages,
-            generated_by: originalGeneratedBy,
-            created_by: originalCreatedBy,
+            images: imagesToSave,
             created_by_type: originalCreatedByType,
             request_source: originalRequestSource,
+
+            // B2B additions
+            site_request: site_request || null,
+            service_center_type: service_center_type || null,
+            employee_name: employee_name || null,
+            billing_type: billing_type || null,
+            business_region: business_region || null,
+            business_sub_region: business_sub_region || null,
+            branch_code: branch_code || null,
+            business_lead: business_lead || null,
+            customer_legal_name: customer_legal_name || null,
+            customer_trade_name: customer_trade_name || null,
+            contact_person_additional: contact_person || null,
+            designation: designation || null,
+            phone_number_2: phone_number_2 || null,
+            email_2: email_2 || null,
+            others_note: others_note || null,
+            google_map_link: google_map_link || null,
+            landmark: landmark || null,
+            city: city || null,
+            state: state || null,
+            pincode: pincode || null,
+            country: country || null,
+            billing_address_different: billing_address_different !== undefined ? (billing_address_different === 'true' || billing_address_different === true) : false,
+            billing_details: billing_details || null,
+            audit_requirement: audit_requirement || null,
+            technician_assign: technician_assign || null,
+            technician: technician || null,
+            total_order_value: total_order_value ? parseFloat(total_order_value) : 0.00,
+            discount: discount ? parseFloat(discount) : 0.00,
+            discounted_price: discounted_price ? parseFloat(discounted_price) : 0.00,
+            sez: sez || null,
+            taxibility: taxibility || null,
+            sector: sector || null,
+            final_price: final_price ? parseFloat(final_price) : 0.00,
+
+            mom_agreement_file: momAgreementFile,
+            po_copy_file: poCopyFile,
+            rwa_file: rwaFile,
+            gst_file: gstFile,
+            pan_file: panFile,
+            trade_license_file: tradeLicenseFile,
+            email_copy_file: emailCopyFile,
+
             created_at: originalCreatedAt
           }, { transaction: t });
         }
@@ -494,8 +854,8 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
         await WasteCollectionRequest.create({
           lead_id: leadId,
           user_id: originalUserId,
-          customer_type,
-          authorized_person_name,
+          customer_type: customer_type || null,
+          contact_person,
           mobile_number,
           email,
           waste_generator_name,
@@ -526,11 +886,53 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
           pickup_notes: pickup_notes || null,
           pickup_time: pickup_time || null,
           status: originalStatus,
-          images: originalImages,
-          generated_by: originalGeneratedBy,
-          created_by: originalCreatedBy,
+          images: imagesToSave,
           created_by_type: originalCreatedByType,
           request_source: originalRequestSource,
+
+          // B2B additions
+          site_request: site_request || null,
+          service_center_type: service_center_type || null,
+          employee_name: employee_name || null,
+          billing_type: billing_type || null,
+          business_region: business_region || null,
+          business_sub_region: business_sub_region || null,
+          branch_code: branch_code || null,
+          business_lead: business_lead || null,
+          customer_legal_name: customer_legal_name || null,
+          customer_trade_name: customer_trade_name || null,
+          contact_person_additional: contact_person || null,
+          designation: designation || null,
+          phone_number_2: phone_number_2 || null,
+          email_2: email_2 || null,
+          others_note: others_note || null,
+          google_map_link: google_map_link || null,
+          landmark: landmark || null,
+          city: city || null,
+          state: state || null,
+          pincode: pincode || null,
+          country: country || null,
+          billing_address_different: billing_address_different !== undefined ? (billing_address_different === 'true' || billing_address_different === true) : false,
+          billing_details: billing_details || null,
+          audit_requirement: audit_requirement || null,
+          technician_assign: technician_assign || null,
+          technician: technician || null,
+          total_order_value: total_order_value ? parseFloat(total_order_value) : 0.00,
+          discount: discount ? parseFloat(discount) : 0.00,
+          discounted_price: discounted_price ? parseFloat(discounted_price) : 0.00,
+          sez: sez || null,
+          taxibility: taxibility || null,
+          sector: sector || null,
+          final_price: final_price ? parseFloat(final_price) : 0.00,
+
+          mom_agreement_file: momAgreementFile,
+          po_copy_file: poCopyFile,
+          rwa_file: rwaFile,
+          gst_file: gstFile,
+          pan_file: panFile,
+          trade_license_file: tradeLicenseFile,
+          email_copy_file: emailCopyFile,
+
           created_at: originalCreatedAt
         }, { transaction: t });
       }
@@ -545,9 +947,133 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
   }
 };
 
+const updateWasteCollectionRequestStatus = async (req, res) => {
+  const { leadId } = req.params;
+  const { status, rejected_reason } = req.body;
+  const loggedInId = req.user?.id;
+
+  if (!['Pending', 'Verified', 'Approved', 'Rejected', 'Completed'].includes(status)) {
+    return res.status(400).json({ message: "Invalid status value." });
+  }
+
+  if (status === 'Rejected' && (!rejected_reason || !rejected_reason.trim())) {
+    return res.status(400).json({ message: "Rejection reason is required when status is Rejected." });
+  }
+
+  try {
+    const requests = await WasteCollectionRequest.findAll({
+      where: { lead_id: leadId }
+    });
+
+    if (requests.length === 0) {
+      return res.status(404).json({ message: "Waste collection request not found." });
+    }
+
+    const updates = {
+      status,
+      approved_by: status === 'Approved' ? loggedInId : null,
+      approved_date: status === 'Approved' ? new Date() : null,
+      rejected_by: status === 'Rejected' ? loggedInId : null,
+      rejected_date: status === 'Rejected' ? new Date() : null,
+      rejected_reason: status === 'Rejected' ? rejected_reason.trim() : null
+    };
+
+    if (status !== 'Approved' && status !== 'Rejected') {
+      updates.approved_by = null;
+      updates.approved_date = null;
+      updates.rejected_by = null;
+      updates.rejected_date = null;
+      updates.rejected_reason = null;
+    }
+
+    await WasteCollectionRequest.update(updates, {
+      where: { lead_id: leadId }
+    });
+
+    return res.status(200).json({
+      message: `Request status updated to ${status} successfully.`,
+      status,
+      ...updates
+    });
+  } catch (err) {
+    console.error("updateWasteCollectionRequestStatus error:", err);
+    return res.status(500).json({ message: "Failed to update request status." });
+  }
+};
+
+const searchRequestByMobile = async (req, res) => {
+  const { mobile } = req.query;
+  if (!mobile) {
+    return res.status(400).json({ message: "Mobile number is required." });
+  }
+
+  try {
+    // Find all WasteCollectionRequests matching this mobile number
+    const requests = await WasteCollectionRequest.findAll({
+      where: { mobile_number: mobile },
+      order: [['id', 'DESC']]
+    });
+
+    return res.status(200).json({
+      success: true,
+      requests
+    });
+  } catch (err) {
+    console.error("searchRequestByMobile error:", err);
+    return res.status(500).json({ message: "Failed to search request by mobile number." });
+  }
+};
+
+const resolveMapLink = async (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ message: "URL is required" });
+  }
+
+  try {
+    const response = await axios.get(url, {
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+      },
+      validateStatus: (status) => status >= 200 && status < 400
+    });
+
+    const resolvedUrl = response.request.res.responseUrl || url;
+    return res.status(200).json({ success: true, resolvedUrl });
+  } catch (err) {
+    console.error("resolveMapLink error:", err.message);
+    try {
+      const getRedirect = (targetUrl) => {
+        return new Promise((resolve) => {
+          const client = targetUrl.startsWith('https') ? require('https') : require('http');
+          client.get(targetUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+          }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              resolve(res.headers.location);
+            } else {
+              resolve(targetUrl);
+            }
+          }).on('error', () => resolve(targetUrl));
+        });
+      };
+      const resolvedUrl = await getRedirect(url);
+      return res.status(200).json({ success: true, resolvedUrl });
+    } catch (e) {
+      return res.status(200).json({ success: true, resolvedUrl: url });
+    }
+  }
+};
+
 module.exports = {
   getWasteCollectionRequests,
   createWasteCollectionRequest,
   getWasteCollectionRequestById,
-  updateWasteCollectionRequestByLeadId
+  updateWasteCollectionRequestByLeadId,
+  updateWasteCollectionRequestStatus,
+  searchRequestByMobile,
+  resolveMapLink
 };

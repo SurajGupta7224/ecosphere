@@ -3,7 +3,7 @@ import { User, Mail, Phone, MapPin, Building, CreditCard, Save, X, Camera } from
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';
 
-const InputField = ({ label, name, type="text", value, onChange, required=false, icon: Icon, placeholder="" }) => (
+const InputField = ({ label, name, type="text", value, onChange, required=false, icon: Icon, placeholder="", disabled=false }) => (
   <div className="mb-5">
     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
       {label} {required && <span className="text-red-500">*</span>}
@@ -19,7 +19,8 @@ const InputField = ({ label, name, type="text", value, onChange, required=false,
         onChange={onChange} 
         required={required}
         placeholder={placeholder}
-        className="w-full bg-slate-50 border border-slate-200 focus:border-[#7c3aed] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none py-2.5 pl-10 pr-4 rounded-xl text-sm text-slate-800 transition-all placeholder:text-slate-400 shadow-sm" 
+        disabled={disabled}
+        className="w-full bg-slate-50 border border-slate-200 focus:border-[#7c3aed] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none py-2.5 pl-10 pr-4 rounded-xl text-sm text-slate-800 transition-all placeholder:text-slate-400 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed" 
       />
     </div>
   </div>
@@ -51,36 +52,89 @@ const SelectField = ({ label, name, value, onChange, options, required=false, di
   </div>
 );
 
-const DocumentPreview = ({ label, path, fieldName, onFileChange }) => (
-  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm">
-    <div className="flex justify-between items-center mb-4">
-      <h3 className="text-sm font-bold text-slate-700">{label}</h3>
-      {path && (
-        <a 
-          href={`${IMAGE_BASE_URL}/${fieldName === 'profile_photo' ? 'Profile_Photo' : fieldName === 'pan_card_file' ? 'Pan_Card' : fieldName === 'aadhaar_card_file' ? 'Aadhaar_Card' : 'GST'}/${path}`} 
-          target="_blank" 
-          rel="noreferrer"
-          className="text-xs font-semibold text-purple-600 hover:text-purple-700 underline"
-        >
-          View Existing
-        </a>
-      )}
-    </div>
-    <div className="relative group overflow-hidden rounded-xl border-2 border-dashed border-slate-200 hover:border-purple-300 transition-colors bg-white">
-      <input 
-        type="file" 
-        name={fieldName}
-        onChange={onFileChange}
-        className="absolute inset-0 opacity-0 cursor-pointer z-10"
-      />
-      <div className="p-8 flex flex-col items-center justify-center text-center">
-        <CreditCard className="w-8 h-8 text-slate-300 mb-2 group-hover:text-purple-400 transition-colors" />
-        <p className="text-xs font-medium text-slate-500">Drag & drop or <span className="text-purple-600">browse</span></p>
-        <p className="text-[10px] text-slate-400 mt-1">PDF, JPG, PNG (Max 5MB)</p>
+const DocumentPreview = ({ label, path, fieldName, selectedFile, onFileChange }) => {
+  const [localPreview, setLocalPreview] = useState(null);
+
+  useEffect(() => {
+    if (selectedFile) {
+      const url = URL.createObjectURL(selectedFile);
+      setLocalPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setLocalPreview(null);
+    }
+  }, [selectedFile]);
+
+  // Determine standard folder for files
+  const folder = fieldName === 'profile_photo' ? 'Profile_Photo' : fieldName === 'pan_card_file' ? 'Pan_Card' : fieldName === 'aadhaar_card_file' ? 'Aadhaar_Card' : 'GST';
+  const previewUrl = localPreview || (path ? `${IMAGE_BASE_URL}/${folder}/${path}` : null);
+  
+  // Detect if the file is PDF
+  const isPDF = (selectedFile?.name?.toLowerCase().endsWith('.pdf')) || (!selectedFile && path?.toLowerCase().endsWith('.pdf'));
+
+  return (
+    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-bold text-slate-700">{label}</h3>
+        {previewUrl && (
+          <a 
+            href={previewUrl}
+            target="_blank" 
+            rel="noreferrer"
+            className="text-xs font-semibold text-purple-600 hover:text-purple-700 underline"
+          >
+            Open File
+          </a>
+        )}
+      </div>
+      <div className="relative group overflow-hidden rounded-xl border-2 border-dashed border-slate-200 hover:border-purple-300 transition-all bg-white min-h-[140px] flex items-center justify-center">
+        <input 
+          type="file" 
+          name={fieldName}
+          onChange={onFileChange}
+          accept="image/*,.pdf"
+          className="absolute inset-0 opacity-0 cursor-pointer z-20"
+        />
+        
+        {previewUrl ? (
+          <div className="w-full h-full p-2 flex flex-col items-center justify-center z-10">
+            {isPDF ? (
+              <div className="flex flex-col items-center gap-2 py-4">
+                <div className="w-12 h-12 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border border-red-200">
+                  <span className="font-extrabold text-[10px] tracking-tight">PDF</span>
+                </div>
+                <p className="text-xs font-bold text-slate-600 truncate max-w-[180px] px-2 text-center">
+                  {selectedFile ? selectedFile.name : path}
+                </p>
+                <span className="text-[10px] text-indigo-500 font-semibold group-hover:underline">Click to change</span>
+              </div>
+            ) : (
+              <div className="relative w-full h-32 flex items-center justify-center overflow-hidden rounded-lg bg-slate-50 border border-slate-100 group-hover:opacity-75 transition-opacity">
+                <img 
+                  src={previewUrl} 
+                  alt={label} 
+                  className="max-h-full max-w-full object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
+                  Replace File
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-8 flex flex-col items-center justify-center text-center z-10 pointer-events-none">
+            <CreditCard className="w-8 h-8 text-slate-300 mb-2 group-hover:text-purple-400 transition-colors" />
+            <p className="text-xs font-medium text-slate-500">Drag & drop or <span className="text-purple-600">browse</span></p>
+            <p className="text-[10px] text-slate-400 mt-1">PDF, JPG, PNG (Max 5MB)</p>
+          </div>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Profile = () => {
   const [userData, setUserData] = useState(null);
@@ -338,7 +392,7 @@ const Profile = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
                 <InputField label="Full Name" name="name" value={formData.name} onChange={handleInputChange} required icon={User} />
-                <InputField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} required icon={Mail} />
+                <InputField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} required icon={Mail} disabled={true} />
                 <InputField label="Phone Number" name="phone" value={formData.phone} onChange={handleInputChange} required icon={Phone} />
                 <InputField label="New Password" name="password" type="password" value={formData.password} onChange={handleInputChange} icon={CreditCard} placeholder="Keep blank to stay same" />
               </div>
@@ -403,8 +457,8 @@ const Profile = () => {
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
               <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-6">Verification Files</h2>
               <div className="space-y-6">
-                <DocumentPreview label="Pan Card" path={userData.pan_card_file} fieldName="pan_card_file" onFileChange={handleFileChange} />
-                <DocumentPreview label="Aadhaar Card" path={userData.aadhaar_card_file} fieldName="aadhaar_card_file" onFileChange={handleFileChange} />
+                <DocumentPreview label="Pan Card" path={userData.pan_card_file} fieldName="pan_card_file" selectedFile={fileData.pan_card_file} onFileChange={handleFileChange} />
+                <DocumentPreview label="Aadhaar Card" path={userData.aadhaar_card_file} fieldName="aadhaar_card_file" selectedFile={fileData.aadhaar_card_file} onFileChange={handleFileChange} />
               </div>
             </div>
 

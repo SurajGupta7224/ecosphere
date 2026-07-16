@@ -19,11 +19,19 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
       key: 'id'
     }
   },
+  customer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'customers',
+      key: 'id'
+    }
+  },
   customer_type: {
     type: DataTypes.STRING(50),
     allowNull: true,
   },
-  authorized_person_name: {
+  contact_person: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
@@ -46,6 +54,7 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   dwelling_units: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'flats'
   },
   complete_address: {
     type: DataTypes.TEXT,
@@ -157,14 +166,6 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  created_by: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
   created_by_type: {
     type: DataTypes.STRING(50),
     allowNull: true,
@@ -172,14 +173,6 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   request_source: {
     type: DataTypes.STRING(50),
     allowNull: true,
-  },
-  generated_by: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
   },
   latitude: {
     type: DataTypes.STRING(50),
@@ -190,6 +183,199 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     allowNull: true,
   },
   address_search: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  site_request: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  service_center_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  employee_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  billing_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  business_region: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  business_sub_region: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  branch_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  business_lead: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  customer_legal_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  customer_trade_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  contact_person_additional: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  designation: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  phone_number_2: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  email_2: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  others_note: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  google_map_link: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  landmark: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  city: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  state: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  pincode: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  billing_address_different: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: true,
+  },
+  billing_details: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  audit_requirement: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  technician_assign: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  technician: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  total_order_value: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  discount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  discounted_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  sez: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  taxibility: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  sector: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  final_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  mom_agreement_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  po_copy_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  rwa_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  gst_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  pan_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  trade_license_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  email_copy_file: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  approved_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  approved_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  rejected_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  rejected_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  rejected_reason: {
     type: DataTypes.TEXT,
     allowNull: true,
   }

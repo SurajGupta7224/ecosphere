@@ -47,6 +47,10 @@ console.log("TRACE: Routes required successfully.");
 // Admin routes (Protected) - Mounted on /api/admin to avoid conflicts
 app.use("/api/admin", adminRoutes); 
 
+// Client-side storefront routes
+const clientRoutes = require("./routes/api");
+app.use("/api", clientRoutes);
+
 // Root route
 app.get("/", (req, res) => {
   res.send("Ecosphere API Server is running");

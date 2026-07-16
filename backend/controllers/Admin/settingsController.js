@@ -63,7 +63,8 @@ exports.getPublicSettings = async (req, res) => {
           navbar_color: theme.navbar_color,
           card_bg_color: theme.card_bg_color,
           button_color: theme.button_color,
-          text_color: theme.text_color
+          text_color: theme.text_color,
+          font_family: theme.font_family
         }
       }
     });

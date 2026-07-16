@@ -223,6 +223,24 @@ export default function Settings() {
   useEffect(() => { fetchSettings(); }, []);
   useEffect(() => { if (activeTab === 'audit') fetchAuditLogs(); }, [activeTab, auditFilters]);
 
+  // Load Google Font dynamically for live preview
+  useEffect(() => {
+    if (theme.font_family) {
+      const fontName = theme.font_family;
+      const systemFonts = ['system-ui', 'sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New'];
+      if (!systemFonts.includes(fontName)) {
+        const id = `google-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+        if (!document.getElementById(id)) {
+          const link = document.createElement('link');
+          link.id = id;
+          link.rel = 'stylesheet';
+          link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700;800&display=swap`;
+          document.head.appendChild(link);
+        }
+      }
+    }
+  }, [theme.font_family]);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -448,6 +466,42 @@ export default function Settings() {
                 </div>
               </div>
 
+              {/* Font Family Selector */}
+              <div className="mb-6">
+                <Label>Font Family</Label>
+                <div className="max-w-xs mt-2">
+                  <Select 
+                    name="font_family" 
+                    value={theme.font_family || 'Inter'} 
+                    onChange={f(setTheme)} 
+                    options={[
+                      'Inter',
+                      'Roboto',
+                      'Poppins',
+                      'Outfit',
+                      'Plus Jakarta Sans',
+                      'Montserrat',
+                      'Playfair Display',
+                      'Lora',
+                      'Open Sans',
+                      'Lato',
+                      'Oswald',
+                      'Merriweather',
+                      'Nunito',
+                      'Raleway',
+                      'DM Sans',
+                      'Ubuntu',
+                      'Cabin',
+                      'Fira Sans',
+                      'Quicksand',
+                      'Cinzel',
+                      'EB Garamond',
+                      'system-ui'
+                    ]} 
+                  />
+                </div>
+              </div>
+
               {/* Color Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <ColorField label="Primary Color"    name="primary_color"    value={theme.primary_color}    onChange={f(setTheme)} />
@@ -465,7 +519,10 @@ export default function Settings() {
               {/* Live Preview */}
               <div
                 className="mt-6 rounded-xl p-5 transition-all"
-                style={{ backgroundColor: theme.sidebar_color || '#1e133c' }}
+                style={{ 
+                  backgroundColor: theme.sidebar_color || '#1e133c',
+                  fontFamily: theme.font_family || 'Inter'
+                }}
               >
                 <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-3">Live Preview (Theme & Buttons)</p>
                 <div className="flex flex-wrap gap-3 items-center mb-6">

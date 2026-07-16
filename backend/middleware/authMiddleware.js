@@ -48,8 +48,8 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Check status (handle both 'active' string for User and 1 for Customer)
-    const isActive = userType === 'user' ? user.status === 'active' : user.status == 1;
+    // Check status (handle both 'active' string for User and 1/active for Customer)
+    const isActive = userType === 'user' ? user.status === 'active' : (user.status == 1 || user.status === 'active');
     if (!isActive) {
       return res.status(401).json({ message: "User account suspended." });
     }
@@ -85,6 +85,29 @@ const verifyToken = async (req, res, next) => {
       }
     } catch (err) {
       console.error("Maintenance check error in verifyToken:", err);
+    }
+
+    // Check if user is pending approval
+    if (userType === 'user') {
+      const isApproved = user.profile_status === 'approved';
+      const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
+      if (!isApproved && !isAdmin) {
+        // Only allow profile retrieval/update, T&C acceptance, dashboard stats, and location dropdowns
+        const allowedPrefixes = [
+          '/profile',
+          '/tnc',
+          '/corporations',
+          '/zones',
+          '/dashboard'
+        ];
+        const isAllowed = allowedPrefixes.some(prefix => req.path.startsWith(prefix));
+        if (!isAllowed) {
+          return res.status(403).json({
+            status: 0,
+            message: "Access Denied: Your account is pending approval. You cannot perform this action."
+          });
+        }
+      }
     }
 
     next();

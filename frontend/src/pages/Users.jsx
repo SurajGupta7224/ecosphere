@@ -1,26 +1,65 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Users as UsersIcon, Send, RotateCcw } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Users as UsersIcon, Send, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';
 
-const InputField = ({ label, name, type="text", value, onChange, required=false, placeholder="" }) => (
-  <div className="mb-4">
-    <label className="block text-xs font-semibold text-slate-600 mb-1">
-      {label} {required && <span className="text-[#7c3aed]">*</span>}
-    </label>
-    <input 
-      type={type} 
-      name={name} 
-      value={value} 
-      onChange={onChange} 
-      required={required}
-      placeholder={placeholder}
-      className="w-full bg-transparent border-b border-slate-200 focus:border-[#7c3aed] outline-none py-2 text-sm text-slate-800 transition-colors placeholder:text-slate-400" 
-    />
-  </div>
-);
+const InputField = ({ label, name, type="text", value, onChange, required=false, placeholder="", error }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const isPassword = type === 'password';
+  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
-const SelectField = ({ label, name, value, onChange, options, required=false, disabled=false, placeholder="Choose" }) => (
+  let autoCompleteVal = "on";
+  if (isPassword) {
+    autoCompleteVal = "new-password";
+  } else if (name === "email") {
+    autoCompleteVal = "email";
+  } else if (name === "phone") {
+    autoCompleteVal = "tel";
+  } else if (name === "name") {
+    autoCompleteVal = "name";
+  } else if (name === "pan_number" || name === "aadhaar_number") {
+    autoCompleteVal = "off";
+  }
+
+  return (
+    <div className="mb-4">
+      <label className="block text-xs font-semibold text-slate-600 mb-1">
+        {label} {required && <span className="text-[#7c3aed]">*</span>}
+      </label>
+      <div className="relative">
+        <input 
+          type={inputType} 
+          name={name} 
+          value={value} 
+          onChange={onChange} 
+          required={required}
+          placeholder={placeholder}
+          autoComplete={autoCompleteVal}
+          className={`w-full bg-transparent border-b outline-none py-2 text-sm text-slate-800 transition-colors placeholder:text-slate-400 ${
+            isPassword ? 'pr-10' : ''
+          } ${
+            error 
+              ? 'border-red-500 focus:border-red-500' 
+              : 'border-slate-200 focus:border-[#7c3aed]'
+          }`} 
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
+      </div>
+      {error && <span className="text-red-500 text-[10px] mt-1 block">{error}</span>}
+    </div>
+  );
+};
+
+const SelectField = ({ label, name, value, onChange, options, required=false, disabled=false, placeholder="Choose", error }) => (
   <div className="mb-4">
     <label className="block text-xs font-semibold text-slate-600 mb-1">
       {label} {required && <span className="text-[#7c3aed]">*</span>}
@@ -31,13 +70,18 @@ const SelectField = ({ label, name, value, onChange, options, required=false, di
       onChange={onChange} 
       required={required}
       disabled={disabled}
-      className="w-full bg-transparent border-b border-slate-200 focus:border-[#7c3aed] outline-none py-2 text-sm text-slate-800 transition-colors disabled:opacity-50 appearance-none"
+      className={`w-full bg-transparent border-b outline-none py-2 text-sm text-slate-800 transition-colors disabled:opacity-50 appearance-none ${
+        error 
+          ? 'border-red-500 focus:border-red-500' 
+          : 'border-slate-200 focus:border-[#7c3aed]'
+      }`}
     >
       <option value="" disabled>{placeholder}</option>
       {options.map(opt => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
+    {error && <span className="text-red-500 text-[10px] mt-1 block">{error}</span>}
   </div>
 );
 
@@ -116,6 +160,7 @@ const Users = () => {
   });
   
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Delete Modal State
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, name: '' });
@@ -180,7 +225,24 @@ const Users = () => {
   };
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    let finalValue = value;
+    
+    // Auto-uppercase PAN number
+    if (name === 'pan_number') {
+      finalValue = value.toUpperCase();
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
+    
+    // Clear validation error on change
+    if (errors[name]) {
+      setErrors(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
 
   const handleCorporationChange = async (e) => {
@@ -188,6 +250,16 @@ const Users = () => {
     setFormData(prev => ({ ...prev, corporation_id: corpId, zone_id: '', ward_id: '' }));
     setZones([]);
     setWards([]);
+    
+    // Clear errors for corporation, zone, and ward
+    setErrors(prev => {
+      const updated = { ...prev };
+      delete updated.corporation_id;
+      delete updated.zone_id;
+      delete updated.ward_id;
+      return updated;
+    });
+
     if (corpId) {
       await fetchZones(corpId);
     }
@@ -197,6 +269,15 @@ const Users = () => {
     const zoneId = e.target.value;
     setFormData(prev => ({ ...prev, zone_id: zoneId, ward_id: '' }));
     setWards([]);
+    
+    // Clear errors for zone and ward
+    setErrors(prev => {
+      const updated = { ...prev };
+      delete updated.zone_id;
+      delete updated.ward_id;
+      return updated;
+    });
+
     if (zoneId) {
       await fetchWards(zoneId);
     }
@@ -224,6 +305,7 @@ const Users = () => {
     setWards([]);
     setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setExistingFiles({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
+    setErrors({});
     setIsFormOpen(true);
   };
 
@@ -255,7 +337,7 @@ const Users = () => {
       company_type: cType, 
       pan_number: user.pan_number || '', aadhaar_number: user.aadhaar_number || '',
       status: user.status || 'active', profile_status: user.profile_status || 'pending',
-      password: '' // Don't populate password
+      password: '********' // Show dummy dots for existing password
     });
     setFileData({ profile_photo: null, pan_card_file: null, aadhaar_card_file: null });
     setExistingFiles({
@@ -263,20 +345,99 @@ const Users = () => {
       pan_card_file: user.pan_card_file ? (user.pan_card_file.startsWith('/uploads/') ? user.pan_card_file : `/uploads/Pan_Card/${user.pan_card_file}`) : null,
       aadhaar_card_file: user.aadhaar_card_file ? (user.aadhaar_card_file.startsWith('/uploads/') ? user.aadhaar_card_file : `/uploads/Aadhaar_Card/${user.aadhaar_card_file}`) : null
     });
+    setErrors({});
     setIsFormOpen(true);
   };
 
   const closeForm = () => {
     setIsFormOpen(false);
     setEditingId(null);
+    setErrors({});
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Name validation
+    if (!formData.name || !formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (!/^[A-Za-z\s]{2,50}$/.test(formData.name.trim())) {
+      newErrors.name = 'Name must be 2-50 characters and contain only letters';
+    }
+
+    // Email validation
+    if (!formData.email || !formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Phone validation
+    if (!formData.phone || !formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Phone number must be exactly 10 digits';
+    }
+
+    // Password validation
+    if (!isEditMode) {
+      if (!formData.password) {
+        newErrors.password = 'Password is required';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters long';
+      }
+    } else {
+      // In edit mode, check password only if it is typed and is not the dummy placeholder
+      if (formData.password && formData.password !== '********' && formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters long';
+      }
+    }
+
+    // PAN validation
+    if (!formData.pan_number || !formData.pan_number.trim()) {
+      newErrors.pan_number = 'PAN number is required';
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number.trim().toUpperCase())) {
+      newErrors.pan_number = 'Enter a valid PAN (e.g., ABCDE1234F)';
+    }
+
+    // Aadhaar validation
+    if (!formData.aadhaar_number || !formData.aadhaar_number.trim()) {
+      newErrors.aadhaar_number = 'Aadhar number is required';
+    } else if (!/^\d{12}$/.test(formData.aadhaar_number.trim())) {
+      newErrors.aadhaar_number = 'Aadhar number must be exactly 12 digits';
+    }
+
+    // Corporation, Zone, Ward validation
+    if (!formData.corporation_id) {
+      newErrors.corporation_id = 'Corporation is required';
+    }
+    if (!formData.zone_id) {
+      newErrors.zone_id = 'Zone is required';
+    }
+    if (!formData.ward_id) {
+      newErrors.ward_id = 'Ward is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error("Please fix validation errors before submitting");
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = new FormData();
     Object.keys(formData).forEach(key => {
+      // If editing and password is empty or placeholder '********', do not append password key to payload
+      if (key === 'password' && isEditMode && (!formData.password || formData.password === '********')) {
+        return;
+      }
       if (formData[key] !== null && formData[key] !== '') {
         payload.append(key, formData[key]);
       }
@@ -352,33 +513,47 @@ const Users = () => {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <form onSubmit={handleSubmit} className="p-8">
+            <form onSubmit={handleSubmit} noValidate className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                <InputField label="Name" name="name" value={formData.name} onChange={handleInputChange} required placeholder="Name" />
-                <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} required placeholder="Email" />
-                <InputField label="Phone Number" name="phone" value={formData.phone} onChange={handleInputChange} required placeholder="Phone Number" />
+                <InputField label="Name" name="name" value={formData.name} onChange={handleInputChange} required placeholder="Name" error={errors.name} />
+                <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} required placeholder="Email" error={errors.email} />
+                <InputField label="Phone Number" name="phone" value={formData.phone} onChange={handleInputChange} required placeholder="Phone Number" error={errors.phone} />
                 
                 <SelectField 
                   label="System Role" name="role_id" value={formData.role_id} onChange={handleInputChange} required 
                   options={roles.map(r => ({ value: r.id, label: r.role_name }))} 
+                  error={errors.role_id}
                 />
-                <InputField label="Password" name="password" type="password" value={formData.password} onChange={handleInputChange} required={!isEditMode} placeholder={isEditMode ? "Leave blank to keep" : "Password"} />
+                
+                <InputField 
+                  label="Password" 
+                  name="password" 
+                  type="password" 
+                  value={formData.password} 
+                  onChange={handleInputChange} 
+                  required={!isEditMode} 
+                  placeholder={isEditMode ? "Leave blank to keep" : "Password"}
+                  error={errors.password}
+                />
                 
                 <SelectField 
                   label="Corporation" name="corporation_id" value={formData.corporation_id} onChange={handleCorporationChange} required placeholder="Select Corporation"
                   options={corporations.map(c => ({ value: c.id, label: c.corporation_name }))} 
+                  error={errors.corporation_id}
                 />
                 <SelectField 
                   label="Zone" name="zone_id" value={formData.zone_id} onChange={handleZoneChange} required placeholder="Select Zone" disabled={!formData.corporation_id}
                   options={zones.map(z => ({ value: z.id, label: z.zone_name }))} 
+                  error={errors.zone_id}
                 />
                 <SelectField 
                   label="Ward" name="ward_id" value={formData.ward_id} onChange={handleInputChange} required placeholder="Select Ward" disabled={!formData.zone_id}
                   options={wards.map(w => ({ value: w.id, label: w.ward_name }))} 
+                  error={errors.ward_id}
                 />
-
-                <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} required placeholder="PAN Number" />
-                <InputField label="Aadhar Number" name="aadhaar_number" value={formData.aadhaar_number} onChange={handleInputChange} required placeholder="Aadhar Number" />
+ 
+                <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} required placeholder="PAN Number" error={errors.pan_number} />
+                <InputField label="Aadhar Number" name="aadhaar_number" value={formData.aadhaar_number} onChange={handleInputChange} required placeholder="Aadhar Number" error={errors.aadhaar_number} />
                 
                 <FileField label="Upload Photo" name="profile_photo" onChange={handleFileChange} existingFile={existingFiles.profile_photo} onPreview={setPreviewImage} />
                 <FileField label="Upload Pan Card" name="pan_card_file" onChange={handleFileChange} existingFile={existingFiles.pan_card_file} onPreview={setPreviewImage} />
@@ -387,10 +562,12 @@ const Users = () => {
                 <SelectField 
                   label="Account Status" name="status" value={formData.status} onChange={handleInputChange} required 
                   options={[{value: 'active', label: 'Active'}, {value: 'inactive', label: 'Inactive'}]} 
+                  error={errors.status}
                 />
                 <SelectField 
                   label="Profile Status" name="profile_status" value={formData.profile_status} onChange={handleInputChange} required 
                   options={[{value: 'pending', label: 'Pending'}, {value: 'approved', label: 'Approved'}, {value: 'rejected', label: 'Rejected'}]} 
+                  error={errors.profile_status}
                 />
               </div>
 

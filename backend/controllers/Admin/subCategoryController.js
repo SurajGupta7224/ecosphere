@@ -50,6 +50,9 @@ const validateVariations = (variations) => {
     if (v.per_kg_price === undefined || v.per_kg_price === null || v.per_kg_price === '' || isNaN(Number(v.per_kg_price)) || Number(v.per_kg_price) < 0) {
       return `Par Kg Price must be greater than or equal to 0 in row ${rowNum}`;
     }
+    if (v.bulk_price === undefined || v.bulk_price === null || v.bulk_price === '' || isNaN(Number(v.bulk_price)) || Number(v.bulk_price) < 0) {
+      return `Bulk Price must be greater than or equal to 0 in row ${rowNum}`;
+    }
     if (!v.status || !['Active', 'Inactive'].includes(v.status)) {
       return `Status must be 'Active' or 'Inactive' in row ${rowNum}`;
     }
