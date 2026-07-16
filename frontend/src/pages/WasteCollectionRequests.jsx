@@ -17,7 +17,7 @@ export default function WasteCollectionRequests() {
 
   const [formData, setFormData] = useState({
     // Section 1: Customer Details
-    customer_type: 'e.g. New Customer',
+    customer_type: '',
     mobile_number: '',
     email: '',
 
@@ -43,14 +43,14 @@ export default function WasteCollectionRequests() {
     time_slot_id: '',
 
     // New B2B / reference fields
-    site_request: 'Site Request',
-    service_center_type: 'Service Center Type',
+    site_request: '',
+    service_center_type: '',
     employee_name: JSON.parse(localStorage.getItem('user') || '{}').name || '',
-    billing_type: 'Billing Type',
-    business_region: 'Business Region',
-    business_sub_region: 'Business Sub Region',
+    billing_type: '',
+    business_region: '',
+    business_sub_region: '',
     branch_code: '',
-    business_lead: 'e.g. Web Lead',
+    business_lead: '',
     customer_legal_name: '',
     customer_trade_name: '',
     contact_person: '',
@@ -85,11 +85,15 @@ export default function WasteCollectionRequests() {
     technician_assign: 'Required',
     technician: '',
     total_order_value: 0,
+    total_yearly_amount: 0,
     discount: 0,
     discounted_price: 0,
     sez: 'No',
     taxibility: '0.00',
     sector: '',
+    cgst: 0,
+    sgst: 0,
+    gst_amount: 0,
     final_price: 0
   });
 
@@ -125,28 +129,40 @@ export default function WasteCollectionRequests() {
   // Calculate pricing fields dynamically for B2B Others section
   useEffect(() => {
     const activeCards = subcategoryCards.filter(c => c.included);
-    let total = 0;
+    let totalMonthly = 0;
+    let totalYearly = 0;
     activeCards.forEach(card => {
       if (card.pricing_mode === 'Bulk') {
-        total += parseFloat(card.bulk_monthly_price || 0);
+        totalMonthly += parseFloat(card.bulk_monthly_price || 0);
+        totalYearly += parseFloat(card.bulk_yearly_price || 0);
       } else {
         const selectedVar = (card.variations || []).find(v => v.id == card.selected_variation_id);
         const price = parseFloat(card.custom_price) || (selectedVar ? parseFloat(selectedVar.per_kg_price || 0) : 0);
         const waste = parseFloat(card.expected_waste) || 0;
-        total += price * waste * 30;
+        totalMonthly += price * waste * 30;
+        totalYearly += price * waste * 365;
       }
     });
 
-    const totalVal = parseFloat(total.toFixed(2));
-    const discountVal = parseFloat(formData.discount || 0);
-    const discountedPriceVal = Math.max(0, totalVal - discountVal);
-    const taxRate = parseFloat(formData.taxibility || 0) / 100;
-    const finalPriceVal = parseFloat((discountedPriceVal * (1 + taxRate)).toFixed(2));
+    const totalYearlyVal = parseFloat(totalYearly.toFixed(2));
+    const yearlyDiscountVal = parseFloat(formData.discount || 0);
+    const yearlyDiscountedPrice = Math.max(0, totalYearlyVal - yearlyDiscountVal);
+    const taxRate = formData.sez === 'Yes' ? 0 : (parseFloat(formData.taxibility || 0) / 100);
+
+    // GST calculated on the Total Yearly Order Value (before discount)
+    const gstVal = parseFloat((totalYearlyVal * taxRate).toFixed(2));
+    const cgstVal = parseFloat((gstVal / 2).toFixed(2));
+    const sgstVal = parseFloat((gstVal / 2).toFixed(2));
+    const finalPriceVal = parseFloat((yearlyDiscountedPrice + gstVal).toFixed(2));
 
     setFormData(prev => ({
       ...prev,
-      total_order_value: totalVal,
-      discounted_price: discountedPriceVal,
+      total_order_value: totalYearlyVal,
+      total_yearly_amount: totalYearlyVal,
+      discounted_price: parseFloat(yearlyDiscountedPrice.toFixed(2)),
+      cgst: cgstVal,
+      sgst: sgstVal,
+      gst_amount: gstVal,
       final_price: finalPriceVal
     }));
   }, [subcategoryCards, formData.discount, formData.taxibility, formData.sez]);
@@ -158,6 +174,7 @@ export default function WasteCollectionRequests() {
   const [filePreviews, setFilePreviews] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [successData, setSuccessData] = useState(null);
   const [searchMobile, setSearchMobile] = useState('');
   const [searchingMobile, setSearchingMobile] = useState(false);
   const [matchingCustomers, setMatchingCustomers] = useState([]);
@@ -842,7 +859,11 @@ export default function WasteCollectionRequests() {
         sector: reqData.sector || '',
         discount: reqData.discount != null ? String(reqData.discount) : '0',
         total_order_value: reqData.total_order_value != null ? parseFloat(reqData.total_order_value) : 0,
+        total_yearly_amount: reqData.total_yearly_amount != null ? parseFloat(reqData.total_yearly_amount) : 0,
         discounted_price: reqData.discounted_price != null ? parseFloat(reqData.discounted_price) : 0,
+        cgst: reqData.cgst != null ? parseFloat(reqData.cgst) : 0,
+        sgst: reqData.sgst != null ? parseFloat(reqData.sgst) : 0,
+        gst_amount: reqData.gst_amount != null ? parseFloat(reqData.gst_amount) : 0,
         final_price: reqData.final_price != null ? parseFloat(reqData.final_price) : 0,
 
         // Section 7: Additional Details
@@ -1085,6 +1106,14 @@ export default function WasteCollectionRequests() {
       }));
       return;
     }
+    if (name === 'sez') {
+      setFormData(prev => ({
+        ...prev,
+        sez: value,
+        taxibility: value === 'Yes' ? '0.00' : prev.taxibility
+      }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: val }));
   };
 
@@ -1104,7 +1133,7 @@ export default function WasteCollectionRequests() {
 
   const resetForm = () => {
     setFormData({
-      customer_type: 'Individual',
+      customer_type: '',
       mobile_number: '',
       email: '',
       address_search: '',
@@ -1124,14 +1153,14 @@ export default function WasteCollectionRequests() {
       time_slot_id: '',
 
       // Reset new fields
-      site_request: 'Site Request',
-      service_center_type: 'Service Center Type',
+      site_request: '',
+      service_center_type: '',
       employee_name: JSON.parse(localStorage.getItem('user') || '{}').name || '',
-      billing_type: 'Billing Type',
-      business_region: 'Business Region',
-      business_sub_region: 'Business Sub Region',
+      billing_type: '',
+      business_region: '',
+      business_sub_region: '',
       branch_code: "BR-" + Math.floor(100000 + Math.random() * 900000),
-      business_lead: 'e.g. Web Lead',
+      business_lead: '',
       customer_legal_name: '',
       customer_trade_name: '',
       contact_person: '',
@@ -1166,11 +1195,15 @@ export default function WasteCollectionRequests() {
       technician_assign: 'Required',
       technician: '',
       total_order_value: 0,
+      total_yearly_amount: 0,
       discount: 0,
       discounted_price: 0,
       sez: 'No',
       taxibility: '0.00',
       sector: '',
+      cgst: 0,
+      sgst: 0,
+      gst_amount: 0,
       final_price: 0
     });
     setSubcategoryCards(prev => prev.map(card => {
@@ -1207,33 +1240,39 @@ export default function WasteCollectionRequests() {
       }
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('ring-4', 'ring-rose-500/50', 'border-rose-500');
+        element.style.borderColor = '#ef4444';
+        element.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.3)';
         element.focus();
         setTimeout(() => {
-          element.classList.remove('ring-4', 'ring-rose-500/50', 'border-rose-500');
+          element.style.borderColor = '';
+          element.style.boxShadow = '';
         }, 5000);
       }
     };
 
     // Section 1: Company Details validations
-    if (!formData.site_request || formData.site_request === 'Site Request') {
+    if (!formData.site_request) {
       invalidateField('site_request', "Please select a valid Site Request.");
       return;
     }
-    if (!formData.service_center_type || formData.service_center_type === 'Service Center Type') {
+    if (!formData.service_center_type) {
       invalidateField('service_center_type', "Please select a valid Service Center Type.");
       return;
     }
-    if (!formData.billing_type || formData.billing_type === 'Billing Type') {
+    if (!formData.billing_type) {
       invalidateField('billing_type', "Please select a valid Billing Type.");
       return;
     }
-    if (!formData.business_region || formData.business_region === 'Business Region') {
+    if (!formData.business_region) {
       invalidateField('business_region', "Please select a valid Business Region.");
       return;
     }
-    if (!formData.business_sub_region || formData.business_sub_region === 'Business Sub Region' || formData.business_sub_region === '') {
+    if (!formData.business_sub_region) {
       invalidateField('business_sub_region', "Please select a valid Business Sub Region.");
+      return;
+    }
+    if (!formData.business_lead) {
+      invalidateField('business_lead', "Please select a valid Business Lead.");
       return;
     }
 
@@ -1488,6 +1527,12 @@ export default function WasteCollectionRequests() {
 
     try {
       await api.post('/waste-collection-requests', payload);
+      setSuccessData({
+        branch_code: formData.branch_code,
+        employee_name: formData.employee_name,
+        business_region: formData.business_region,
+        final_price: formData.final_price
+      });
       setSubmitSuccess(true);
       resetForm();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1556,8 +1601,8 @@ export default function WasteCollectionRequests() {
               <label
                 key={key}
                 className={`flex items-start gap-4 rounded-2xl px-5 py-4 cursor-pointer select-none transition-all border ${tncBoxes[key]
-                    ? 'bg-violet-50 border-violet-200 shadow-sm'
-                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  ? 'bg-violet-50 border-violet-200 shadow-sm'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                   }`}
               >
                 <input
@@ -1604,11 +1649,11 @@ export default function WasteCollectionRequests() {
           <div className="w-24 h-24 bg-emerald-50 border-4 border-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 shadow-md">
             <CheckCircle className="w-12 h-12 animate-in zoom-in duration-300" />
           </div>
-          
+
           <h2 className="text-3xl font-black text-slate-800 tracking-tight animate-in slide-in-from-bottom duration-300">Request Generated!</h2>
           <p className="text-slate-500 mt-3 text-sm leading-relaxed max-w-md mx-auto">
-            Your manual waste collection request has been saved successfully and is set to 
-            <span className="font-extrabold text-violet-600 bg-violet-50 px-2 py-0.5 rounded mx-1.5 border border-violet-100 text-xs">PENDING</span> 
+            Your manual waste collection request has been saved successfully and is set to
+            <span className="font-extrabold text-violet-600 bg-violet-50 px-2 py-0.5 rounded mx-1.5 border border-violet-100 text-xs">PENDING</span>
             status.
           </p>
 
@@ -1618,30 +1663,24 @@ export default function WasteCollectionRequests() {
             <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-medium text-slate-600">
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Branch Code</span>
-                <span className="text-slate-800 font-bold">{formData.branch_code || 'N/A'}</span>
+                <span className="text-slate-800 font-bold">{successData?.branch_code || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Employee Name</span>
-                <span className="text-slate-800 font-bold">{formData.employee_name || 'N/A'}</span>
+                <span className="text-slate-800 font-bold">{successData?.employee_name || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Business Region</span>
-                <span className="text-slate-800 font-bold">{formData.business_region || 'N/A'}</span>
+                <span className="text-slate-800 font-bold">{successData?.business_region || 'N/A'}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Final Price (Incl. Tax)</span>
-                <span className="text-violet-600 font-extrabold">₹{parseFloat(formData.final_price || 0).toLocaleString('en-IN')}</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Final Price (Yearly)</span>
+                <span className="text-violet-600 font-extrabold">₹{parseFloat(successData?.final_price || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
-            <button
-              onClick={() => navigate('/waste-requests-list')}
-              className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold transition-all hover:shadow-sm cursor-pointer text-sm"
-            >
-              Go to Request List
-            </button>
             <button
               onClick={() => setSubmitSuccess(false)}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl font-bold transition-all hover:-translate-y-0.5 cursor-pointer text-sm"
@@ -1684,7 +1723,7 @@ export default function WasteCollectionRequests() {
 
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-4">
+      <form onSubmit={handleFormSubmit} noValidate className="space-y-4">
 
         {/* B2B ONLY: Company Details */}
         {activeTab === 'B2B' && (
@@ -1702,7 +1741,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="Site Request">Site Request</option>
+                  <option value="" disabled hidden>Select Option</option>
                   <option value="Commercial Route">Commercial Route</option>
                   <option value="Commercial Onsite">Commercial Onsite</option>
                 </select>
@@ -1718,7 +1757,7 @@ export default function WasteCollectionRequests() {
                   autoComplete="off"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="Service Center Type">Service Center Type</option>
+                  <option value="" disabled hidden>Select Option</option>
                   <option value="Ecosphere">Ecosphere</option>
                 </select>
               </div>
@@ -1745,7 +1784,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="Billing Type">Billing Type</option>
+                  <option value="" disabled hidden>Select Option</option>
                   <option value="Head Office">Head Office</option>
                   <option value="Regional Office">Regional Office</option>
                   <option value="Branch Office">Branch Office</option>
@@ -1761,7 +1800,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="Business Region">Business Region</option>
+                  <option value="" disabled hidden>Select Option</option>
                   {Array.from(new Set(businessRegions.map(r => r.region_name || r.state))).filter(Boolean).map(stateName => {
                     const regObj = businessRegions.find(r => (r.region_name || r.state) === stateName);
                     if (!regObj) return null;
@@ -1781,7 +1820,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="">- Select Branch -</option>
+                  <option value="" disabled hidden>- Select Branch -</option>
                   {businessSubRegions.map(subReg => (
                     <option key={subReg.id} value={subReg.sub_region_name}>{subReg.sub_region_name}</option>
                   ))}
@@ -1908,7 +1947,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="e.g. New Customer">e.g. New Customer</option>
+                  <option value="" disabled hidden>Select Option</option>
                   <option value="New Customer">New Customer</option>
                   <option value="Existing Customer">Existing Customer</option>
                 </select>
@@ -1922,7 +1961,7 @@ export default function WasteCollectionRequests() {
                       type="tel"
                       value={searchMobile}
                       onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="e.g. 9876543210"
+                      placeholder="Enter the number"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                     />
                     <button
@@ -1946,7 +1985,7 @@ export default function WasteCollectionRequests() {
                   required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="e.g. Web Lead">e.g. Web Lead</option>
+                  <option value="" disabled hidden>Select Option</option>
                   <option value="Exhibition">Exhibition</option>
                   <option value="Web Lead">Web Lead</option>
                   <option value="Service Lead">Service Lead</option>
@@ -2189,11 +2228,10 @@ export default function WasteCollectionRequests() {
                   readOnly={activeTab === 'B2B'}
                   required
                   placeholder="e.g. 28.7041"
-                  className={`w-full border rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${
-                    activeTab === 'B2B'
+                  className={`w-full border rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${activeTab === 'B2B'
                       ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed'
                       : 'bg-slate-50 border-slate-200 text-slate-700 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
-                  }`}
+                    }`}
                 />
               </div>
               <div>
@@ -2206,11 +2244,10 @@ export default function WasteCollectionRequests() {
                   readOnly={activeTab === 'B2B'}
                   required
                   placeholder="e.g. 77.1025"
-                  className={`w-full border rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${
-                    activeTab === 'B2B'
+                  className={`w-full border rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${activeTab === 'B2B'
                       ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed'
                       : 'bg-slate-50 border-slate-200 text-slate-700 focus:ring-4 focus:ring-violet-100 focus:border-violet-400'
-                  }`}
+                    }`}
                 />
               </div>
             </div>
@@ -2870,11 +2907,10 @@ export default function WasteCollectionRequests() {
                                   value={card.bulk_monthly_price}
                                   onChange={e => handleCardBulkPriceChange(card.subcategory_id, 'bulk_monthly_price', e.target.value)}
                                   placeholder="Enter monthly price"
-                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-8 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${
-                                    selectedVar
+                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-8 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
                                       ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
                                       : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  }`}
+                                    }`}
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
                               </div>
@@ -2905,11 +2941,10 @@ export default function WasteCollectionRequests() {
                                 value={card.expected_waste}
                                 onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
                                 placeholder="Enter waste in KG per day"
-                                className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${
-                                  selectedVar
+                                className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
                                     ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
                                     : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                }`}
+                                  }`}
                               />
                             </div>
 
@@ -2926,11 +2961,10 @@ export default function WasteCollectionRequests() {
                                   value={card.custom_price}
                                   onChange={e => handleCardPriceChange(card.subcategory_id, e.target.value)}
                                   placeholder="Enter price"
-                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-12 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${
-                                    selectedVar
+                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-12 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
                                       ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
                                       : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  }`}
+                                    }`}
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹/KG</span>
                               </div>
@@ -3015,37 +3049,12 @@ export default function WasteCollectionRequests() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Order Value</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Order Value (Yearly)</label>
                 <input
                   type="number"
                   name="total_order_value"
                   readOnly
                   value={formData.total_order_value}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount</label>
-                <input
-                  type="number"
-                  name="discount"
-                  min="0"
-                  step="any"
-                  value={formData.discount}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discounted Price</label>
-                <input
-                  type="number"
-                  name="discounted_price"
-                  readOnly
-                  value={formData.discounted_price}
                   className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
                 />
               </div>
@@ -3065,13 +3074,14 @@ export default function WasteCollectionRequests() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxibility (%) *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability (%) *</label>
                 <select
                   name="taxibility"
+                  disabled={formData.sez === 'Yes'}
                   value={formData.taxibility}
                   onChange={handleInputChange}
                   required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                  className={`w-full border border-slate-200 rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${formData.sez === 'Yes' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-slate-50 text-slate-700 cursor-pointer focus:ring-4 focus:ring-violet-100 focus:border-violet-400'}`}
                 >
                   <option value="0.00">0.00 %</option>
                   <option value="5.00">5.00 %</option>
@@ -3081,7 +3091,65 @@ export default function WasteCollectionRequests() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Final Price</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">CGST</label>
+                <input
+                  type="number"
+                  name="cgst"
+                  readOnly
+                  value={formData.cgst}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SGST</label>
+                <input
+                  type="number"
+                  name="sgst"
+                  readOnly
+                  value={formData.sgst}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GST</label>
+                <input
+                  type="number"
+                  name="gst_amount"
+                  readOnly
+                  value={formData.gst_amount}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly) *</label>
+                <input
+                  type="number"
+                  name="discount"
+                  min="0"
+                  step="any"
+                  value={formData.discount}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discounted Price (Yearly)</label>
+                <input
+                  type="number"
+                  name="discounted_price"
+                  readOnly
+                  value={formData.discounted_price}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Final Price (Yearly)</label>
                 <input
                   type="number"
                   name="final_price"
@@ -3166,8 +3234,8 @@ export default function WasteCollectionRequests() {
                             }));
                           }}
                           className={`flex flex-col justify-center p-4 rounded-2xl border text-left transition-all duration-200 h-20 ${isSelected
-                              ? 'bg-violet-600 border-violet-600 text-white shadow-md'
-                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer text-slate-700'
+                            ? 'bg-violet-600 border-violet-600 text-white shadow-md'
+                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer text-slate-700'
                             }`}
                         >
                           <div className="w-full">
@@ -3176,8 +3244,8 @@ export default function WasteCollectionRequests() {
                                 {slot.slot_name}
                               </span>
                               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected
-                                  ? 'border-white bg-white'
-                                  : 'border-slate-300 bg-white'
+                                ? 'border-white bg-white'
+                                : 'border-slate-300 bg-white'
                                 }`}>
                                 {isSelected && (
                                   <div className="w-2 h-2 rounded-full bg-violet-600" />

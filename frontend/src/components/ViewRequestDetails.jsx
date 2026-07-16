@@ -403,12 +403,15 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
           {/* Pricing Breakdown */}
           <SectionCard title="Pricing Breakdown" icon={CreditCard} iconColor="text-slate-600">
             <div className="space-y-3">
-              <InfoItem icon={IndianRupee} label="Total Order Value" value={firstReq.total_order_value ? `₹${firstReq.total_order_value.toLocaleString('en-IN')}` : null} iconColor="text-slate-500" />
-              <InfoItem icon={Tag} label="Discount" value={firstReq.discount ? `₹${firstReq.discount.toLocaleString('en-IN')}` : null} iconColor="text-slate-500" />
-              <InfoItem icon={IndianRupee} label="Discounted Price" value={firstReq.discounted_price ? `₹${firstReq.discounted_price.toLocaleString('en-IN')}` : null} iconColor="text-slate-500" />
+              <InfoItem icon={IndianRupee} label="Total Order Value (Yearly)" value={firstReq.total_order_value ? `₹${parseFloat(firstReq.total_order_value).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
+              <InfoItem icon={Tag} label="Discount (Yearly)" value={firstReq.discount ? `₹${parseFloat(firstReq.discount).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
+              <InfoItem icon={IndianRupee} label="Discounted Price (Yearly)" value={firstReq.discounted_price ? `₹${parseFloat(firstReq.discounted_price).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
               <InfoItem icon={Info} label="SEZ (economic zone)" value={firstReq.sez} iconColor="text-slate-500" />
               <InfoItem icon={TrendingUp} label="Taxability / GST" value={firstReq.taxibility} iconColor="text-slate-500" />
-              <InfoItem icon={IndianRupee} label="Final Price (Incl. Tax)" value={firstReq.final_price ? `₹${firstReq.final_price.toLocaleString('en-IN')}` : null} iconColor="text-slate-600" />
+              <InfoItem icon={IndianRupee} label="CGST" value={firstReq.cgst ? `₹${parseFloat(firstReq.cgst).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
+              <InfoItem icon={IndianRupee} label="SGST" value={firstReq.sgst ? `₹${parseFloat(firstReq.sgst).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
+              <InfoItem icon={IndianRupee} label="GST Amount" value={firstReq.gst_amount ? `₹${parseFloat(firstReq.gst_amount).toLocaleString('en-IN')}` : '₹0.00'} iconColor="text-slate-500" />
+              <InfoItem icon={IndianRupee} label="Final Price (Yearly)" value={firstReq.final_price ? `₹${parseFloat(firstReq.final_price).toLocaleString('en-IN')}` : null} iconColor="text-slate-600" />
             </div>
           </SectionCard>
 

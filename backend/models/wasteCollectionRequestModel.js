@@ -323,6 +323,26 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     defaultValue: 0.00,
     allowNull: true,
   },
+  total_yearly_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  cgst: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  sgst: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
+  gst_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    allowNull: true,
+  },
   mom_agreement_file: {
     type: DataTypes.STRING(255),
     allowNull: true,

@@ -151,7 +151,7 @@ function App() {
           <Route
             path="bwg/business-region"
             element={
-              <RequirePermission requiredPermission="bwg_mapping">
+              <RequirePermission requiredPermission="business_region">
                 <BusinessRegions />
               </RequirePermission>
             }
@@ -159,7 +159,7 @@ function App() {
           <Route
             path="bwg/business-sub-region"
             element={
-              <RequirePermission requiredPermission="bwg_mapping">
+              <RequirePermission requiredPermission="business_region">
                 <BusinessSubRegions />
               </RequirePermission>
             }

@@ -117,7 +117,6 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: t('users'), path: '/users', req: 'user_management' },
-        { name: t('customers') || 'Customers', path: '/customers', req: 'user_management' },
         { name: t('roles'), path: '/roles', req: 'role_management' },
         { name: t('permissions'), path: '/permissions', req: 'permission' },
         { name: t('locations'), path: '/locations', req: 'locations' }
@@ -143,8 +142,8 @@ const DashboardLayout = () => {
       isSubMenu: true,
       hidden: isVendor && !isApproved,
       items: [
-        { name: 'Business Region', path: '/bwg/business-region', req: 'bwg_mapping' },
-        { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'bwg_mapping' }
+        { name: 'Business Region', path: '/bwg/business-region', req: 'business_region' },
+        { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'business_region' }
       ]
     },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
