@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Code2, Globe
+  Clock, ClipboardList, Code2, Globe, Truck
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -159,6 +159,17 @@ const DashboardLayout = () => {
         { name: 'Employee List', path: '/aggregator-employees', req: 'aggregator_employee' }
       ]
     },
+    {
+      id: 'aggregator_vehicles_group',
+      title: 'Aggregator Vehicles',
+      icon: Truck,
+      isSubMenu: true,
+      hidden: isVendor && !isApproved,
+      items: [
+        { name: 'Register Vehicle', path: '/aggregator-vehicles/add', req: 'aggregator_vehicle' },
+        { name: 'Vehicles List', path: '/aggregator-vehicles', req: 'aggregator_vehicle' }
+      ]
+    },
 
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },
 
@@ -189,17 +200,17 @@ const DashboardLayout = () => {
     <div className="flex h-screen overflow-hidden font-sans" style={{ backgroundColor: 'var(--app-bg)' }}>
       {/* Sidebar - dynamic bg from settings */}
       <div
-        className={`text-white flex flex-col flex-shrink-0 shadow-xl z-20 transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}
+        className={`text-white flex flex-col flex-shrink-0 shadow-xl z-20 transition-all duration-300 relative ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}
         style={{ backgroundColor: sidebarBg }}
       >
 
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-center border-b border-white/5 shrink-0 px-6">
+        <div className="h-24 flex items-center justify-center border-b border-white/5 shrink-0 px-6">
           {settings?.companyLogo ? (
             <img
               src={`${IMAGE_BASE_URL}/${settings.companyLogo}`}
               alt={appName}
-              className="max-h-12 max-w-[180px] object-contain"
+              className="max-h-[84px] max-w-[307px] object-contain"
             />
           ) : (
             <div className="text-center">
@@ -220,7 +231,7 @@ const DashboardLayout = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2 custom-scrollbar px-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2 custom-scrollbar px-3 space-y-1 pb-4">
           {allowedSidebarItems.map((item) => {
             if (item.hidden) return null;
             if (!item.isSubMenu) {
@@ -287,6 +298,15 @@ const DashboardLayout = () => {
             }
           })}
         </nav>
+
+        {/* Bottom Banner Image */}
+        <div className="w-full h-24 overflow-hidden select-none pointer-events-none shrink-0 relative">
+          <img
+            src="/leftnavbarimgbottom.webp"
+            alt="Sidebar Bottom Banner"
+            className="w-full h-auto object-contain object-bottom absolute bottom-0"
+          />
+        </div>
       </div>
 
       {/* Main Content Area */}

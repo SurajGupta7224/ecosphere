@@ -64,28 +64,47 @@ sequelize.sync()
   .then(async () => {
     console.log(" Database synced successfully");
 
-    // Seed aggregator_employee permission if not exists
+    // Seed aggregator_employee and aggregator_vehicle permission if not exists
     try {
-      const { Permission, RolePermission } = require("./models/index");
-      const [perm, created] = await Permission.findOrCreate({
+      const { Permission, RolePermission, Role } = require("./models/index");
+      
+      // employee permission
+      const [permEmp, createdEmp] = await Permission.findOrCreate({
         where: { permission_name: 'aggregator_employee' }
       });
-      if (created) {
-        console.log("Seeded 'aggregator_employee' permission successfully.");
-      }
+      if (createdEmp) console.log("Seeded 'aggregator_employee' permission successfully.");
 
-      // Associate permission with Admin role (role_id = 1)
-      const roleId = 1;
-      const association = await RolePermission.findOne({
-        where: { role_id: roleId, permission_id: perm.id }
+      // vehicle permission
+      const [permVeh, createdVeh] = await Permission.findOrCreate({
+        where: { permission_name: 'aggregator_vehicle' }
       });
-      if (!association) {
-        await RolePermission.create({ role_id: roleId, permission_id: perm.id });
-        console.log("Associated 'aggregator_employee' permission with Admin role.");
+      if (createdVeh) console.log("Seeded 'aggregator_vehicle' permission successfully.");
+
+      // Fetch all roles from database dynamically
+      const roles = await Role.findAll();
+
+      for (const role of roles) {
+        // Associate employee permission
+        const associationEmp = await RolePermission.findOne({
+          where: { role_id: role.id, permission_id: permEmp.id }
+        });
+        if (!associationEmp) {
+          await RolePermission.create({ role_id: role.id, permission_id: permEmp.id });
+          console.log(`Associated 'aggregator_employee' permission with role ${role.role_name}.`);
+        }
+
+        // Associate vehicle permission
+        const associationVeh = await RolePermission.findOne({
+          where: { role_id: role.id, permission_id: permVeh.id }
+        });
+        if (!associationVeh) {
+          await RolePermission.create({ role_id: role.id, permission_id: permVeh.id });
+          console.log(`Associated 'aggregator_vehicle' permission with role ${role.role_name}.`);
+        }
       }
 
     } catch (err) {
-      console.error("Error seeding employee permission:", err);
+      console.error("Error seeding permissions:", err);
     }
 
     server.listen(PORT, () => {

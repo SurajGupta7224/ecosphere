@@ -2,12 +2,131 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Users, Shield, MapPin,
   Building2, Compass, CalendarRange,
-  Truck, Navigation, Activity
+  Truck, Navigation, Activity,
+  Leaf, Recycle, Trash2, AlertTriangle, Scale, Factory
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
+
+// ─── Circular stat card matching the design mockup ───────────────────────────
+const WasteStatCard = ({ label, value, unit, color, bgColor, icon, onClick }) => {
+  const circumference = 2 * Math.PI * 42; // r=42
+  const progress = 0.75; // decorative ring at 75%
+  const dashOffset = circumference * (1 - progress);
+  return (
+    <div
+      onClick={onClick}
+      className="group cursor-pointer bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center gap-3"
+    >
+      {/* Circular ring with icon */}
+      <div className="relative w-24 h-24 flex-shrink-0">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+          {/* Background track */}
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="3.5" />
+          {/* Colored progress ring */}
+          <circle
+            cx="50" cy="50" r="42"
+            fill="none"
+            stroke={color}
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            style={{ transition: 'stroke-dashoffset 1s ease' }}
+          />
+        </svg>
+        {/* Icon centered */}
+        <div
+          className="absolute inset-0 flex items-center justify-center rounded-full"
+          style={{ margin: '12px' }}
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: bgColor, color }}
+          >
+            {React.cloneElement(icon, { className: 'w-5 h-5' })}
+          </div>
+        </div>
+      </div>
+
+      {/* Value + unit */}
+      <div className="text-center">
+        <p className="text-2xl font-extrabold text-slate-800 leading-none">
+          {value}
+          {unit && <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>}
+        </p>
+      </div>
+
+      {/* Label pill */}
+      <div
+        className="px-3 py-1 rounded-full text-xs font-bold tracking-wide"
+        style={{ backgroundColor: bgColor, color }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+};
+
+// ─── BWG Card with custom layered background waves matching the design mockup ───────────
+const BwgCard = ({ title, value, onClick, icon: Icon, iconBg, iconColor, gradientId, stopColor }) => {
+  return (
+    <div
+      onClick={onClick}
+      className="flex-1 min-w-[150px] relative group cursor-pointer bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-100 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:shadow-md transition-all duration-300 flex flex-col justify-between min-h-[135px] p-5 overflow-hidden"
+    >
+      {/* Layered SVG Waves in the background */}
+      <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none z-0">
+        <svg
+          className="w-full h-full"
+          viewBox="0 0 200 40"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id={`grad-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={stopColor} stopOpacity="0" />
+              <stop offset="100%" stopColor={stopColor} stopOpacity="0.08" />
+            </linearGradient>
+            <linearGradient id={`grad2-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={stopColor} stopOpacity="0" />
+              <stop offset="100%" stopColor={stopColor} stopOpacity="0.15" />
+            </linearGradient>
+          </defs>
+          {/* Back Wave Layer */}
+          <path
+            d="M 0,40 Q 50,20 100,32 T 200,22 L 200,40 Z"
+            fill={`url(#grad-${gradientId})`}
+          />
+          {/* Front Wave Layer */}
+          <path
+            d="M 0,40 Q 60,12 120,28 T 200,16 L 200,40 Z"
+            fill={`url(#grad2-${gradientId})`}
+          />
+        </svg>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col justify-between h-full">
+        {/* Icon box (custom rounded-xl with light bg) */}
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${iconBg} ${iconColor} transition-all duration-300 group-hover:scale-105`}>
+          <Icon className="w-5.5 h-5.5" />
+        </div>
+
+        {/* Text and Number */}
+        <div className="mt-5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 leading-none">
+            {title}
+          </p>
+          <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight leading-none">
+            {value}
+          </h3>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -240,7 +359,7 @@ const Dashboard = () => {
   // Update map markers when vehicleCoords or selectedVehicle changes
   useEffect(() => {
     if (!googleLoaded || !mapRef.current) return;
-    
+
     if (!mapInstance.current) {
       // Center map in the general Bommanahalli/HSR Layout area
       mapInstance.current = new window.google.maps.Map(mapRef.current, {
@@ -259,7 +378,7 @@ const Dashboard = () => {
     vehicleCoords.forEach(v => {
       const isSelected = selectedVehicle.id === v.id;
       const markerColor = v.status === 'Idle' ? '#94a3b8' : isSelected ? '#7c3aed' : '#10b981';
-      
+
       const svgMarker = {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${markerColor}" stroke="white" stroke-width="2"/><g transform="translate(6, 6) scale(0.8)"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 18h2a1 1 0 0 0 1-1v-5.14a2 2 0 0 0-.59-1.41L18.7 7.72A2 2 0 0 0 17.29 7H14" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2" fill="white"/><circle cx="17" cy="18" r="2" fill="white"/></g></svg>`),
         size: new window.google.maps.Size(32, 32),
@@ -333,10 +452,21 @@ const Dashboard = () => {
     <div className="space-y-6">
 
       {/* HEADER & QUICK ACTIONS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">{t('dashboard_overview')}</h1>
-          <p className="text-slate-500 text-sm">{t('system_snapshot')}</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 w-full relative min-h-[110px] pb-2">
+        <div className="pb-2">
+          <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-2">
+            {t('dashboard_overview') || 'Dashboard Overview'}
+            <Leaf className="w-6 h-6 text-emerald-500 fill-emerald-500/10" />
+          </h1>
+          <p className="text-slate-500 text-sm font-medium mt-1">{t('system_snapshot') || 'System snapshot and real-time metrics.'}</p>
+        </div>
+        {/* Right side banner illustration matching the mockup */}
+        <div className="hidden md:block absolute right-0 bottom-[-20px] h-32 md:h-40 lg:h-70 max-w-full select-none pointer-events-none">
+          <img
+            src="/dashboard-banner.webp"
+            alt="Dashboard Banner"
+            className="h-full w-auto object-contain object-right-bottom"
+          />
         </div>
       </div>
 
@@ -465,232 +595,184 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/*ADMINISTRATION & FIELD OPERATIONS */}
+      {/* ADMINISTRATION & FIELD OPERATIONS */}
       <div className="space-y-3">
         <div>
           <h2 className="text-base font-bold text-slate-700">{t('BWG_Operations') || 'Municipal Operations'}</h2>
           <p className="text-slate-400 text-[11px]">{t('BWG_description') || 'Track and manage municipal corporations, zones, wards, and scheduled collection events'}</p>
         </div>
-        <div className="flex flex-col lg:flex-row items-stretch gap-2.5">
-          {/* Bulk Waste Generator (BWG) */}
-          <div
-            onClick={() => navigate('/waste-requests-list')}
-            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                <Users className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Bulk Waste Generator (BWG)
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-indigo-600 transition-colors">
-                {(stats.totalBWGs || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
-
-          {/* Arrow 1 */}
-          <div className="hidden lg:flex items-center justify-center px-0.5">
-            <span className="text-slate-300/80 text-xl font-bold">→</span>
-          </div>
-
-          {/* Municipal Corporations */}
-          <div
-            onClick={() => navigate('/bwg/corporation')}
-            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Corporation
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-blue-600 transition-colors">
-                {(stats.totalCorporations || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
-
-          {/* Arrow 2 */}
-          <div className="hidden lg:flex items-center justify-center px-0.5">
-            <span className="text-slate-300/80 text-xl font-bold">→</span>
-          </div>
-
-          {/* Zones */}
-          <div
-            onClick={() => navigate('/bwg/zone')}
-            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-violet-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600 shadow-inner flex-shrink-0 group-hover:bg-violet-600 group-hover:text-white transition-all duration-300">
-                <Compass className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-violet-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Zone
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-violet-600 transition-colors">
-                {(stats.totalZones || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
-
-          {/* Arrow 3 */}
-          <div className="hidden lg:flex items-center justify-center px-0.5">
-            <span className="text-slate-300/80 text-xl font-bold">→</span>
-          </div>
-
-          {/* Wards */}
-          <div
-            onClick={() => navigate('/bwg/ward')}
-            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 shadow-inner flex-shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Ward
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-purple-600 transition-colors">
-                {(stats.totalWards || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
-
-          {/* Arrow 4 */}
-          <div className="hidden lg:flex items-center justify-center px-0.5">
-            <span className="text-slate-300/80 text-xl font-bold">→</span>
-          </div>
-
-          {/* Collection Events */}
-          <div
+        <div className="flex flex-col lg:flex-row items-stretch gap-1.5">
+          <BwgCard
+            title="Bulk Waste Generator (BWG)"
+            value={(stats.totalBWGs || 0).toLocaleString()}
             onClick={() => navigate('/bwg/collection-event')}
-            className="flex-1 group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                <CalendarRange className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Collection Event
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-emerald-600 transition-colors">
-                {(stats.totalCollectionEvents || 0).toLocaleString()}
-              </h3>
-            </div>
+            icon={Factory}
+            iconBg="bg-emerald-50"
+            iconColor="text-emerald-600"
+            gradientId="bwg"
+            stopColor="#10b981"
+          />
+
+          <div className="hidden lg:flex items-center justify-center px-1 text-emerald-600/70 font-black text-xl select-none">
+            →
           </div>
+
+          <BwgCard
+            title="Corporation"
+            value={(stats.totalCorporations || 0).toLocaleString()}
+            onClick={() => navigate('/bwg/corporation')}
+            icon={Building2}
+            iconBg="bg-blue-50"
+            iconColor="text-blue-600"
+            gradientId="corp"
+            stopColor="#3b82f6"
+          />
+
+          <div className="hidden lg:flex items-center justify-center px-1 text-emerald-600/70 font-black text-xl select-none">
+            →
+          </div>
+
+          <BwgCard
+            title="Zone"
+            value={(stats.totalZones || 0).toLocaleString()}
+            onClick={() => navigate('/bwg/zone')}
+            icon={Compass}
+            iconBg="bg-purple-50"
+            iconColor="text-purple-600"
+            gradientId="zone"
+            stopColor="#8b5cf6"
+          />
+
+          <div className="hidden lg:flex items-center justify-center px-1 text-emerald-600/70 font-black text-xl select-none">
+            →
+          </div>
+
+          <BwgCard
+            title="Ward"
+            value={(stats.totalWards || 0).toLocaleString()}
+            onClick={() => navigate('/bwg/ward')}
+            icon={MapPin}
+            iconBg="bg-orange-50"
+            iconColor="text-orange-600"
+            gradientId="ward"
+            stopColor="#f97316"
+          />
+
+          <div className="hidden lg:flex items-center justify-center px-1 text-emerald-600/70 font-black text-xl select-none">
+            →
+          </div>
+
+          <BwgCard
+            title="Collection Event"
+            value={(stats.totalCollectionEvents || 0).toLocaleString()}
+            onClick={() => navigate('/bwg/collection-event')}
+            icon={CalendarRange}
+            iconBg="bg-teal-50"
+            iconColor="text-teal-600"
+            gradientId="event"
+            stopColor="#0d9488"
+          />
         </div>
       </div>
 
-      {/* SYSTEM ACCESS & GEOGRAPHIC SETTINGS */}
+      {/* ──────────────── WASTE STATISTICS CARDS ──────────────── */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-base font-bold text-slate-700">{t('system_settings') || 'System & Directory'}</h2>
-          <p className="text-slate-400 text-[11px]">{t('system_description') || 'Overview of system users, access roles, and configured geographic details'}</p>
+          <h2 className="text-base font-bold text-slate-700">Waste Overview</h2>
+          <p className="text-slate-400 text-[11px]">Real-time snapshot of waste categories, pickups, and fleet deployment</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Users */}
-          <div
-            onClick={() => navigate('/users')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-purple-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-[#7c3aed] shadow-inner flex-shrink-0 group-hover:bg-[#7c3aed] group-hover:text-white transition-all duration-300">
-                <Users className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-[#7c3aed] group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Total Users
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-[#7c3aed] transition-colors">
-                {(stats.totalUsers || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
 
-          {/* Active Roles */}
-          <div
-            onClick={() => navigate('/roles')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                <Shield className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Active Roles
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-emerald-600 transition-colors">
-                {(stats.totalRoles || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
+        {/* Row 1 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* BWG Registered */}
+          <WasteStatCard
+            label="BWG Registered"
+            value={(stats.totalBWGs || 0).toLocaleString()}
+            unit=""
+            color="#22c55e"
+            bgColor="#dcfce7"
+            icon={<Leaf />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Wet Waste */}
+          <WasteStatCard
+            label="Wet Waste"
+            value={(stats.wetWaste || 0).toLocaleString()}
+            unit="Tons"
+            color="#16a34a"
+            bgColor="#dcfce7"
+            icon={<Leaf />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Dry Waste */}
+          <WasteStatCard
+            label="Dry Waste"
+            value={(stats.dryWaste || 0).toLocaleString()}
+            unit="Tons"
+            color="#f59e0b"
+            bgColor="#fef3c7"
+            icon={<Recycle />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Sanitary Waste */}
+          <WasteStatCard
+            label="Sanitary Waste"
+            value={(stats.sanitaryWaste || 0).toLocaleString()}
+            unit="Tons"
+            color="#3b82f6"
+            bgColor="#dbeafe"
+            icon={<Trash2 />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+        </div>
 
-          {/* Total Cities */}
-          <div
-            onClick={() => navigate('/locations')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-blue-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Total Cities
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-blue-600 transition-colors">
-                {(stats.totalCities || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
-
-          {/* Total Pincodes */}
-          <div
-            onClick={() => navigate('/locations')}
-            className="group cursor-pointer bg-white hover:bg-slate-50 rounded-xl p-4.5 border border-slate-200 hover:border-orange-300 shadow-sm hover:shadow transition-all duration-300 flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex items-start justify-between w-full">
-              <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shadow-inner flex-shrink-0 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <span className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all text-xs font-bold">→</span>
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                Total Pincodes
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-800 leading-none font-sans group-hover:text-orange-600 transition-colors">
-                {(stats.totalPincodes || 0).toLocaleString()}
-              </h3>
-            </div>
-          </div>
+        {/* Row 2 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Special Care Waste */}
+          <WasteStatCard
+            label="Special Care Waste"
+            value={(stats.specialCareWaste || 0).toLocaleString()}
+            unit="Tons"
+            color="#ef4444"
+            bgColor="#fee2e2"
+            icon={<AlertTriangle />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Total Waste */}
+          <WasteStatCard
+            label="Total Waste"
+            value={(stats.totalWaste || 0).toLocaleString()}
+            unit="Tons"
+            color="#22c55e"
+            bgColor="#dcfce7"
+            icon={<Scale />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Total Pickups */}
+          <WasteStatCard
+            label="Total Pickups"
+            value={(stats.totalPickups || 0).toLocaleString()}
+            unit=""
+            color="#8b5cf6"
+            bgColor="#ede9fe"
+            icon={<Truck />}
+            onClick={() => navigate('/waste-collection-requests')}
+          />
+          {/* Total Vehicles */}
+          <WasteStatCard
+            label="Total Vehicles"
+            value={(stats.totalVehicles || 0).toLocaleString()}
+            unit=""
+            color="#f59e0b"
+            bgColor="#fef3c7"
+            icon={<Truck />}
+            onClick={() => navigate('/aggregator-vehicles')}
+          />
         </div>
       </div>
+
+
+      {/* SYSTEM ACCESS & GEOGRAPHIC SETTINGS - hidden per user request */}
 
       {/* LIVE VEHICLE TRACKING MAP */}
       <div className="space-y-4 pt-4">
@@ -711,18 +793,16 @@ const Dashboard = () => {
                   <div
                     key={v.id}
                     onClick={() => selectVehicleOnMap(v)}
-                    className={`flex items-start justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-[#7c3aed] bg-purple-50/50 shadow-sm'
-                        : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                    }`}
+                    className={`flex items-start justify-between p-3 rounded-xl border transition-all cursor-pointer ${isSelected
+                      ? 'border-[#7c3aed] bg-purple-50/50 shadow-sm'
+                      : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                      }`}
                   >
                     <div className="flex items-start space-x-2.5">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 ${
-                        v.status === 'Idle' 
-                          ? 'bg-slate-100 text-slate-500' 
-                          : 'bg-emerald-50 text-emerald-600'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 ${v.status === 'Idle'
+                        ? 'bg-slate-100 text-slate-500'
+                        : 'bg-emerald-50 text-emerald-600'
+                        }`}>
                         <Truck className="w-4 h-4" />
                       </div>
                       <div>
@@ -735,11 +815,10 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                        v.status === 'Idle'
-                          ? 'bg-slate-100 text-slate-600'
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${v.status === 'Idle'
+                        ? 'bg-slate-100 text-slate-600'
+                        : 'bg-emerald-100 text-emerald-800'
+                        }`}>
                         {v.status}
                       </span>
                       <p className="text-[10px] text-slate-500 mt-1 font-semibold">{v.speed}</p>
@@ -753,7 +832,7 @@ const Dashboard = () => {
           {/* Map Display */}
           <div className="flex-1 h-[400px] rounded-xl overflow-hidden relative border border-slate-100 bg-slate-50">
             <div ref={mapRef} className="w-full h-full z-10" />
-             {!googleLoaded && (
+            {!googleLoaded && (
               <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                 <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-2"></div>
                 <p className="text-slate-500 text-xs font-medium">Loading Interactive Map...</p>

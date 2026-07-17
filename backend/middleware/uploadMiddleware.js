@@ -37,6 +37,31 @@ const storage = multer.diskStorage({
       folderName = 'CollectionRequests';
     }
     
+    if ([
+      'rc_front_image',
+      'rc_back_image',
+      'vehicle_front_photo',
+      'vehicle_rear_photo',
+      'vehicle_left_photo',
+      'vehicle_right_photo',
+      'puc_certificate_image',
+      'insurance_certificate_image',
+      'fc_certificate_image',
+      'permit_certificate_image',
+      'road_tax_receipt_image',
+      'device_front_photo',
+      'device_back_photo',
+      'device_imei_sticker_photo',
+      'device_purchase_invoice',
+      'device_warranty_card',
+      'device_box_imei_photo',
+      'device_charger_photo',
+      'device_accessories_photo',
+      'device_other_document'
+    ].includes(file.fieldname)) {
+      folderName = 'Vehicles';
+    }
+    
     const dir = path.join(__dirname, "../public/uploads", folderName);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });

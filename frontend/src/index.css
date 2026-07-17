@@ -11,40 +11,44 @@
 
 /* ─── CSS Variables for Dynamic Theming ─────────────────────────────────────── */
 :root {
-  --color-primary:   #6366f1;
+  --color-primary: #6366f1;
   --color-secondary: #8b5cf6;
-  --color-sidebar:   #1e133c;
-  --color-navbar:    #ffffff;
-  --color-card-bg:   #ffffff;
-  --color-button:    #6366f1;
-  --color-text:      #1e293b;
+  --color-sidebar: #1e133c;
+  --color-navbar: #ffffff;
+  --color-card-bg: #ffffff;
+  --color-button: #6366f1;
+  --color-text: #1e293b;
 
   /* Content area backgrounds */
-  --app-bg:          #f3f4f6;
-  --content-bg:      #f8f9fa;
-  --card-surface:    #ffffff;
-  --border-color:    #e2e8f0;
-  --text-primary:    var(--color-text);
-  --text-secondary:  color-mix(in srgb, var(--color-text) 70%, transparent);
-  --text-muted:      color-mix(in srgb, var(--color-text) 45%, transparent);
-  --card-header-bg:  linear-gradient(to right, #f8fafc, rgba(224, 231, 255, 0.4));
+  --app-bg: #f3f4f6;
+  --content-bg: #f8f9fa;
+  --card-surface: #ffffff;
+  --border-color: #e2e8f0;
+  --text-primary: var(--color-text);
+  --text-secondary: color-mix(in srgb, var(--color-text) 70%, transparent);
+  --text-muted: color-mix(in srgb, var(--color-text) 45%, transparent);
+  --card-header-bg: linear-gradient(to right, #f8fafc, rgba(224, 231, 255, 0.4));
 }
 
 /* ─── Dark Mode Variables ────────────────────────────────────────────────────── */
 html.dark {
-  --app-bg:          #0f172a;
-  --content-bg:      #111827;
-  --card-surface:    #1e293b;
-  --border-color:    #334155;
-  --text-primary:    var(--color-text);
-  --text-secondary:  color-mix(in srgb, var(--color-text) 70%, transparent);
-  --text-muted:      color-mix(in srgb, var(--color-text) 45%, transparent);
-  --color-navbar:    #1e293b;
-  --card-header-bg:  linear-gradient(to right, #1e293b, rgba(99, 102, 241, 0.05));
+  --app-bg: #0f172a;
+  --content-bg: #111827;
+  --card-surface: #1e293b;
+  --border-color: #334155;
+  --text-primary: var(--color-text);
+  --text-secondary: color-mix(in srgb, var(--color-text) 70%, transparent);
+  --text-muted: color-mix(in srgb, var(--color-text) 45%, transparent);
+  --color-navbar: #1e293b;
+  --card-header-bg: linear-gradient(to right, #1e293b, rgba(99, 102, 241, 0.05));
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────────── */
-body, input, select, textarea, button {
+body,
+input,
+select,
+textarea,
+button {
   font-family: var(--font-family, 'Inter'), system-ui, -apple-system, sans-serif;
 }
 
@@ -94,14 +98,17 @@ html.dark .hover\:bg-slate-100:hover {
 html.dark table thead tr {
   background-color: #1a2332 !important;
 }
+
 html.dark table tbody tr:hover {
   background-color: #1e2a3a !important;
 }
+
 html.dark table th,
 html.dark table td {
   border-color: var(--border-color) !important;
 }
-html.dark .divide-slate-100 > * {
+
+html.dark .divide-slate-100>* {
   border-color: var(--border-color) !important;
 }
 
@@ -113,24 +120,30 @@ html.dark textarea {
   border-color: #334155 !important;
   color: #f1f5f9 !important;
 }
+
 html.dark input:focus,
 html.dark select:focus {
   border-color: var(--color-primary) !important;
   background-color: #263044 !important;
 }
+
 html.dark input::placeholder {
   color: #475569 !important;
 }
 
 /* Smooth theme transitions */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease;
 }
+
 /* Exceptions — don't animate transforms or shadows */
-button, a {
+button,
+a {
   transition: background-color 0.15s ease, border-color 0.15s ease,
-              color 0.15s ease, opacity 0.15s ease, transform 0.15s ease,
-              box-shadow 0.15s ease;
+    color 0.15s ease, opacity 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 /* ─── Maintenance Mode Custom Shimmer Animation ─── */
@@ -138,6 +151,7 @@ button, a {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(250%);
   }
@@ -220,10 +234,21 @@ button, a {
 }
 
 /* Prevent loader border override from hiding spinner */
-.border-t-transparent { border-top-color: transparent !important; }
-.border-r-transparent { border-right-color: transparent !important; }
-.border-b-transparent { border-bottom-color: transparent !important; }
-.border-l-transparent { border-left-color: transparent !important; }
+.border-t-transparent {
+  border-top-color: transparent !important;
+}
+
+.border-r-transparent {
+  border-right-color: transparent !important;
+}
+
+.border-b-transparent {
+  border-bottom-color: transparent !important;
+}
+
+.border-l-transparent {
+  border-left-color: transparent !important;
+}
 
 /* Focus rings & dynamic shadow overrides */
 .focus\:ring-purple-100:focus,
@@ -235,8 +260,8 @@ button, a {
 
 .shadow-purple-100,
 .shadow-indigo-200 {
-  box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--color-button) 30%, transparent), 
-              0 4px 6px -4px color-mix(in srgb, var(--color-button) 30%, transparent) !important;
+  box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--color-button) 30%, transparent),
+    0 4px 6px -4px color-mix(in srgb, var(--color-button) 30%, transparent) !important;
 }
 
 /* Accent light backgrounds & borders using color-mix */
@@ -271,6 +296,92 @@ input::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
   margin: 0 !important;
 }
+
 input[type=number] {
   -moz-appearance: textfield !important;
+}
+
+/* Custom responsive grids for Aggregator Vehicles to bypass JIT compilation issues */
+.grid-cols-custom-5 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-custom-6 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-custom-7 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-custom-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-custom-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-custom-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-custom-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-custom-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────────── */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.684) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 99px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* Light-mode variant used on white backgrounds */
+.custom-scrollbar-light {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.custom-scrollbar-light::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar-light::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-light::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 99px;
+}
+
+.custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }

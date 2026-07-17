@@ -21,6 +21,7 @@ const timeSlotController = require("../controllers/Admin/timeSlotController");
 const businessRegionController = require("../controllers/Admin/businessRegionController");
 const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
 const employeeController = require("../controllers/Admin/employeeController");
+const vehicleController = require("../controllers/Admin/vehicleController");
 
 
 
@@ -73,6 +74,29 @@ const employeeUploads = upload.fields([
   { name: 'eyesight_certificate_image', maxCount: 1 }
 ]);
 
+const vehicleUploads = upload.fields([
+  { name: 'rc_front_image', maxCount: 1 },
+  { name: 'rc_back_image', maxCount: 1 },
+  { name: 'vehicle_front_photo', maxCount: 1 },
+  { name: 'vehicle_rear_photo', maxCount: 1 },
+  { name: 'vehicle_left_photo', maxCount: 1 },
+  { name: 'vehicle_right_photo', maxCount: 1 },
+  { name: 'puc_certificate_image', maxCount: 1 },
+  { name: 'insurance_certificate_image', maxCount: 1 },
+  { name: 'fc_certificate_image', maxCount: 1 },
+  { name: 'permit_certificate_image', maxCount: 1 },
+  { name: 'road_tax_receipt_image', maxCount: 1 },
+  { name: 'device_front_photo', maxCount: 1 },
+  { name: 'device_back_photo', maxCount: 1 },
+  { name: 'device_imei_sticker_photo', maxCount: 1 },
+  { name: 'device_purchase_invoice', maxCount: 1 },
+  { name: 'device_warranty_card', maxCount: 1 },
+  { name: 'device_box_imei_photo', maxCount: 1 },
+  { name: 'device_charger_photo', maxCount: 1 },
+  { name: 'device_accessories_photo', maxCount: 1 },
+  { name: 'device_other_document', maxCount: 1 }
+]);
+
 
 // Auth routes (public)
 router.post("/auth/login", login);
@@ -115,6 +139,14 @@ router.post("/aggregator-employees", verifyToken, requirePermission('aggregator_
 router.put("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.updateEmployee);
 router.patch("/aggregator-employees/:id/status", verifyToken, requirePermission('aggregator_employee'), employeeController.updateEmployeeStatus);
 router.delete("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeController.deleteEmployee);
+
+// Aggregator Vehicle routes
+router.get("/aggregator-vehicles", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.getAllVehicles);
+router.get("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.getVehicleById);
+router.post("/aggregator-vehicles", verifyToken, requirePermission('aggregator_vehicle'), vehicleUploads, vehicleController.createVehicle);
+router.put("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleUploads, vehicleController.updateVehicle);
+router.patch("/aggregator-vehicles/:id/status", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.updateVehicleStatus);
+router.delete("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.deleteVehicle);
 
 
 
