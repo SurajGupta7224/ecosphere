@@ -24,6 +24,9 @@ import TimeSlots from './pages/TimeSlots';
 import { SettingsProvider } from './context/SettingsContext';
 import ModuleCreation from './pages/ModuleCreation';
 import Customers from './pages/Customers';
+import EmployeesList from './pages/EmployeesList';
+import AddEmployee from './pages/AddEmployee';
+
 
 
 
@@ -151,7 +154,7 @@ function App() {
           <Route
             path="bwg/business-region"
             element={
-              <RequirePermission requiredPermission="bwg_mapping">
+              <RequirePermission requiredPermission="business_region">
                 <BusinessRegions />
               </RequirePermission>
             }
@@ -159,7 +162,7 @@ function App() {
           <Route
             path="bwg/business-sub-region"
             element={
-              <RequirePermission requiredPermission="bwg_mapping">
+              <RequirePermission requiredPermission="business_region">
                 <BusinessSubRegions />
               </RequirePermission>
             }
@@ -205,6 +208,31 @@ function App() {
               </RequirePermission>
             }
           />
+          <Route
+            path="aggregator-employees"
+            element={
+              <RequirePermission requiredPermission="aggregator_employee">
+                <EmployeesList />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="aggregator-employees/add"
+            element={
+              <RequirePermission requiredPermission="aggregator_employee">
+                <AddEmployee />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="aggregator-employees/:id/edit"
+            element={
+              <RequirePermission requiredPermission="aggregator_employee">
+                <AddEmployee />
+              </RequirePermission>
+            }
+          />
+
 </Route>
 
         {/* Full Screen Unauthorized Error Page */}

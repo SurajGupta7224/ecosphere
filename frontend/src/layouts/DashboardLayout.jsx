@@ -117,7 +117,6 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: t('users'), path: '/users', req: 'user_management' },
-        { name: t('customers') || 'Customers', path: '/customers', req: 'user_management' },
         { name: t('roles'), path: '/roles', req: 'role_management' },
         { name: t('permissions'), path: '/permissions', req: 'permission' },
         { name: t('locations'), path: '/locations', req: 'locations' }
@@ -143,13 +142,26 @@ const DashboardLayout = () => {
       isSubMenu: true,
       hidden: isVendor && !isApproved,
       items: [
-        { name: 'Business Region', path: '/bwg/business-region', req: 'bwg_mapping' },
-        { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'bwg_mapping' }
+        { name: 'Business Region', path: '/bwg/business-region', req: 'business_region' },
+        { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'business_region' }
       ]
     },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
+    {
+      id: 'aggregator_employees_group',
+      title: 'Aggregator Employees',
+      icon: Users,
+      isSubMenu: true,
+      hidden: isVendor && !isApproved,
+      items: [
+        { name: 'Add Employee', path: '/aggregator-employees/add', req: 'aggregator_employee' },
+        { name: 'Employee List', path: '/aggregator-employees', req: 'aggregator_employee' }
+      ]
+    },
+
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },
+
     {
       id: 'developer',
       title: 'Developer',
@@ -240,10 +252,11 @@ const DashboardLayout = () => {
                     className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm hover:bg-white/5 transition-colors"
                     style={{ color: 'var(--color-sidebar-text)' }}
                   >
-                    <div className="flex items-center">
-                      <item.icon className="w-4 h-4 mr-3 opacity-80" />
-                      {item.title}
+                    <div className="flex items-center min-w-0">
+                      <item.icon className="w-4 h-4 mr-3 opacity-80 flex-shrink-0" />
+                      <span className="truncate pr-2">{item.title}</span>
                     </div>
+
                     {openSections[item.id] ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
                   </button>
 

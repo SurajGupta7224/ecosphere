@@ -20,6 +20,8 @@ const { acceptTnc } = require("../controllers/Admin/tncController");
 const timeSlotController = require("../controllers/Admin/timeSlotController");
 const businessRegionController = require("../controllers/Admin/businessRegionController");
 const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
+const employeeController = require("../controllers/Admin/employeeController");
+
 
 
 
@@ -59,6 +61,19 @@ const subRegionUploads = upload.fields([
   { name: 'shop_establishment_file', maxCount: 1 }
 ]);
 
+const employeeUploads = upload.fields([
+  { name: 'profile_photo', maxCount: 1 },
+  { name: 'aadhaar_front_image', maxCount: 1 },
+  { name: 'aadhaar_back_image', maxCount: 1 },
+  { name: 'pan_card_image', maxCount: 1 },
+  { name: 'driving_license_front_image', maxCount: 1 },
+  { name: 'driving_license_back_image', maxCount: 1 },
+  { name: 'police_verification_image', maxCount: 1 },
+  { name: 'medical_certificate_image', maxCount: 1 },
+  { name: 'eyesight_certificate_image', maxCount: 1 }
+]);
+
+
 // Auth routes (public)
 router.post("/auth/login", login);
 router.get("/auth/captcha", generateCaptcha);
@@ -92,6 +107,16 @@ router.post("/users", verifyToken, requirePermission('user_management'), userUpl
 router.put("/users/:id", verifyToken, requirePermission('user_management'), userUploads, updateUser);
 router.patch("/users/:id/status", verifyToken, requirePermission('user_management'), updateUserStatus);
 router.delete("/users/:id", verifyToken, requirePermission('user_management'), deleteUser);
+
+// Aggregator Employee routes
+router.get("/aggregator-employees", verifyToken, requirePermission('aggregator_employee'), employeeController.getAllEmployees);
+router.get("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeController.getEmployeeById);
+router.post("/aggregator-employees", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.createEmployee);
+router.put("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.updateEmployee);
+router.patch("/aggregator-employees/:id/status", verifyToken, requirePermission('aggregator_employee'), employeeController.updateEmployeeStatus);
+router.delete("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeController.deleteEmployee);
+
+
 
 // Roles - Uses role_management
 router.get("/roles", verifyToken, requirePermission('role_management'), roleController.getAllRoles);
@@ -138,22 +163,24 @@ router.patch("/wards/:id/status", verifyToken, requirePermission('bwg_mapping'),
 router.delete("/wards/:id", verifyToken, requirePermission('bwg_mapping'), wardController.deleteWard);
 router.get("/zones/:id/wards", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), wardController.getWardsByZone);
 
-// Business Region & Sub Region routes
-router.get("/business-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessRegionController.getAllBusinessRegions);
-router.get("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.getBusinessRegionById);
-router.post("/business-regions", verifyToken, requirePermission('bwg_mapping'), businessRegionController.createBusinessRegion);
-router.put("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.updateBusinessRegion);
-router.patch("/business-regions/:id/status", verifyToken, requirePermission('bwg_mapping'), businessRegionController.toggleBusinessRegionStatus);
-router.delete("/business-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessRegionController.deleteBusinessRegion);
 
-router.get("/business-sub-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getAllBusinessSubRegions);
-router.get("/business-sub-regions/next-code", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.getNextBranchCode);
-router.get("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.getBusinessSubRegionById);
-router.post("/business-sub-regions", verifyToken, requirePermission('bwg_mapping'), subRegionUploads, businessSubRegionController.createBusinessSubRegion);
-router.put("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), subRegionUploads, businessSubRegionController.updateBusinessSubRegion);
-router.patch("/business-sub-regions/:id/status", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.toggleBusinessSubRegionStatus);
-router.delete("/business-sub-regions/:id", verifyToken, requirePermission('bwg_mapping'), businessSubRegionController.deleteBusinessSubRegion);
-router.get("/business-regions/:id/sub-regions", verifyToken, requirePermission(['bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getSubRegionsByRegion);
+
+// Business Region & Sub Region routes
+router.get("/business-regions", verifyToken, requirePermission(['business_region', 'bwg_mapping', 'profile', 'waste_collection_requests']), businessRegionController.getAllBusinessRegions);
+router.get("/business-regions/:id", verifyToken, requirePermission('business_region'), businessRegionController.getBusinessRegionById);
+router.post("/business-regions", verifyToken, requirePermission('business_region'), businessRegionController.createBusinessRegion);
+router.put("/business-regions/:id", verifyToken, requirePermission('business_region'), businessRegionController.updateBusinessRegion);
+router.patch("/business-regions/:id/status", verifyToken, requirePermission('business_region'), businessRegionController.toggleBusinessRegionStatus);
+router.delete("/business-regions/:id", verifyToken, requirePermission('business_region'), businessRegionController.deleteBusinessRegion);
+
+router.get("/business-sub-regions", verifyToken, requirePermission(['business_region', 'bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getAllBusinessSubRegions);
+router.get("/business-sub-regions/next-code", verifyToken, requirePermission('business_region'), businessSubRegionController.getNextBranchCode);
+router.get("/business-sub-regions/:id", verifyToken, requirePermission('business_region'), businessSubRegionController.getBusinessSubRegionById);
+router.post("/business-sub-regions", verifyToken, requirePermission('business_region'), subRegionUploads, businessSubRegionController.createBusinessSubRegion);
+router.put("/business-sub-regions/:id", verifyToken, requirePermission('business_region'), subRegionUploads, businessSubRegionController.updateBusinessSubRegion);
+router.patch("/business-sub-regions/:id/status", verifyToken, requirePermission('business_region'), businessSubRegionController.toggleBusinessSubRegionStatus);
+router.delete("/business-sub-regions/:id", verifyToken, requirePermission('business_region'), businessSubRegionController.deleteBusinessSubRegion);
+router.get("/business-regions/:id/sub-regions", verifyToken, requirePermission(['business_region', 'bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getSubRegionsByRegion);
 
 // Collection Event routes
 router.get("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getAllCollectionEvents);

@@ -39,7 +39,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
   const [showCustomerPopup, setShowCustomerPopup] = useState(false);
 
   const [editFormData, setEditFormData] = useState({
-    customer_type: 'Individual',
+    customer_type: '',
     mobile_number: '',
     email: '',
     address_search: '',
@@ -60,7 +60,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
 
     // B2B fields
     site_request: '',
-    service_center_type: 'Service Center Type',
+    service_center_type: '',
     employee_name: '',
     billing_type: '',
     business_region: '',
@@ -86,10 +86,14 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     technician_assign: '',
     technician: '',
     total_order_value: '0.00',
+    total_yearly_amount: '0.00',
     discount: '0.00',
     discounted_price: '0.00',
     sez: 'No',
     taxibility: '0.00 %',
+    cgst: '0.00',
+    sgst: '0.00',
+    gst_amount: '0.00',
     final_price: '0.00',
     sector: '',
   });
@@ -178,10 +182,14 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       technician_assign: first.technician_assign || '',
       technician: first.technician || '',
       total_order_value: first.total_order_value || '0.00',
+      total_yearly_amount: first.total_yearly_amount || '0.00',
       discount: first.discount || '0.00',
       discounted_price: first.discounted_price || '0.00',
       sez: first.sez || 'No',
       taxibility: first.taxibility || '0.00 %',
+      cgst: first.cgst || '0.00',
+      sgst: first.sgst || '0.00',
+      gst_amount: first.gst_amount || '0.00',
       final_price: first.final_price || '0.00',
       sector: first.sector || '',
 
@@ -283,9 +291,11 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
   useEffect(() => {
     const active = editSubcategoryCards.filter(c => c.included);
     let sumMonthly = 0;
+    let sumYearly = 0;
     active.forEach(card => {
       if (card.pricing_mode === 'Bulk') {
         sumMonthly += parseFloat(card.bulk_monthly_price || 0);
+        sumYearly += parseFloat(card.bulk_yearly_price || 0);
       } else {
         const expectedDaily = parseFloat(card.expected_waste) || 0;
         const selectedVar = (card.variations || []).find(v => v.id == card.selected_variation_id);
@@ -296,29 +306,44 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
           : defaultPrice;
 
         sumMonthly += (expectedDaily * 30) * finalPrice;
+        sumYearly += (expectedDaily * 365) * finalPrice;
       }
     });
 
-    const totalVal = sumMonthly.toFixed(2);
-    const discountVal = parseFloat(editFormData.discount) || 0;
-    const discountedVal = Math.max(0, parseFloat(totalVal) - discountVal).toFixed(2);
+    const totalYearlyVal = sumYearly.toFixed(2);
+    const yearlyDiscountVal = parseFloat(editFormData.discount) || 0;
+    const yearlyDiscountedPrice = Math.max(0, sumYearly - yearlyDiscountVal);
+    const discountedVal = yearlyDiscountedPrice.toFixed(2);
+    
+    const taxPercent = editFormData.sez === 'Yes' ? 0 : (parseFloat(editFormData.taxibility) || 0);
+    const taxRate = taxPercent / 100;
 
-    let taxPercent = parseFloat(editFormData.taxibility) || 0;
-
-    const finalVal = (parseFloat(discountedVal) * (1 + taxPercent / 100)).toFixed(2);
+    // GST calculated on the Total Yearly Order Value (before discount)
+    const gstVal = (parseFloat(totalYearlyVal) * taxRate).toFixed(2);
+    const cgstVal = (parseFloat(gstVal) / 2).toFixed(2);
+    const sgstVal = (parseFloat(gstVal) / 2).toFixed(2);
+    const finalVal = (yearlyDiscountedPrice + parseFloat(gstVal)).toFixed(2);
 
     setEditFormData(prev => {
       if (
-        prev.total_order_value === totalVal &&
+        prev.total_order_value === totalYearlyVal &&
+        prev.total_yearly_amount === totalYearlyVal &&
         prev.discounted_price === discountedVal &&
+        prev.cgst === cgstVal &&
+        prev.sgst === sgstVal &&
+        prev.gst_amount === gstVal &&
         prev.final_price === finalVal
       ) {
         return prev;
       }
       return {
         ...prev,
-        total_order_value: totalVal,
+        total_order_value: totalYearlyVal,
+        total_yearly_amount: totalYearlyVal,
         discounted_price: discountedVal,
+        cgst: cgstVal,
+        sgst: sgstVal,
+        gst_amount: gstVal,
         final_price: finalVal
       };
     });
@@ -734,6 +759,14 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       return;
     }
 
+    if (name === 'sez') {
+      setEditFormData(prev => ({
+        ...prev,
+        sez: value,
+        taxibility: value === 'Yes' ? '0.00 %' : prev.taxibility
+      }));
+      return;
+    }
     setEditFormData(prev => ({ ...prev, [name]: valToSet }));
   };
 
@@ -828,20 +861,21 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
   }, []);
 
   const renderEditDocumentUploadField = (file, setFile, existingFilename, title = "Upload Document", accept = ".pdf,image/*", containerId = "") => {
-    const isNewImage = file && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
-    const newPreviewUrl = file ? URL.createObjectURL(file) : '';
+    const isNewFile = file instanceof File;
+    const isNewImage = isNewFile && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
+    const newPreviewUrl = isNewFile ? URL.createObjectURL(file) : '';
 
-    const hasExisting = !file && existingFilename;
+    const hasExisting = file !== 'clear' && !isNewFile && existingFilename;
     const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif)$/i.test(existingFilename);
     const existingPreviewUrl = hasExisting ? `${IMAGE_BASE_URL}/CollectionRequests/${existingFilename}` : '';
 
-    const showFile = file || hasExisting;
+    const showFile = isNewFile || hasExisting;
 
     return (
       <div id={containerId} className="relative w-full h-36 border border-slate-200 rounded-2xl bg-slate-50/50 overflow-hidden group transition-all mt-2">
         {showFile ? (
           <div className="w-full h-full relative animate-in fade-in duration-200">
-            {file ? (
+            {isNewFile ? (
               isNewImage ? (
                 <img src={newPreviewUrl} alt={title} className="w-full h-full object-cover" />
               ) : (
@@ -865,7 +899,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => window.open(file ? newPreviewUrl : existingPreviewUrl, '_blank')}
+                onClick={() => window.open(isNewFile ? newPreviewUrl : existingPreviewUrl, '_blank')}
                 className="px-3.5 py-2 bg-white/95 hover:bg-white text-slate-800 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 View Document
@@ -873,11 +907,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
               <button
                 type="button"
                 onClick={() => {
-                  if (file) {
-                    setFile(null);
-                  } else {
-                    toast.success("To replace, simply upload a new file below.");
-                  }
+                  setFile('clear');
                 }}
                 className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
@@ -905,6 +935,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       </div>
     );
   };
+
 
   const handleEditFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -937,33 +968,39 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       }
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('ring-4', 'ring-rose-500/50', 'border-rose-500');
+        element.style.borderColor = '#ef4444';
+        element.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.3)';
         element.focus();
         setTimeout(() => {
-          element.classList.remove('ring-4', 'ring-rose-500/50', 'border-rose-500');
+          element.style.borderColor = '';
+          element.style.boxShadow = '';
         }, 5000);
       }
     };
 
     // Section 1: Company Details validations
-    if (!editFormData.site_request || editFormData.site_request === 'Site Request') {
+    if (!editFormData.site_request) {
       invalidateField('site_request', "Please select a valid Site Request.");
       return;
     }
-    if (!editFormData.service_center_type || editFormData.service_center_type === 'Service Center Type') {
+    if (!editFormData.service_center_type) {
       invalidateField('service_center_type', "Please select a valid Service Center Type.");
       return;
     }
-    if (!editFormData.billing_type || editFormData.billing_type === 'Billing Type') {
+    if (!editFormData.billing_type) {
       invalidateField('billing_type', "Please select a valid Billing Type.");
       return;
     }
-    if (!editFormData.business_region || editFormData.business_region === 'Business Region') {
+    if (!editFormData.business_region) {
       invalidateField('business_region', "Please select a valid Business Region.");
       return;
     }
-    if (!editFormData.business_sub_region || editFormData.business_sub_region === 'Business Sub Region' || editFormData.business_sub_region === '') {
+    if (!editFormData.business_sub_region) {
       invalidateField('business_sub_region', "Please select a valid Business Sub Region.");
+      return;
+    }
+    if (!editFormData.business_lead) {
+      invalidateField('business_lead', "Please select a valid Business Lead.");
       return;
     }
 
@@ -1168,13 +1205,14 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     }
 
     // Append individual documents if updated
-    if (editMomFile) payload.append('mom_agreement_file', editMomFile);
-    if (editPoFile) payload.append('po_copy_file', editPoFile);
-    if (editRwaFile) payload.append('rwa_file', editRwaFile);
-    if (editGstFile) payload.append('gst_file', editGstFile);
-    if (editPanFile) payload.append('pan_file', editPanFile);
-    if (editTradeFile) payload.append('trade_license_file', editTradeFile);
-    if (editEmailFile) payload.append('email_copy_file', editEmailFile);
+    if (editMomFile && editMomFile !== 'clear') payload.append('mom_agreement_file', editMomFile);
+    if (editPoFile && editPoFile !== 'clear') payload.append('po_copy_file', editPoFile);
+    if (editRwaFile && editRwaFile !== 'clear') payload.append('rwa_file', editRwaFile);
+    if (editGstFile && editGstFile !== 'clear') payload.append('gst_file', editGstFile);
+    if (editPanFile && editPanFile !== 'clear') payload.append('pan_file', editPanFile);
+    if (editTradeFile && editTradeFile !== 'clear') payload.append('trade_license_file', editTradeFile);
+    if (editEmailFile && editEmailFile !== 'clear') payload.append('email_copy_file', editEmailFile);
+
 
     const subList = activeCards.map(card => ({
       category_id: card.category_id,
@@ -1226,7 +1264,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
 
   return (
     <>
-      <form onSubmit={handleEditSubmit} className="space-y-6 animate-in fade-in duration-300">
+      <form onSubmit={handleEditSubmit} noValidate className="space-y-6 animate-in fade-in duration-300">
       {/* Page Header Card */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
@@ -1258,7 +1296,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
-                <option value="Site Request">Site Request</option>
+                <option value="">Select Option</option>
                 <option value="Commercial Route">Commercial Route</option>
                 <option value="Commercial Onsite">Commercial Onsite</option>
               </select>
@@ -1274,7 +1312,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 autoComplete="off"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
-                <option value="Service Center Type">Service Center Type</option>
+                <option value="">Select Option</option>
                 <option value="Ecosphere">Ecosphere</option>
               </select>
             </div>
@@ -1300,7 +1338,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
-                <option value="Billing Type">Billing Type</option>
+                <option value="">Select Option</option>
                 <option value="Head Office">Head Office</option>
                 <option value="Regional Office">Regional Office</option>
                 <option value="Branch Office">Branch Office</option>
@@ -1316,7 +1354,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
-                <option value="">Business Region</option>
+                <option value="">Select Option</option>
                 {Array.from(new Set(businessRegions.map(r => r.region_name || r.state))).filter(Boolean).map(stateName => (
                   <option key={stateName} value={stateName}>{stateName}</option>
                 ))}
@@ -1332,7 +1370,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
-                <option value="">Business Sub Region</option>
+                <option value="">Select Option</option>
                 {businessSubRegions.map(subReg => (
                   <option key={subReg.id} value={subReg.sub_region_name}>{subReg.sub_region_name}</option>
                 ))}
@@ -1393,7 +1431,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                   >
-                    <option value="e.g. New Customer">e.g. New Customer</option>
+                    <option value="" disabled hidden>Select Option</option>
                     <option value="New Customer">New Customer</option>
                     <option value="Existing Customer">Existing Customer</option>
                   </select>
@@ -1407,7 +1445,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                         type="tel"
                         value={searchMobile}
                         onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        placeholder="e.g. 9876543210"
+                        placeholder="Enter the number"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                       />
                       <button
@@ -1431,7 +1469,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                   >
-                    <option value="e.g. Web Lead">e.g. Web Lead</option>
+                    <option value="">Select Option</option>
                     <option value="Exhibition">Exhibition</option>
                     <option value="Web Lead">Web Lead</option>
                     <option value="Service Lead">Service Lead</option>
@@ -2383,34 +2421,11 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Order Value</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Order Value (Yearly)</label>
               <input
                 type="text"
                 name="total_order_value"
                 value={editFormData.total_order_value}
-                readOnly
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (₹)</label>
-              <input
-                type="number"
-                name="discount"
-                value={editFormData.discount}
-                onChange={handleEditInputChange}
-                placeholder="Discount"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discounted Price</label>
-              <input
-                type="text"
-                name="discounted_price"
-                value={editFormData.discounted_price}
                 readOnly
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
               />
@@ -2423,7 +2438,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 value={editFormData.sez}
                 onChange={handleEditInputChange}
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-purple-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
                 <option value="No">No</option>
                 <option value="Yes">Yes</option>
@@ -2434,10 +2449,11 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability / GST *</label>
               <select
                 name="taxibility"
+                disabled={editFormData.sez === 'Yes'}
                 value={editFormData.taxibility}
                 onChange={handleEditInputChange}
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                className={`w-full border border-slate-200 rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${editFormData.sez === 'Yes' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-slate-50 text-slate-700 cursor-pointer focus:ring-4 focus:ring-violet-100 focus:border-violet-400'}`}
               >
                 <option value="0.00 %">0.00 %</option>
                 <option value="5.00 %">5.00 %</option>
@@ -2448,7 +2464,63 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Final Price</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">CGST</label>
+              <input
+                type="text"
+                name="cgst"
+                value={editFormData.cgst}
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SGST</label>
+              <input
+                type="text"
+                name="sgst"
+                value={editFormData.sgst}
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GST</label>
+              <input
+                type="text"
+                name="gst_amount"
+                value={editFormData.gst_amount}
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly) *</label>
+              <input
+                type="number"
+                name="discount"
+                value={editFormData.discount}
+                onChange={handleEditInputChange}
+                placeholder="Discount"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discounted Price (Yearly)</label>
+              <input
+                type="text"
+                name="discounted_price"
+                value={editFormData.discounted_price}
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Final Price (Yearly)</label>
               <input
                 type="text"
                 name="final_price"

@@ -28,6 +28,8 @@ const ModuleGeneratorHistory = require("./moduleGeneratorHistoryModel");
 const Customer = require("./customerModel");
 const BusinessRegion = require("./businessRegionModel");
 const BusinessSubRegion = require("./businessSubRegionModel");
+const Employee = require("./employeeModel");
+
 
 
 
@@ -125,6 +127,12 @@ User.hasMany(ModuleGeneratorHistory, { foreignKey: "created_by", as: "generatedM
 BusinessRegion.hasMany(BusinessSubRegion, { foreignKey: "business_region_id", as: "subRegions" });
 BusinessSubRegion.belongsTo(BusinessRegion, { foreignKey: "business_region_id", as: "businessRegion" });
 
+// Employee associations
+Employee.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+User.hasMany(Employee, { foreignKey: "approved_by", as: "approvedEmployees" });
+
+
+
 module.exports = { 
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
@@ -132,7 +140,7 @@ module.exports = {
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
   TimeSlot, ModuleGeneratorHistory, Customer,
-  BusinessRegion, BusinessSubRegion
+  BusinessRegion, BusinessSubRegion, Employee
 };
 
 

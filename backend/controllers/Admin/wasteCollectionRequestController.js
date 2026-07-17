@@ -131,6 +131,10 @@ const createWasteCollectionRequest = async (req, res) => {
     sez,
     taxibility,
     sector,
+    cgst,
+    sgst,
+    gst_amount,
+    total_yearly_amount,
     final_price
   } = req.body;
 
@@ -396,6 +400,10 @@ const createWasteCollectionRequest = async (req, res) => {
           sez: sez || null,
           taxibility: taxibility || null,
           sector: sector || null,
+          cgst: cgst ? parseFloat(cgst) : 0.00,
+          sgst: sgst ? parseFloat(sgst) : 0.00,
+          gst_amount: gst_amount ? parseFloat(gst_amount) : 0.00,
+          total_yearly_amount: total_yearly_amount ? parseFloat(total_yearly_amount) : 0.00,
           final_price: final_price ? parseFloat(final_price) : 0.00,
 
           category_id,
@@ -483,6 +491,10 @@ const createWasteCollectionRequest = async (req, res) => {
         sez: sez || null,
         taxibility: taxibility || null,
         sector: sector || null,
+        cgst: cgst ? parseFloat(cgst) : 0.00,
+        sgst: sgst ? parseFloat(sgst) : 0.00,
+        gst_amount: gst_amount ? parseFloat(gst_amount) : 0.00,
+        total_yearly_amount: total_yearly_amount ? parseFloat(total_yearly_amount) : 0.00,
         final_price: final_price ? parseFloat(final_price) : 0.00,
 
         category_id: null,
@@ -638,6 +650,10 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
     sez,
     taxibility,
     sector,
+    cgst,
+    sgst,
+    gst_amount,
+    total_yearly_amount,
     final_price
   } = req.body;
 
@@ -836,6 +852,10 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
             sez: sez || null,
             taxibility: taxibility || null,
             sector: sector || null,
+            cgst: cgst ? parseFloat(cgst) : 0.00,
+            sgst: sgst ? parseFloat(sgst) : 0.00,
+            gst_amount: gst_amount ? parseFloat(gst_amount) : 0.00,
+            total_yearly_amount: total_yearly_amount ? parseFloat(total_yearly_amount) : 0.00,
             final_price: final_price ? parseFloat(final_price) : 0.00,
 
             mom_agreement_file: momAgreementFile,
@@ -923,6 +943,10 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
           sez: sez || null,
           taxibility: taxibility || null,
           sector: sector || null,
+          cgst: cgst ? parseFloat(cgst) : 0.00,
+          sgst: sgst ? parseFloat(sgst) : 0.00,
+          gst_amount: gst_amount ? parseFloat(gst_amount) : 0.00,
+          total_yearly_amount: total_yearly_amount ? parseFloat(total_yearly_amount) : 0.00,
           final_price: final_price ? parseFloat(final_price) : 0.00,
 
           mom_agreement_file: momAgreementFile,
