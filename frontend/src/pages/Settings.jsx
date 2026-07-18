@@ -106,6 +106,11 @@ const ColorField = ({ label, name, value, onChange }) => (
 const ImageUploadField = ({ label, current, name, onChange, hint }) => {
   const ref = useRef();
   const [preview, setPreview] = useState(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [current, preview]);
 
   const handleChange = (e) => {
     const file = e.target.files[0];
@@ -125,13 +130,13 @@ const ImageUploadField = ({ label, current, name, onChange, hint }) => {
         className="relative border-2 border-dashed border-slate-200 rounded-xl p-4 cursor-pointer
           hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group text-center"
       >
-        {imgSrc ? (
+        {imgSrc && !hasError ? (
           <div className="flex flex-col items-center gap-2">
             <img
               src={imgSrc}
               alt={label}
               className="max-h-16 object-contain rounded"
-              onError={e => { e.target.style.display = 'none'; }}
+              onError={() => setHasError(true)}
             />
             <span className="text-xs text-indigo-500 font-medium group-hover:underline">Click to replace</span>
           </div>

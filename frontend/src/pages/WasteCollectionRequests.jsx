@@ -819,7 +819,7 @@ export default function WasteCollectionRequests() {
         branch_code: reqData.branch_code || prev.branch_code,
 
         // Section 2: Customer Details
-        customer_type: reqData.customer_type || prev.customer_type,
+        customer_type: 'Existing Customer',
         contact_person: reqData.contact_person || '',
         business_lead: reqData.business_lead || prev.business_lead,
         customer_legal_name: reqData.customer_legal_name || '',
@@ -974,6 +974,114 @@ export default function WasteCollectionRequests() {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
+
+    if (name === 'customer_type') {
+      if (value === 'New Customer') {
+        // Preserving the first section branch/employee details, reset everything else
+        setFormData(prev => ({
+          ...prev,
+          customer_type: 'New Customer',
+          mobile_number: '',
+          email: '',
+          address_search: '',
+          latitude: '',
+          longitude: '',
+          waste_generator_name: '',
+          complete_address: '',
+          area_sqm: '',
+          no_of_dwelling_units: '',
+          registered_rwa: '',
+          gst: '',
+          pan: '',
+          trade_license: '',
+          pickup_notes: '',
+          pickup_date: '',
+          pickup_time: '',
+          time_slot_id: '',
+          customer_legal_name: '',
+          customer_trade_name: '',
+          contact_person: '',
+          designation: '',
+          phone_number_2: '',
+          email_2: '',
+          others_note: '',
+          google_map_link: '',
+          landmark: '',
+          city: '',
+          state: '',
+          pincode: '',
+          country: '',
+          billing_address_different: false,
+          billing_customer_legal_name: '',
+          billing_customer_trade_name: '',
+          billing_contact_person: '',
+          billing_designation: '',
+          billing_phone_number_1: '',
+          billing_phone_number_2: '',
+          billing_email: '',
+          billing_email_2: '',
+          billing_gstn: '',
+          billing_complete_address: '',
+          billing_others: '',
+          billing_city: '',
+          billing_state: '',
+          billing_pincode: '',
+          billing_landmark: '',
+          billing_country: '',
+          audit_requirement: 'Required',
+          technician_assign: 'Required',
+          technician: '',
+          total_order_value: 0,
+          total_yearly_amount: 0,
+          discount: 0,
+          discounted_price: 0,
+          sez: 'No',
+          taxibility: '0.00',
+          sector: '',
+          cgst: 0,
+          sgst: 0,
+          gst_amount: 0,
+          final_price: 0
+        }));
+
+        // Reset subcategories selection cards
+        setSubcategoryCards(prev => prev.map(card => ({
+          ...card,
+          selected_variation_id: '',
+          custom_price: '',
+          expected_waste: '',
+          included: false
+        })));
+
+        // Clear existing files and local uploads
+        setExistingMomFile(null);
+        setExistingPoFile(null);
+        setExistingEmailFile(null);
+        setExistingRwaFile(null);
+        setExistingGstFile(null);
+        setExistingPanFile(null);
+        setExistingTradeFile(null);
+
+        setSelectedFiles([]);
+        if (filePreviews && filePreviews.length > 0) {
+          filePreviews.forEach(url => URL.revokeObjectURL(url));
+        }
+        setFilePreviews([]);
+        setMomFile(null);
+        setPoFile(null);
+        setEmailCopyFile(null);
+        setRwaFile(null);
+        setGstFile(null);
+        setPanFile(null);
+        setTradeLicenseFile(null);
+
+        setSearchMobile('');
+        setMatchingCustomers([]);
+      } else {
+        setFormData(prev => ({ ...prev, customer_type: value }));
+      }
+      return;
+    }
     if (name === 'google_map_link') {
       setFormData(prev => ({ ...prev, google_map_link: value }));
       if (value) {
@@ -1271,13 +1379,12 @@ export default function WasteCollectionRequests() {
       invalidateField('business_sub_region', "Please select a valid Business Sub Region.");
       return;
     }
-    if (!formData.business_lead) {
-      invalidateField('business_lead', "Please select a valid Business Lead.");
-      return;
-    }
-
     if (!formData.customer_type) {
       invalidateField('customer_type', "Customer Type is required.");
+      return;
+    }
+    if (!formData.business_lead) {
+      invalidateField('business_lead', "Please select a valid Business Lead.");
       return;
     }
     if (activeTab === 'B2C') {
@@ -1368,17 +1475,29 @@ export default function WasteCollectionRequests() {
       invalidateField('waste_generator_name', "BWG Name is required.");
       return;
     }
-    if (formData.area_sqm) {
-      const areaVal = parseFloat(formData.area_sqm);
-      if (isNaN(areaVal) || areaVal <= 0) {
-        invalidateField('area_sqm', "Area (SqM) must be a positive number.");
+    if (!formData.sector) {
+      invalidateField('sector', "Please Select a Sector.");
+      return;
+    }
+
+    if (formData.sector === 'Apartment') {
+      if (!formData.no_of_dwelling_units) {
+        invalidateField('no_of_dwelling_units', "Flats is required.");
         return;
       }
-    }
-    if (formData.no_of_dwelling_units) {
       const unitsVal = parseInt(formData.no_of_dwelling_units);
       if (isNaN(unitsVal) || unitsVal <= 0) {
         invalidateField('no_of_dwelling_units', "Flats must be a positive integer.");
+        return;
+      }
+    } else if (formData.sector) {
+      if (!formData.area_sqm) {
+        invalidateField('area_sqm', "Area (SqM) is required.");
+        return;
+      }
+      const areaVal = parseFloat(formData.area_sqm);
+      if (isNaN(areaVal) || areaVal <= 0) {
+        invalidateField('area_sqm', "Area (SqM) must be a positive number.");
         return;
       }
     }
@@ -2682,24 +2801,26 @@ export default function WasteCollectionRequests() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Area (SqM)</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Area (SqM){formData.sector && formData.sector !== 'Apartment' ? ' *' : ''}</label>
                       <input
                         type="number"
                         name="area_sqm"
                         value={formData.area_sqm}
                         onChange={handleInputChange}
+                        required={formData.sector && formData.sector !== 'Apartment'}
                         placeholder="e.g. 500"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats{formData.sector === 'Apartment' ? ' *' : ''}</label>
                       <input
                         type="number"
                         name="no_of_dwelling_units"
                         value={formData.no_of_dwelling_units}
                         onChange={handleInputChange}
+                        required={formData.sector === 'Apartment'}
                         placeholder="e.g. 12"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                       />
@@ -2741,7 +2862,7 @@ export default function WasteCollectionRequests() {
                 Loading waste categories...
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-4">
                 {/* Grouped Category Selection Controls */}
                 <div className="space-y-6 pb-6 border-b border-slate-100">
                   {groupedCategories.map((cat) => {
@@ -3060,12 +3181,11 @@ export default function WasteCollectionRequests() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SEZ *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SEZ</label>
                 <select
                   name="sez"
                   value={formData.sez}
                   onChange={handleInputChange}
-                  required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
                 >
                   <option value="No">No</option>
@@ -3074,13 +3194,12 @@ export default function WasteCollectionRequests() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability (%) *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability (%)</label>
                 <select
                   name="taxibility"
                   disabled={formData.sez === 'Yes'}
                   value={formData.taxibility}
                   onChange={handleInputChange}
-                  required
                   className={`w-full border border-slate-200 rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${formData.sez === 'Yes' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-slate-50 text-slate-700 cursor-pointer focus:ring-4 focus:ring-violet-100 focus:border-violet-400'}`}
                 >
                   <option value="0.00">0.00 %</option>
@@ -3124,7 +3243,7 @@ export default function WasteCollectionRequests() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly) *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly)</label>
                 <input
                   type="number"
                   name="discount"

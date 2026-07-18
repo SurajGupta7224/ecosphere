@@ -116,7 +116,7 @@ const BwgCard = ({ title, value, onClick, icon: Icon, iconBg, iconColor, gradien
 
         {/* Text and Number */}
         <div className="mt-5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 leading-none">
+          <p className="text-base font-normal text-black mb-1.5">
             {title}
           </p>
           <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight leading-none">
@@ -476,7 +476,7 @@ const Dashboard = () => {
 
           {/* FROM DATE */}
           <div className="flex-1 min-w-[120px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               From Date
             </label>
             <input
@@ -489,26 +489,26 @@ const Dashboard = () => {
 
           {/* TO DATE */}
           <div className="flex-1 min-w-[120px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               To Date
             </label>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
             />
           </div>
 
           {/* CORPORATION */}
           <div className="flex-1 min-w-[150px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               Corporation
             </label>
             <select
               value={selectedCorp}
               onChange={(e) => setSelectedCorp(e.target.value)}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
             >
               <option value="">All Corporations</option>
               {corporations.map((corp) => (
@@ -521,14 +521,14 @@ const Dashboard = () => {
 
           {/* DIVISION */}
           <div className="flex-1 min-w-[140px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               Division
             </label>
             <select
               value={selectedDivision}
               onChange={(e) => setSelectedDivision(e.target.value)}
               disabled={!selectedCorp}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="All">All Divisions</option>
               {divisions.map((div) => (
@@ -541,14 +541,14 @@ const Dashboard = () => {
 
           {/* WARD */}
           <div className="flex-1 min-w-[140px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               Ward
             </label>
             <select
               value={selectedWard}
               onChange={(e) => setSelectedWard(e.target.value)}
               disabled={selectedDivision === 'All' || !selectedDivision}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="All">All Wards</option>
               {wards.map((ward) => (
@@ -561,13 +561,13 @@ const Dashboard = () => {
 
           {/* COLLECTION STATUS */}
           <div className="flex-1 min-w-[130px]">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            <label className="text-sm font-normal text-black block mb-1">
               Collection Status
             </label>
             <select
               value={collectionStatus}
               onChange={(e) => setCollectionStatus(e.target.value)}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
             >
               <option value="All">All Status</option>
               <option value="Active">Active</option>
@@ -598,12 +598,12 @@ const Dashboard = () => {
       {/* ADMINISTRATION & FIELD OPERATIONS */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-base font-bold text-slate-700">{t('BWG_Operations') || 'Municipal Operations'}</h2>
-          <p className="text-slate-400 text-[11px]">{t('BWG_description') || 'Track and manage municipal corporations, zones, wards, and scheduled collection events'}</p>
+          <h2 className="text-lg font-bold text-slate-700">{t('BWG_Operations') || 'Municipal Operations'}</h2>
+          {/* <p className="text-slate-400 text-[11px]">{t('BWG_description') || 'Track and manage municipal corporations, zones, wards, and scheduled collection events'}</p> */}
         </div>
         <div className="flex flex-col lg:flex-row items-stretch gap-1.5">
           <BwgCard
-            title="Bulk Waste Generator (BWG)"
+            title="Bulk Waste Generator"
             value={(stats.totalBWGs || 0).toLocaleString()}
             onClick={() => navigate('/bwg/collection-event')}
             icon={Factory}
@@ -678,8 +678,8 @@ const Dashboard = () => {
       {/* ──────────────── WASTE STATISTICS CARDS ──────────────── */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-base font-bold text-slate-700">Waste Overview</h2>
-          <p className="text-slate-400 text-[11px]">Real-time snapshot of waste categories, pickups, and fleet deployment</p>
+          <h2 className="text-lg font-bold text-slate-700">Waste Overview</h2>
+          {/* <p className="text-slate-400 text-[11px]">Real-time snapshot of waste categories, pickups, and fleet deployment</p> */}
         </div>
 
         {/* Row 1 */}

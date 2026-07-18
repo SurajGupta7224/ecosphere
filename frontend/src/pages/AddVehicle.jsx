@@ -663,7 +663,7 @@ const AddVehicle = () => {
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-8">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         
         {/* SECTION 1: VEHICLE DETAILS */}
         <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
@@ -676,7 +676,7 @@ const AddVehicle = () => {
 
           <div className="space-y-6">
             {/* Row 1: 4 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-custom-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-custom-4 gap-3">
               <FormField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleInputChange} required error={errors.registration_number} placeholder="e.g. KA 01 AB 1234" />
               <FormField label="Brand" name="brand" value={formData.brand} onChange={handleInputChange} required error={errors.brand} placeholder="e.g. Tata" />
               <FormField label="Model" name="model" value={formData.model} onChange={handleInputChange} required error={errors.model} placeholder="e.g. Intra V30" />
@@ -684,7 +684,7 @@ const AddVehicle = () => {
             </div>
 
             {/* Row 2: 5 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-custom-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-custom-5 gap-3">
               <FormField label="Capacity (KG)" name="capacity_kg" type="number" value={formData.capacity_kg} onChange={handleInputChange} required error={errors.capacity_kg} placeholder="e.g. 1000" />
               <FormField label="Kerb Weight (KG)" name="kerb_weight_kg" type="number" value={formData.kerb_weight_kg} onChange={handleInputChange} required error={errors.kerb_weight_kg} placeholder="e.g. 950" />
               <FormSelect label="Fuel Type" name="fuel_type" value={formData.fuel_type} onChange={handleInputChange} required error={errors.fuel_type} options={fuelTypes} />
@@ -693,7 +693,7 @@ const AddVehicle = () => {
             </div>
 
             {/* Row 3: 4 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-custom-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-custom-4 gap-3">
               <FormField label="Engine Number" name="engine_number" value={formData.engine_number} onChange={handleInputChange} required error={errors.engine_number} placeholder="Enter Engine Number" />
               <FormSelect label="Color" name="color" value={formData.color} onChange={handleInputChange} required error={errors.color} options={colors} placeholder="Select Color" />
               <FormSelect label="Owner Type" name="owner_type" value={formData.owner_type} onChange={handleInputChange} required error={errors.owner_type} options={ownerTypes} />
@@ -733,7 +733,7 @@ const AddVehicle = () => {
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">License & Certificates</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-custom-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-custom-6 gap-3">
             <FormField label="Emission (PUC) Expiry" name="emission_puc_expiry" type="date" value={formData.emission_puc_expiry} onChange={handleInputChange} required error={errors.emission_puc_expiry} />
             <FormField label="Insurance Expiry" name="insurance_expiry" type="date" value={formData.insurance_expiry} onChange={handleInputChange} required error={errors.insurance_expiry} />
             <FormField label="FC Expiry" name="fc_expiry" type="date" value={formData.fc_expiry} onChange={handleInputChange} required error={errors.fc_expiry} />
@@ -770,7 +770,7 @@ const AddVehicle = () => {
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Driver & Helper Assignment</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-custom-7 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-custom-7 gap-3">
             <FormSelect 
               label="Driver" name="driver_id" value={formData.driver_id} onChange={handleInputChange} required error={errors.driver_id} placeholder="Select Driver"
               options={employees.filter(e => e.staff_type === 'driver').map(e => ({ value: e.id, label: e.name }))}

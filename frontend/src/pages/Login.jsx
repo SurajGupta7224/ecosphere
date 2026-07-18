@@ -22,6 +22,11 @@ const Login = () => {
   const [qrCode, setQrCode] = useState('');
   const [otpSecret, setOtpSecret] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [settings?.loginLogo]);
 
   const appName    = settings?.appName    || 'Ecosphere';
   const primary    = settings?.theme?.primary_color  || '#6366f1';
@@ -138,11 +143,12 @@ const Login = () => {
         <div className="w-full max-w-lg z-10">
           <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 md:p-12 shadow-2xl text-center flex flex-col items-center">
             
-            {settings?.loginLogo ? (
+            {settings?.loginLogo && !logoError ? (
               <img
                 src={`${IMAGE_BASE_URL}/${settings.loginLogo}`}
                 alt={appName}
                 className="max-h-16 object-contain mb-8"
+                onError={() => setLogoError(true)}
               />
             ) : (
               /* Animated maintenance icon */
@@ -201,11 +207,12 @@ const Login = () => {
       >
         <div className="w-full max-w-md z-10">
           <div className="text-center mb-8">
-            {settings?.loginLogo ? (
+            {settings?.loginLogo && !logoError ? (
               <img
                 src={`${IMAGE_BASE_URL}/${settings.loginLogo}`}
                 alt={appName}
                 className="max-h-16 mx-auto mb-4 object-contain"
+                onError={() => setLogoError(true)}
               />
             ) : (
               <div
@@ -333,11 +340,12 @@ const Login = () => {
       >
         <div className="w-full max-w-md z-10">
           <div className="text-center mb-8">
-            {settings?.loginLogo ? (
+            {settings?.loginLogo && !logoError ? (
               <img
                 src={`${IMAGE_BASE_URL}/${settings.loginLogo}`}
                 alt={appName}
                 className="max-h-16 mx-auto mb-4 object-contain"
+                onError={() => setLogoError(true)}
               />
             ) : (
               <div
@@ -436,11 +444,12 @@ const Login = () => {
 
         {/* Logo + Brand */}
         <div className="text-center mb-8">
-          {settings?.loginLogo ? (
+          {settings?.loginLogo && !logoError ? (
             <img
               src={`${IMAGE_BASE_URL}/${settings.loginLogo}`}
               alt={appName}
               className="max-h-16 mx-auto mb-4 object-contain"
+              onError={() => setLogoError(true)}
             />
           ) : (
             <div

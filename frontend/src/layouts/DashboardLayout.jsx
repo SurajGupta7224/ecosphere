@@ -21,7 +21,7 @@ const DashboardLayout = () => {
   const sidebarBg  = settings?.theme?.sidebar_color || '#1e133c';
   const navbarBg   = settings?.theme?.navbar_color  || '#ffffff';
   const primaryColor = settings?.theme?.primary_color || '#6366f1';
-  const appName    = settings?.appName || 'Ecosphere';
+  const appName    = settings?.appName;
 
   const [currentStatus, setCurrentStatus] = useState(user.profile_status || 'pending');
   const isVendor = user.role?.role_name?.toLowerCase().includes('vendor') || user.role?.role_name?.toLowerCase().includes('seller');
@@ -32,6 +32,11 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [pendingVendors, setPendingVendors] = useState(0);
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [settings?.companyLogo]);
 
   useEffect(() => {
     fetchProfileStatus();
@@ -206,27 +211,30 @@ const DashboardLayout = () => {
 
         {/* Logo Area */}
         <div className="h-24 flex items-center justify-center border-b border-white/5 shrink-0 px-6">
-          {settings?.companyLogo ? (
-            <img
-              src={`${IMAGE_BASE_URL}/${settings.companyLogo}`}
-              alt={appName}
-              className="max-h-[84px] max-w-[307px] object-contain"
-            />
-          ) : (
-            <div className="text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-white mb-0">{appName}</h1>
-              <p className="text-[9px] uppercase tracking-widest text-blue-300 mt-0">{t('admin_panel')}</p>
-            </div>
-          )}
+          <Link to="/" className="flex items-center justify-center w-full h-full cursor-pointer">
+            {settings?.companyLogo && !logoError ? (
+              <img
+                src={`${IMAGE_BASE_URL}/${settings.companyLogo}`}
+                alt={appName}
+                className="max-h-[84px] max-w-[307px] object-contain"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <div className="text-center">
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-0">{appName}</h1>
+                <p className="text-[9px] uppercase tracking-widest text-blue-300 mt-0">{t('admin_panel')}</p>
+              </div>
+            )}
+          </Link>
         </div>
 
         {/* Current Role Pill */}
         <div className="px-6 py-4">
           <div
-            className="font-bold text-xs uppercase tracking-widest py-2 rounded-full text-center flex justify-center items-center"
-            style={{ backgroundColor: primaryColor, color: '#ffffff' }}
+            className="font-normal text-xs uppercase py-2 rounded-full tracking-[2px] text-center flex justify-center items-center"
+            style={{color: '#ffffff', border: '1px solid #e2e8f0' }}
           >
-            <Users className="w-3 h-3 mr-2" /> {user.role?.role_name || 'ADMIN'}
+            <Users className="w-4 h-4 mr-4" /> {user.role?.role_name || 'ADMIN'}
           </div>
         </div>
 

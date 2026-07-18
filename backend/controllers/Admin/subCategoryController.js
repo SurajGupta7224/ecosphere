@@ -9,6 +9,7 @@ const getAllSubCategories = async (req, res) => {
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
   const hasProductAccess = req.userPermissions?.includes('product_management');
   const hasSubCategoryAccess = req.userPermissions?.includes('sub_category_management');
+  const hasRequestAccess = req.userPermissions?.includes('waste_collection_requests') || req.userPermissions?.includes('waste_requests_list');
 
   try {
     const result = await subCategoryService.getSubCategories(
@@ -16,7 +17,8 @@ const getAllSubCategories = async (req, res) => {
       req.user.id,
       isAdmin,
       hasProductAccess,
-      hasSubCategoryAccess
+      hasSubCategoryAccess,
+      hasRequestAccess
     );
     return res.status(200).json(result);
   } catch (err) {
