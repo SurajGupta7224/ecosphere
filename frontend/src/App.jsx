@@ -26,6 +26,8 @@ import ModuleCreation from './pages/ModuleCreation';
 import Customers from './pages/Customers';
 import EmployeesList from './pages/EmployeesList';
 import AddEmployee from './pages/AddEmployee';
+import VehiclesList from './pages/VehiclesList';
+import AddVehicle from './pages/AddVehicle';
 
 
 
@@ -229,6 +231,30 @@ function App() {
             element={
               <RequirePermission requiredPermission="aggregator_employee">
                 <AddEmployee />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="aggregator-vehicles"
+            element={
+              <RequirePermission requiredPermission="aggregator_vehicle">
+                <VehiclesList />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="aggregator-vehicles/add"
+            element={
+              <RequirePermission requiredPermission="aggregator_vehicle">
+                <AddVehicle />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="aggregator-vehicles/:id/edit"
+            element={
+              <RequirePermission requiredPermission="aggregator_vehicle">
+                <AddVehicle />
               </RequirePermission>
             }
           />

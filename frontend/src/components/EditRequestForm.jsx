@@ -999,13 +999,12 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
       invalidateField('business_sub_region', "Please select a valid Business Sub Region.");
       return;
     }
-    if (!editFormData.business_lead) {
-      invalidateField('business_lead', "Please select a valid Business Lead.");
-      return;
-    }
-
     if (!editFormData.customer_type) {
       invalidateField('customer_type', "Customer Type is required.");
+      return;
+    }
+    if (!editFormData.business_lead) {
+      invalidateField('business_lead', "Please select a valid Business Lead.");
       return;
     }
     const isB2B = true; // Always validate B2B fields
@@ -1100,17 +1099,24 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     }
 
     // Area & Flats validation if present
-    if (editFormData.area_sqm) {
-      const areaVal = parseFloat(editFormData.area_sqm);
-      if (isNaN(areaVal) || areaVal <= 0) {
-        invalidateField('area_sqm', "Area (SqM) must be a positive number.");
+    if (editFormData.sector === 'Apartment') {
+      if (!editFormData.no_of_dwelling_units) {
+        invalidateField('no_of_dwelling_units', "Flats is required.");
         return;
       }
-    }
-    if (editFormData.no_of_dwelling_units) {
       const unitsVal = parseInt(editFormData.no_of_dwelling_units);
       if (isNaN(unitsVal) || unitsVal <= 0) {
         invalidateField('no_of_dwelling_units', "Flats must be a positive integer.");
+        return;
+      }
+    } else if (editFormData.sector) {
+      if (!editFormData.area_sqm) {
+        invalidateField('area_sqm', "Area (SqM) is required.");
+        return;
+      }
+      const areaVal = parseFloat(editFormData.area_sqm);
+      if (isNaN(areaVal) || areaVal <= 0) {
+        invalidateField('area_sqm', "Area (SqM) must be a positive number.");
         return;
       }
     }
@@ -2110,7 +2116,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
               Loading waste categories...
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-4">
               {/* Grouped Category Selection Controls */}
               <div className="space-y-6 pb-6 border-b border-slate-100">
                 {groupedEditCategories.map((cat) => {
@@ -2432,12 +2438,11 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SEZ (Special Economic Zone) *</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SEZ (Special Economic Zone)</label>
               <select
                 name="sez"
                 value={editFormData.sez}
                 onChange={handleEditInputChange}
-                required
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-purple-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
               >
                 <option value="No">No</option>
@@ -2446,13 +2451,12 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability / GST *</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability / GST</label>
               <select
                 name="taxibility"
                 disabled={editFormData.sez === 'Yes'}
                 value={editFormData.taxibility}
                 onChange={handleEditInputChange}
-                required
                 className={`w-full border border-slate-200 rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${editFormData.sez === 'Yes' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-slate-50 text-slate-700 cursor-pointer focus:ring-4 focus:ring-violet-100 focus:border-violet-400'}`}
               >
                 <option value="0.00 %">0.00 %</option>
@@ -2497,7 +2501,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly) *</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly)</label>
               <input
                 type="number"
                 name="discount"

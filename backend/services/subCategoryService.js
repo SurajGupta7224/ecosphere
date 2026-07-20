@@ -5,7 +5,7 @@ const sequelize = require("../config/db");
 /**
  * Fetch all subcategories matching filter parameters.
  */
-const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSubCategoryAccess) => {
+const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSubCategoryAccess, hasRequestAccess) => {
   const { page = 1, limit = 10, search = '', status = '', category_id = '' } = params;
   const offset = (page - 1) * limit;
 
@@ -21,7 +21,7 @@ const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSu
   }
 
   // Ownership security check
-  if (!isAdmin && !hasProductAccess && !hasSubCategoryAccess) {
+  if (!isAdmin && !hasProductAccess && !hasSubCategoryAccess && !hasRequestAccess) {
     where.user_id = userId;
   }
 
