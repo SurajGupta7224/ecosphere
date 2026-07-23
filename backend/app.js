@@ -78,6 +78,13 @@ sequelize.sync()
       // Column might already exist, ignore
     }
 
+    try {
+      await sequelize.query("ALTER TABLE customers ADD COLUMN password VARCHAR(255) NULL;");
+      console.log("Added password column to customers table");
+    } catch (err) {
+      // Column might already exist, ignore
+    }
+
     // Seed aggregator_employee and aggregator_vehicle permission if not exists
     try {
       const { Permission, RolePermission, Role } = require("./models/index");

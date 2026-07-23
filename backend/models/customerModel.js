@@ -57,6 +57,10 @@ Customer.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     customer_type: {
       type: DataTypes.ENUM("website", "admin"),
       defaultValue: "website",
