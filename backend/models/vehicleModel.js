@@ -5,6 +5,10 @@ class Vehicle extends Model {}
 
 Vehicle.init(
   {
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     registration_number: {
       type: DataTypes.STRING,
       allowNull: false,

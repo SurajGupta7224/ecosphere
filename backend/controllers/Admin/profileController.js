@@ -29,7 +29,9 @@ const updateProfile = async (req, res) => {
   } = req.body;
 
   try {
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(req.user.id, {
+      include: [{ model: Role, as: 'role' }]
+    });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

@@ -28,6 +28,7 @@ import EmployeesList from './pages/EmployeesList';
 import AddEmployee from './pages/AddEmployee';
 import VehiclesList from './pages/VehiclesList';
 import AddVehicle from './pages/AddVehicle';
+import WasteOrdersList from './pages/WasteOrdersList';
 
 
 
@@ -191,6 +192,14 @@ function App() {
             element={
               <RequirePermission requiredPermission="waste_requests_list">
                 <WasteCollectionRequestsList />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="waste-orders"
+            element={
+              <RequirePermission requiredPermission="waste_requests_list">
+                <WasteOrdersList />
               </RequirePermission>
             }
           />

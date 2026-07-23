@@ -1,4 +1,4 @@
-const { Employee, User } = require("../../models/index");
+const { Employee, User, Vehicle } = require("../../models/index");
 const { Op } = require("sequelize");
 
 // GET /api/employees - List all employees
@@ -10,10 +10,16 @@ const getAllEmployees = async (req, res) => {
     if (approval_status) where.profile_approval_status = approval_status;
     if (staff_type) where.staff_type = staff_type;
 
+    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    if (!isAdmin) {
+      where.user_id = req.user.id;
+    }
+
     const employees = await Employee.findAll({
       where,
       include: [
-        { model: User, as: "approver", attributes: ["id", "name", "email"] }
+        { model: User, as: "approver", attributes: ["id", "name", "email"] },
+        { model: Vehicle, as: "driverVehicles", attributes: ["id", "registration_number", "brand", "model"] }
       ],
       order: [["created_at", "DESC"]]
     });
@@ -125,6 +131,7 @@ const createEmployee = async (req, res) => {
     }
 
     const employee = await Employee.create({
+      user_id: req.user.id,
       name,
       email: email || null,
       mobile_number,

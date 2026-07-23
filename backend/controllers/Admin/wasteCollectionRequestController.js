@@ -1,5 +1,6 @@
-const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation, Customer } = require("../../models/index");
+const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation, Customer, Corporation, Zone, Ward, CollectionEvent, Employee, WasteOrder } = require("../../models/index");
 const { Op } = require("sequelize");
+const sequelize = require("../../config/db");
 const axios = require("axios");
 
 // GET /api/waste-collection-requests
@@ -56,7 +57,7 @@ const getWasteCollectionRequests = async (req, res) => {
           model: User,
           as: "rejector",
           attributes: ["id", "name", "email"]
-        }
+        },
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -573,7 +574,7 @@ const getWasteCollectionRequestById = async (req, res) => {
           model: User,
           as: "rejector",
           attributes: ["id", "name", "email"]
-        }
+        },
       ]
     });
 
@@ -976,7 +977,7 @@ const updateWasteCollectionRequestStatus = async (req, res) => {
   const { status, rejected_reason } = req.body;
   const loggedInId = req.user?.id;
 
-  if (!['Pending', 'Verified', 'Approved', 'Rejected', 'Completed'].includes(status)) {
+  if (!['Pending', 'Verified', 'Approved', 'Booked', 'Rejected', 'Completed'].includes(status)) {
     return res.status(400).json({ message: "Invalid status value." });
   }
 
@@ -995,14 +996,21 @@ const updateWasteCollectionRequestStatus = async (req, res) => {
 
     const updates = {
       status,
-      approved_by: status === 'Approved' ? loggedInId : null,
-      approved_date: status === 'Approved' ? new Date() : null,
-      rejected_by: status === 'Rejected' ? loggedInId : null,
-      rejected_date: status === 'Rejected' ? new Date() : null,
-      rejected_reason: status === 'Rejected' ? rejected_reason.trim() : null
     };
 
-    if (status !== 'Approved' && status !== 'Rejected') {
+    if (status === 'Approved') {
+      updates.approved_by = loggedInId;
+      updates.approved_date = new Date();
+      updates.rejected_by = null;
+      updates.rejected_date = null;
+      updates.rejected_reason = null;
+    } else if (status === 'Rejected') {
+      updates.approved_by = null;
+      updates.approved_date = null;
+      updates.rejected_by = loggedInId;
+      updates.rejected_date = new Date();
+      updates.rejected_reason = rejected_reason.trim();
+    } else if (status !== 'Booked') {
       updates.approved_by = null;
       updates.approved_date = null;
       updates.rejected_by = null;
@@ -1092,6 +1100,79 @@ const resolveMapLink = async (req, res) => {
   }
 };
 
+const bookWasteCollectionRequest = async (req, res) => {
+  const { leadId } = req.params;
+  const {
+    corporation_id,
+    zone_id,
+    ward_id,
+    collection_event_id,
+    vendor_id,
+    driver_id
+  } = req.body;
+
+  const t = await sequelize.transaction();
+
+  try {
+    const requests = await WasteCollectionRequest.findAll({
+      where: { lead_id: leadId }
+    });
+
+    if (requests.length === 0) {
+      await t.rollback();
+      return res.status(404).json({ message: "Waste collection request not found." });
+    }
+
+    // Generate unique order ID
+    const orderId = 'ORD-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900);
+
+    const start = new Date();
+    const end = new Date();
+    end.setDate(start.getDate() + 365);
+
+    const contract_start_date = start.toISOString().split('T')[0];
+    const contract_end_date = end.toISOString().split('T')[0];
+
+    // Create a WasteOrder row for each request row in the group
+    for (const reqRow of requests) {
+      const plainReq = reqRow.get({ plain: true });
+      delete plainReq.id;
+
+      await WasteOrder.create({
+        ...plainReq,
+        order_id: orderId,
+        corporation_id: parseInt(corporation_id),
+        zone_id: parseInt(zone_id),
+        ward_id: parseInt(ward_id),
+        collection_event_id: parseInt(collection_event_id),
+        vendor_id: parseInt(vendor_id),
+        driver_id: parseInt(driver_id),
+        status: 'Booked',
+        contract_start_date,
+        contract_end_date
+      }, { transaction: t });
+    }
+
+    // Update original requests status to 'Booked'
+    await WasteCollectionRequest.update({ status: 'Booked' }, {
+      where: { lead_id: leadId },
+      transaction: t
+    });
+
+    await t.commit();
+
+    return res.status(200).json({
+      message: "Order booked successfully.",
+      order_id: orderId,
+      status: 'Booked'
+    });
+  } catch (err) {
+    await t.rollback();
+    console.error("bookWasteCollectionRequest error:", err);
+    return res.status(500).json({ message: "Failed to book waste collection request." });
+  }
+};
+
 module.exports = {
   getWasteCollectionRequests,
   createWasteCollectionRequest,
@@ -1099,5 +1180,6 @@ module.exports = {
   updateWasteCollectionRequestByLeadId,
   updateWasteCollectionRequestStatus,
   searchRequestByMobile,
-  resolveMapLink
+  resolveMapLink,
+  bookWasteCollectionRequest
 };

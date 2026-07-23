@@ -10,6 +10,11 @@ const getAllVehicles = async (req, res) => {
     if (vehicle_type) where.vehicle_type = vehicle_type;
     if (fuel_type) where.fuel_type = fuel_type;
 
+    const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
+    if (!isAdmin) {
+      where.user_id = req.user.id;
+    }
+
     const vehicles = await Vehicle.findAll({
       where,
       include: [
@@ -124,6 +129,7 @@ const createVehicle = async (req, res) => {
     }
 
     const vehicle = await Vehicle.create({
+      user_id: req.user.id,
       registration_number, brand, model, vehicle_type,
       capacity_kg: parseInt(capacity_kg) || 0,
       kerb_weight_kg: parseInt(kerb_weight_kg) || 0,

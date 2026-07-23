@@ -153,6 +153,7 @@ const DashboardLayout = () => {
     },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
+    { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     {
       id: 'aggregator_employees_group',
       title: 'Aggregator Employees',
