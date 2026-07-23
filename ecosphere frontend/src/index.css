@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Prevent horizontal scroll */
+html, body, #root {
+  overflow-x: hidden;
+}
+
+/* Prevent images & videos from overflowing */
+img, picture, video, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Slide animations */
+.slide-in-left {
+  opacity: 0;
+  transform: translateX(-80px);
+  transition: all 1s ease;
+}
+.slide-in-right {
+  opacity: 0;
+  transform: translateX(80px);
+  transition: all 1s ease;
+}
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 1.2s ease;
+}
+
+/* Trigger when visible */
+.animate-show .slide-in-left,
+.animate-show .slide-in-right,
+.animate-show .fade-in {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+}
+
+.animate-show {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-bounce-slow {
+  animation: bounceSlow 3s infinite ease-in-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+html, body {
+  overflow-x: hidden;
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* hide scrollbar (mobile card slider) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
