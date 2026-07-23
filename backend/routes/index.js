@@ -22,6 +22,7 @@ const businessRegionController = require("../controllers/Admin/businessRegionCon
 const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
 const employeeController = require("../controllers/Admin/employeeController");
 const vehicleController = require("../controllers/Admin/vehicleController");
+const wasteOrderController = require("../controllers/Admin/wasteOrderController");
 
 
 
@@ -133,7 +134,7 @@ router.patch("/users/:id/status", verifyToken, requirePermission('user_managemen
 router.delete("/users/:id", verifyToken, requirePermission('user_management'), deleteUser);
 
 // Aggregator Employee routes
-router.get("/aggregator-employees", verifyToken, requirePermission('aggregator_employee'), employeeController.getAllEmployees);
+router.get("/aggregator-employees", verifyToken, requirePermission(['aggregator_employee', 'waste_collection_requests', 'waste_requests_list']), employeeController.getAllEmployees);
 router.get("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeController.getEmployeeById);
 router.post("/aggregator-employees", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.createEmployee);
 router.put("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.updateEmployee);
@@ -215,7 +216,7 @@ router.delete("/business-sub-regions/:id", verifyToken, requirePermission('busin
 router.get("/business-regions/:id/sub-regions", verifyToken, requirePermission(['business_region', 'bwg_mapping', 'profile', 'waste_collection_requests']), businessSubRegionController.getSubRegionsByRegion);
 
 // Collection Event routes
-router.get("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getAllCollectionEvents);
+router.get("/collection-events", verifyToken, requirePermission(['bwg_mapping', 'waste_collection_requests', 'waste_requests_list']), collectionEventController.getAllCollectionEvents);
 router.get("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.getCollectionEventById);
 router.post("/collection-events", verifyToken, requirePermission('bwg_mapping'), collectionEventController.createCollectionEvent);
 router.put("/collection-events/:id", verifyToken, requirePermission('bwg_mapping'), collectionEventController.updateCollectionEvent);
@@ -230,6 +231,13 @@ router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['wa
 router.post("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
 router.put("/waste-collection-requests/lead/:leadId", verifyToken, requirePermission(['waste_requests_list']), requestUploads, wasteCollectionRequestController.updateWasteCollectionRequestByLeadId);
 router.patch("/waste-collection-requests/lead/:leadId/status", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.updateWasteCollectionRequestStatus);
+router.patch("/waste-collection-requests/lead/:leadId/book", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.bookWasteCollectionRequest);
+
+// Waste Order routes
+router.get("/waste-orders", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrders);
+router.get("/waste-orders/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderById);
+router.get("/waste-orders/:id/qr", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderQR);
+router.patch("/waste-orders/lead/:leadId/cancel", verifyToken, requirePermission(['waste_requests_list']), wasteOrderController.cancelWasteOrder);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);

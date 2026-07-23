@@ -12,6 +12,7 @@ const STATUS_STYLES = {
   Pending: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500' },
   Approved: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' },
   Verified: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  Booked: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', dot: 'bg-purple-500' },
   Rejected: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' },
   Completed: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
 };
@@ -54,7 +55,7 @@ function SectionCard({ title, icon: Icon, iconColor = 'text-slate-600', children
   );
 }
 
-export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick, onStatusUpdated, onClose }) {
+export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick, onBookClick, onStatusUpdated, onClose }) {
   const [showRejectionInput, setShowRejectionInput] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -390,6 +391,8 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
         {/* Right Column (Side details) */}
         <div className="space-y-6">
           
+
+
           {/* License & Compliance Details */}
           <SectionCard title="License & Compliance Details" icon={Award} iconColor="text-slate-600">
             <div className="space-y-3">
@@ -426,7 +429,7 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
           </SectionCard>
 
           {/* Status & Actions Card - Sticky at the bottom of the sidebar */}
-          <div className="sticky top-6 z-10 shadow-lg rounded-[1.25rem] overflow-hidden">
+          <div id="status-audit-actions" className="sticky top-6 z-10 shadow-lg rounded-[1.25rem] overflow-hidden">
             <SectionCard title="Status & Audit Actions" icon={ShieldAlert} iconColor="text-slate-700">
               <div className="space-y-4 pt-1">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -435,20 +438,33 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
                 </div>
 
                 {firstReq.status === 'Approved' && (
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
-                      <CheckCircle className="w-4 h-4" /> Approved
-                    </div>
-                    <p className="text-[11px] text-slate-600 font-medium">
-                      Approved by <span className="font-bold">{firstReq.approver?.name || 'Admin'}</span>
-                    </p>
-                    {firstReq.approved_date && (
-                      <p className="text-[9px] text-slate-400 font-semibold">
-                        Date: {new Date(firstReq.approved_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <div className="space-y-3">
+                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                        <CheckCircle className="w-4 h-4" /> Approved
+                      </div>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        Approved by <span className="font-bold">{firstReq.approver?.name || 'Admin'}</span>
                       </p>
+                      {firstReq.approved_date && (
+                        <p className="text-[9px] text-slate-400 font-semibold">
+                          Date: {new Date(firstReq.approved_date).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                    {isAdmin && onBookClick && (
+                      <button
+                        type="button"
+                        onClick={onBookClick}
+                        className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-md shadow-violet-100 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Calendar className="w-4 h-4" /> Book Order
+                      </button>
                     )}
                   </div>
                 )}
+
+
 
                 {firstReq.status === 'Rejected' && (
                   <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-3 space-y-2">

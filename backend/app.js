@@ -64,6 +64,20 @@ sequelize.sync()
   .then(async () => {
     console.log(" Database synced successfully");
 
+    // Ensure contract dates exist in waste_orders table
+    try {
+      await sequelize.query("ALTER TABLE waste_orders ADD COLUMN contract_start_date DATE NULL;");
+      console.log("Added contract_start_date column to waste_orders table");
+    } catch (err) {
+      // Column might already exist, ignore
+    }
+    try {
+      await sequelize.query("ALTER TABLE waste_orders ADD COLUMN contract_end_date DATE NULL;");
+      console.log("Added contract_end_date column to waste_orders table");
+    } catch (err) {
+      // Column might already exist, ignore
+    }
+
     // Seed aggregator_employee and aggregator_vehicle permission if not exists
     try {
       const { Permission, RolePermission, Role } = require("./models/index");

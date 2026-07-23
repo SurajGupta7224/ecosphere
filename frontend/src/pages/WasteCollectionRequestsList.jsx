@@ -7,11 +7,13 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import EditRequestForm from '../components/EditRequestForm';
 import ViewRequestDetails from '../components/ViewRequestDetails';
+import BookOrderForm from '../components/BookOrderForm';
 
 const STATUS_STYLES = {
   Pending: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500' },
   Approved: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' },
   Verified: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+  Booked: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', dot: 'bg-purple-500' },
   Rejected: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' },
   Completed: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
 };
@@ -42,6 +44,7 @@ export default function WasteCollectionRequestsList() {
 
   // Edit/View Panel States
   const [isEditing, setIsEditing] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
   const [activeDropdownLeadId, setActiveDropdownLeadId] = useState(null);
 
   useEffect(() => {
@@ -97,7 +100,9 @@ export default function WasteCollectionRequestsList() {
       subCategories,
       itemCount: items.length,
     };
-  }).sort((a, b) => new Date(b.first.created_at) - new Date(a.first.created_at));
+  })
+  .filter(g => g.first.status !== 'Booked')
+  .sort((a, b) => new Date(b.first.created_at) - new Date(a.first.created_at));
 
   // Filter
   const filteredList = groupedList.filter(g => {
@@ -374,6 +379,7 @@ export default function WasteCollectionRequestsList() {
   const closePanel = () => {
     setPanelOpen(false);
     setIsEditing(false);
+    setIsBooking(false);
     setTimeout(() => setSelectedGroup(null), 300);
   };
 
@@ -394,11 +400,21 @@ export default function WasteCollectionRequestsList() {
             }}
             onCancel={closePanel}
           />
+        ) : isBooking ? (
+          <BookOrderForm
+            selectedGroup={selectedGroup}
+            onSuccess={() => {
+              fetchRequests();
+              closePanel();
+            }}
+            onCancel={closePanel}
+          />
         ) : (
           <ViewRequestDetails
             selectedGroup={selectedGroup}
             isAdmin={isAdmin}
             onEditClick={() => setIsEditing(true)}
+            onBookClick={() => setIsBooking(true)}
             onStatusUpdated={(newStatus, updatedData) => {
               setSelectedGroup(prev => ({
                 ...prev,
@@ -482,7 +498,7 @@ export default function WasteCollectionRequestsList() {
                   className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:border-violet-400 cursor-pointer"
                 >
                   <option value="">All Statuses</option>
-                  {['Pending', 'Verified', 'Approved', 'Rejected', 'Completed'].map(s => (
+                  {['Pending', 'Verified', 'Approved', 'Booked', 'Rejected', 'Completed'].map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

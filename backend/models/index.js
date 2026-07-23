@@ -30,6 +30,7 @@ const BusinessRegion = require("./businessRegionModel");
 const BusinessSubRegion = require("./businessSubRegionModel");
 const Employee = require("./employeeModel");
 const Vehicle = require("./vehicleModel");
+const WasteOrder = require("./wasteOrderModel");
 
 
 
@@ -116,6 +117,27 @@ WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_
 WasteCollectionRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
 
+// Waste Order associations
+WasteOrder.belongsTo(User, { foreignKey: "user_id", as: "customer" });
+User.hasMany(WasteOrder, { foreignKey: "user_id", as: "wasteOrders" });
+WasteOrder.belongsTo(Customer, { foreignKey: "customer_id", as: "customerModel" });
+Customer.hasMany(WasteOrder, { foreignKey: "customer_id", as: "wasteOrders" });
+WasteOrder.belongsTo(Category, { foreignKey: "category_id", as: "category" });
+WasteOrder.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
+WasteOrder.belongsTo(SubCategoryVariation, { foreignKey: "variation_id", as: "variation" });
+WasteOrder.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+WasteOrder.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
+WasteOrder.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
+TimeSlot.hasMany(WasteOrder, { foreignKey: "time_slot_id", as: "wasteOrders" });
+
+WasteOrder.belongsTo(Corporation, { foreignKey: "corporation_id", as: "corporation" });
+WasteOrder.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
+WasteOrder.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
+WasteOrder.belongsTo(CollectionEvent, { foreignKey: "collection_event_id", as: "collectionEvent" });
+WasteOrder.belongsTo(User, { foreignKey: "vendor_id", as: "vendor" });
+WasteOrder.belongsTo(Employee, { foreignKey: "driver_id", as: "driverEmployee" });
+WasteOrder.belongsTo(User, { foreignKey: "cancelled_by", as: "canceller" });
+
 // Waste Collection Request ↔ TimeSlot
 WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
 TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wasteRequests" });
@@ -129,10 +151,14 @@ BusinessRegion.hasMany(BusinessSubRegion, { foreignKey: "business_region_id", as
 BusinessSubRegion.belongsTo(BusinessRegion, { foreignKey: "business_region_id", as: "businessRegion" });
 
 // Employee associations
+Employee.belongsTo(User, { foreignKey: "user_id", as: "creator" });
+User.hasMany(Employee, { foreignKey: "user_id", as: "createdEmployees" });
 Employee.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 User.hasMany(Employee, { foreignKey: "approved_by", as: "approvedEmployees" });
 
 // Vehicle associations
+Vehicle.belongsTo(User, { foreignKey: "user_id", as: "creator" });
+User.hasMany(Vehicle, { foreignKey: "user_id", as: "createdVehicles" });
 Vehicle.belongsTo(Employee, { foreignKey: "driver_id", as: "driver" });
 Vehicle.belongsTo(Employee, { foreignKey: "helper_id", as: "helper" });
 Employee.hasMany(Vehicle, { foreignKey: "driver_id", as: "driverVehicles" });
@@ -145,7 +171,7 @@ module.exports = {
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
   TimeSlot, ModuleGeneratorHistory, Customer,
-  BusinessRegion, BusinessSubRegion, Employee, Vehicle
+  BusinessRegion, BusinessSubRegion, Employee, Vehicle, WasteOrder
 };
 
 

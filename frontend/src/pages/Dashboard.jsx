@@ -61,7 +61,7 @@ const WasteStatCard = ({ label, value, unit, color, bgColor, icon, onClick }) =>
 
       {/* Label pill */}
       <div
-        className="px-3 py-1 rounded-full text-xs font-bold tracking-wide"
+        className="px-4 py-2 rounded-full text-sm font-medium tracking-wide"
         style={{ backgroundColor: bgColor, color }}
       >
         {label}

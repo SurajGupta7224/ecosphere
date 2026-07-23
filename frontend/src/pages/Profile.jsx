@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Building, CreditCard, Save, X, Camera } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Building, CreditCard, Save, X, Camera, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';
 
@@ -41,13 +41,16 @@ const SelectField = ({ label, name, value, onChange, options, required=false, di
         onChange={onChange} 
         required={required}
         disabled={disabled}
-        className="w-full bg-slate-50 border border-slate-200 focus:border-[#7c3aed] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none py-2.5 pl-10 pr-4 rounded-xl text-sm text-slate-800 transition-all appearance-none shadow-sm disabled:opacity-50"
+        className="w-full bg-slate-50 border border-slate-200 focus:border-[#7c3aed] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none py-2.5 pl-10 pr-10 rounded-xl text-sm text-slate-800 transition-all appearance-none shadow-sm disabled:opacity-50 cursor-pointer"
       >
         <option value="">Choose {label}</option>
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 z-10">
+        <ChevronDown className="w-4 h-4" />
+      </div>
     </div>
   </div>
 );
@@ -262,7 +265,9 @@ const Profile = () => {
 
     const payload = new FormData();
     Object.keys(formData).forEach(key => {
-      if (formData[key] !== '' && formData[key] !== null) {
+      if (key === 'corporation_id' || key === 'zone_id' || key === 'ward_id') {
+        payload.append(key, formData[key] === null ? '' : formData[key]);
+      } else if (formData[key] !== '' && formData[key] !== null) {
         payload.append(key, formData[key]);
       }
     });
@@ -410,15 +415,6 @@ const Profile = () => {
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                <SelectField 
-                  label="Company Type" name="company_type" value={formData.company_type} onChange={handleInputChange} icon={Building}
-                  options={[
-                    { value: 'Individual', label: 'Individual' },
-                    { value: 'Sole Proprietor', label: 'Sole Proprietor' },
-                    { value: 'Private Limited', label: 'Private Limited' },
-                    { value: 'Partnership', label: 'Partnership' }
-                  ]}
-                />
                 <InputField label="PAN Number" name="pan_number" value={formData.pan_number} onChange={handleInputChange} icon={CreditCard} />
                 <InputField label="Aadhaar Number" name="aadhaar_number" value={formData.aadhaar_number} onChange={handleInputChange} icon={CreditCard} />
               </div>

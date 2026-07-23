@@ -1,11 +1,15 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
+const WasteOrder = sequelize.define("WasteOrder", {
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
     autoIncrement: true,
+  },
+  order_id: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
   },
   lead_id: {
     type: DataTypes.STRING(50),
@@ -139,29 +143,13 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     type: DataTypes.DATEONLY,
     allowNull: true,
   },
-  time_slot_id: {
-    type: DataTypes.BIGINT,
-    allowNull: true,
-    references: {
-      model: 'time_slots',
-      key: 'id'
-    }
-  },
-
-
-  // Additional fields for compatibility
-  pickup_notes: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
   pickup_time: {
     type: DataTypes.STRING(50),
     allowNull: true,
   },
-  status: {
-    type: DataTypes.ENUM('Pending', 'Verified', 'Approved', 'Booked', 'Rejected', 'Completed'),
-    defaultValue: 'Pending',
-    allowNull: false,
+  pickup_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   images: {
     type: DataTypes.TEXT,
@@ -399,12 +387,101 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   rejected_reason: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  time_slot_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'time_slots',
+      key: 'id'
+    }
+  },
+
+  // Booking & Resource Fields
+  corporation_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'corporations',
+      key: 'id'
+    }
+  },
+  zone_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'zones',
+      key: 'id'
+    }
+  },
+  ward_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'wards',
+      key: 'id'
+    }
+  },
+  collection_event_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'collection_events',
+      key: 'id'
+    }
+  },
+  vendor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  driver_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'aggregator_employees',
+      key: 'id'
+    }
+  },
+  contract_start_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  contract_end_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+
+  // Status & Cancellation Fields
+  status: {
+    type: DataTypes.ENUM('Booked', 'Completed', 'Cancelled'),
+    defaultValue: 'Booked',
+    allowNull: false,
+  },
+  cancel_reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  cancelled_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  cancelled_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
   }
 }, {
-  tableName: "waste_collection_requests",
+  tableName: "waste_orders",
   timestamps: true,
   createdAt: "created_at",
   updatedAt: "updated_at",
 });
 
-module.exports = WasteCollectionRequest;
+module.exports = WasteOrder;
