@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const { Customer } = require("../models");
 const { verifyToken } = require("../middleware/authMiddleware");
 
@@ -8,6 +9,192 @@ const { verifyToken } = require("../middleware/authMiddleware");
 const generateOTP = () => {
   return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
 };
+
+// POST /api/customer/register (Email/Password registration)
+router.post("/customer/register", async (req, res) => {
+  const { customer_name, email, password, mobile } = req.body || {};
+
+  if (!email || !password || !customer_name) {
+    return res.status(400).json({ success: false, message: "Name, email, and password are required" });
+  }
+
+  try {
+    const existingEmail = await Customer.findOne({ where: { email } });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: "A customer account with this email already exists" });
+    }
+
+    if (mobile) {
+      const existingMobile = await Customer.findOne({ where: { mobile } });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "A customer account with this mobile number already exists" });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const customer = await Customer.create({
+      customer_name,
+      email,
+      mobile: mobile || null,
+      password: hashedPassword,
+      login_type: "email",
+      status: "active",
+      customer_type: "website",
+      created_by: "customer",
+      notification_status: true
+    });
+
+    const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, {
+      expiresIn: "30d"
+    });
+
+    await customer.update({ jwt_token: token });
+
+    return res.status(201).json({
+      success: true,
+      message: "Customer registered successfully",
+      token,
+      customer: {
+        id: customer.id,
+        customer_name: customer.customer_name,
+        email: customer.email,
+        mobile: customer.mobile,
+        login_type: customer.login_type,
+        customer_type: customer.customer_type,
+        created_by: customer.created_by
+      }
+    });
+  } catch (err) {
+    console.error("customer register error:", err);
+    return res.status(500).json({ success: false, message: "Registration failed", error: err.message });
+  }
+});
+
+// POST /api/customer/login (Email/Password login)
+router.post("/customer/login", async (req, res) => {
+  const { email, password } = req.body || {};
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: "Email and password are required" });
+  }
+
+  try {
+    const customer = await Customer.findOne({ where: { email } });
+
+    if (!customer) {
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
+    }
+
+    if (customer.status !== "active") {
+      return res.status(403).json({ success: false, message: "Your account is suspended. Please contact support." });
+    }
+
+    if (!customer.password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No password configured for this account. Please use OTP to login or contact support." 
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, customer.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
+    }
+
+    const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, {
+      expiresIn: "30d"
+    });
+
+    await customer.update({ jwt_token: token });
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      customer: {
+        id: customer.id,
+        customer_name: customer.customer_name,
+        email: customer.email,
+        mobile: customer.mobile,
+        profie_pic: customer.profie_pic,
+        referral_code: customer.referral_code,
+        referral_id: customer.referral_id,
+        notification_status: customer.notification_status,
+        login_type: customer.login_type,
+        customer_type: customer.customer_type,
+        created_by: customer.created_by
+      }
+    });
+  } catch (err) {
+    console.error("customer login error:", err);
+    return res.status(500).json({ success: false, message: "Login failed", error: err.message });
+  }
+});
+
+// POST /api/customer/forgot-password (Request reset OTP)
+router.post("/customer/forgot-password", async (req, res) => {
+  const { email } = req.body || {};
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required" });
+  }
+
+  try {
+    const customer = await Customer.findOne({ where: { email } });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "No customer account registered with this email" });
+    }
+
+    const otp = generateOTP();
+    await customer.update({ otp });
+
+    // Print to backend stdout for local convenience
+    console.log(`\n--- PASSWORD RESET OTP FOR ${email} ---`);
+    console.log(`OTP: ${otp}`);
+    console.log(`-----------------------------------------\n`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Reset OTP sent successfully to your email",
+      otp // Returning OTP directly in response for local testing convenience
+    });
+  } catch (err) {
+    console.error("forgot-password error:", err);
+    return res.status(500).json({ success: false, message: "Failed to send reset OTP", error: err.message });
+  }
+});
+
+// POST /api/customer/reset-password (Reset password with OTP verification)
+router.post("/customer/reset-password", async (req, res) => {
+  const { email, otp, new_password } = req.body || {};
+
+  if (!email || !otp || !new_password) {
+    return res.status(400).json({ success: false, message: "Email, OTP, and new password are required" });
+  }
+
+  try {
+    const customer = await Customer.findOne({ where: { email } });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer account not found" });
+    }
+
+    if (customer.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await customer.update({ password: hashedPassword, otp: null });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. You can now login with your new password."
+    });
+  } catch (err) {
+    console.error("reset-password error:", err);
+    return res.status(500).json({ success: false, message: "Failed to reset password", error: err.message });
+  }
+});
 
 // 1. POST /api/customer/send-otp (Signup / Login Trigger)
 router.post("/customer/send-otp", async (req, res) => {
