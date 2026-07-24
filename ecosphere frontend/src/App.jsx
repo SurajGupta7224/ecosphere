@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 import MainHeader from "./components/MainHeader";
 import HomeScreen from "./components/HomeScreen";
@@ -25,6 +25,17 @@ import OurProductsSection from "./components/ProductsSection";
 import Segments from "./Pages/Segments";
 import PrivacyPolicy from "./Pages/PrivacyPolicy";
 import RefundPolicy from "./Pages/RefundPolicy";
+import CustomerDashboard from "./Pages/Dashboard";
+
+// Strict route protection helper for Customer Dashboard
+function RequireCustomerAuth({ children }) {
+  const token = localStorage.getItem("customer_token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
 // ⭐ This component handles conditional header/footer
 function AppContent() {
   const location = useLocation();
@@ -66,6 +77,16 @@ function AppContent() {
         <Route path="/gpssolutions" element={<GpsSolutions />} />
         <Route path="/certifications" element={<CertificationsPage />} />
         <Route path="/login" element={<LoginPage />} />
+
+        {/* CUSTOMER DASHBOARD (Requires Login) */}
+        <Route
+          path="/dashboard"
+          element={
+            <RequireCustomerAuth>
+              <CustomerDashboard />
+            </RequireCustomerAuth>
+          }
+        />
 
         {/* PARTNER WITH US PAGE (header hidden) */}
         <Route path="/partnerwithus" element={<PartnerWithUs />} />
