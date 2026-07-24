@@ -12,11 +12,13 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import HelpModal from "../../Pages/HelpModal";
 
 const MainHeader = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isDashboard = location.pathname === "/dashboard";
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
@@ -115,38 +117,40 @@ const MainHeader = () => {
       <header
         className={
           isScrolled
-            ? "fixed top-0 left-0 w-full z-[50] bg-[rgba(255,255,255,0.85)] backdrop-blur-[12px] border-b border-[rgba(255,255,255,0.3)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-[350ms]"
+            ? "fixed top-0 left-0 w-full z-[50] bg-[rgba(255,255,255,0.92)] backdrop-blur-[12px] border-b border-gray-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-[350ms]"
+            : isDashboard
+            ? "fixed top-0 left-0 w-full z-[50] bg-[#064e3b] border-b border-emerald-800 shadow-md transition-all duration-[350ms]"
             : "fixed top-0 left-0 w-full z-[50] bg-transparent transition-all duration-[350ms]"
         }
       >
         <div className="max-w-[1350px] mx-auto">
-          {/* TOP BAR (DESKTOP ONLY, WHEN NOT SCROLLED) */}
+          {/* TOP BAR (DESKTOP ONLY, HIDES ON SCROLL) */}
           {!isScrolled && !isMobile && (
-            <div className="py-[16px] px-6 flex justify-end items-center gap-7 text-[14px] font-semibold text-white whitespace-nowrap">
+            <div className="py-[14px] px-6 flex justify-end items-center gap-7 text-[14px] font-semibold text-white whitespace-nowrap">
               <button
                 onClick={() => setIsGetAppModalOpen(true)}
-                className="flex items-center gap-1 hover:opacity-90 transition"
+                className="flex items-center gap-1 hover:opacity-90 transition text-white"
               >
                 <FiDownload /> Download App
               </button>
 
               <button
                 onClick={() => setIsHelpModalOpen(true)}
-                className="flex items-center gap-1 hover:opacity-90 transition"
+                className="flex items-center gap-1 hover:opacity-90 transition text-white"
               >
                 <FiHeadphones /> Help &amp; Support
               </button>
 
               <button
                 onClick={() => navigate("/certifications")}
-                className="flex items-center gap-[6px] cursor-pointer hover:opacity-90 transition"
+                className="flex items-center gap-[6px] cursor-pointer hover:opacity-90 transition text-white"
               >
                 <FiFileText size={15} /> Certifications
               </button>
 
               <button
                 onClick={() => navigate("/login")}
-                className="flex items-center gap-[6px] cursor-pointer hover:opacity-90 transition"
+                className="flex items-center gap-[6px] cursor-pointer hover:opacity-90 transition text-white"
               >
                 <FiCreditCard size={15} /> Make a Payment
               </button>
@@ -156,7 +160,7 @@ const MainHeader = () => {
                 <div className="relative z-[55]">
                   <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    className="flex items-center gap-[6px] cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-lg text-white font-bold transition-all"
+                    className="flex items-center gap-[6px] cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-lg text-white font-bold transition-all shadow-sm"
                   >
                     <FiUser size={15} className="text-lime-400" />
                     <span className="truncate max-w-[140px]">{customer.customer_name || "Account"}</span>
@@ -205,7 +209,7 @@ const MainHeader = () => {
           <div
             className={
               "flex justify-between items-center px-6 " +
-              (isScrolled ? "py-[10px]" : "py-[16px]")
+              (isScrolled ? "py-[10px]" : "py-[14px]")
             }
           >
             {/* LOGO */}
@@ -214,8 +218,8 @@ const MainHeader = () => {
               className={
                 (isScrolled
                   ? "h-[65px] lg:h-[70px]"
-                  : "h-[85px] lg:h-[105px] -mt-0 -ml-8 lg:-mt-14 lg:-ml-6") +
-                " transition-all duration-[400ms] cursor-pointer"
+                  : "h-[70px] lg:h-[75px]") +
+                " transition-all duration-[400ms] cursor-pointer object-contain"
               }
               onClick={() => navigate("/")}
             />
@@ -255,21 +259,40 @@ const MainHeader = () => {
                 ))}
 
                 {isScrolled && customer && (
-                  <button
-                    onClick={() => navigate("/dashboard")}
-                    className="py-[8px] px-[16px] bg-emerald-700 text-white rounded-[6px] font-medium cursor-pointer whitespace-nowrap flex items-center gap-2 hover:bg-emerald-800 transition"
-                  >
-                    <FiUser size={15} /> Dashboard
-                  </button>
-                )}
+                  <div className="relative z-[55]">
+                    <button
+                      onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                      className="flex items-center gap-[6px] cursor-pointer bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-2 rounded-lg text-emerald-800 font-bold transition-all shadow-xs"
+                    >
+                      <FiUser size={15} className="text-emerald-600" />
+                      <span className="truncate max-w-[140px]">{customer.customer_name || "Account"}</span>
+                      <span className="text-xs">▾</span>
+                    </button>
 
-                {isScrolled && customer && (
-                  <button
-                    onClick={handleLogout}
-                    className="py-[8px] px-[16px] bg-red-600 text-white rounded-[6px] font-medium cursor-pointer whitespace-nowrap flex items-center gap-2 hover:bg-red-700 transition"
-                  >
-                    <FiLogOut size={15} /> Logout
-                  </button>
+                    {isUserDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-[60] text-gray-800 font-medium text-sm">
+                        <div className="px-4 py-2.5 border-b border-gray-100">
+                          <p className="font-bold text-gray-900 truncate">{customer.customer_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{customer.email || customer.mobile}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsUserDropdownOpen(false);
+                            navigate("/dashboard");
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 font-semibold transition"
+                        >
+                          <FiUser size={15} className="text-emerald-600" /> My Dashboard
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-600 flex items-center gap-2 font-semibold border-t border-gray-100 transition"
+                        >
+                          <FiLogOut size={15} /> Log Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <button
