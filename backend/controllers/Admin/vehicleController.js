@@ -1,12 +1,13 @@
-const { Vehicle, Employee } = require("../../models/index");
+const { Vehicle, Employee, Notification } = require("../../models/index");
 const { Op } = require("sequelize");
 
 // GET /api/aggregator-vehicles - List all vehicles
 const getAllVehicles = async (req, res) => {
   try {
-    const { status, vehicle_type, fuel_type } = req.query;
+    const { status, approval_status, vehicle_type, fuel_type } = req.query;
     const where = {};
     if (status) where.vehicle_status = status;
+    if (approval_status) where.approval_status = approval_status;
     if (vehicle_type) where.vehicle_type = vehicle_type;
     if (fuel_type) where.fuel_type = fuel_type;
 
@@ -181,6 +182,18 @@ const createVehicle = async (req, res) => {
       ...fileData
     });
 
+    try {
+      await Notification.create({
+        type: "vehicle_registration",
+        title: "New Aggregator Vehicle Registration",
+        message: `Vehicle "${vehicle.brand} ${vehicle.model}" (${vehicle.registration_number}) has been registered and is pending approval.`,
+        reference_id: vehicle.id,
+        reference_type: "vehicle"
+      });
+    } catch (notifErr) {
+      console.error("Failed to create vehicle notification:", notifErr);
+    }
+
     return res.status(201).json({ message: "Vehicle registered successfully", vehicleId: vehicle.id });
   } catch (err) {
     console.error("createVehicle error:", err);
@@ -328,11 +341,55 @@ const deleteVehicle = async (req, res) => {
   }
 };
 
+// PATCH /api/aggregator-vehicles/:id/approve - Approve vehicle
+const approveVehicle = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const vehicle = await Vehicle.findByPk(id);
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    await vehicle.update({
+      approval_status: "approved",
+      approved_by: req.user ? req.user.id : null,
+      approved_date: new Date()
+    });
+
+    return res.status(200).json({ message: "Vehicle approved successfully", vehicle });
+  } catch (err) {
+    console.error("approveVehicle error:", err);
+    return res.status(500).json({ message: "Failed to approve vehicle" });
+  }
+};
+
+// PATCH /api/aggregator-vehicles/:id/reject - Reject vehicle
+const rejectVehicle = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const vehicle = await Vehicle.findByPk(id);
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    await vehicle.update({
+      approval_status: "rejected"
+    });
+
+    return res.status(200).json({ message: "Vehicle rejected", vehicle });
+  } catch (err) {
+    console.error("rejectVehicle error:", err);
+    return res.status(500).json({ message: "Failed to reject vehicle" });
+  }
+};
+
 module.exports = {
   getAllVehicles,
   getVehicleById,
   createVehicle,
   updateVehicle,
   updateVehicleStatus,
-  deleteVehicle
+  deleteVehicle,
+  approveVehicle,
+  rejectVehicle
 };

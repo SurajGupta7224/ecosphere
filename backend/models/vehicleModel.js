@@ -66,6 +66,18 @@ Vehicle.init(
       type: DataTypes.STRING,
       defaultValue: "Active"
     },
+    approval_status: {
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      defaultValue: "pending"
+    },
+    approved_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    approved_date: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
 
     // RC & Photo Scan Filenames
     rc_front_image: {
