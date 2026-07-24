@@ -124,6 +124,32 @@ const EmployeesList = () => {
     }
   };
 
+  const handleApproveEmployee = async (empId) => {
+    try {
+      await api.patch(`/aggregator-employees/${empId}/approve`);
+      toast.success("Employee profile approved successfully!");
+      fetchEmployees();
+      if (selectedEmployee && selectedEmployee.id === empId) {
+        setSelectedEmployee(prev => ({ ...prev, profile_approval_status: 'approved' }));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to approve employee");
+    }
+  };
+
+  const handleRejectEmployee = async (empId) => {
+    try {
+      await api.patch(`/aggregator-employees/${empId}/reject`);
+      toast.success("Employee profile rejected");
+      fetchEmployees();
+      if (selectedEmployee && selectedEmployee.id === empId) {
+        setSelectedEmployee(prev => ({ ...prev, profile_approval_status: 'rejected' }));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to reject employee");
+    }
+  };
+
   const handleViewDetails = (emp) => {
     setSelectedEmployee(emp);
     setIsDetailOpen(true);
@@ -448,6 +474,30 @@ const EmployeesList = () => {
                               >
                                 <Edit2 className="w-3.5 h-3.5 mr-2 text-slate-400" /> Edit Record
                               </button>
+                              
+                              {emp.profile_approval_status !== 'approved' && (
+                                <button
+                                  onClick={() => {
+                                    setOpenDropdownId(null);
+                                    handleApproveEmployee(emp.id);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 flex items-center"
+                                >
+                                  <Check className="w-3.5 h-3.5 mr-2" /> Approve Employee
+                                </button>
+                              )}
+
+                              {emp.profile_approval_status !== 'rejected' && (
+                                <button
+                                  onClick={() => {
+                                    setOpenDropdownId(null);
+                                    handleRejectEmployee(emp.id);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center"
+                                >
+                                  <X className="w-3.5 h-3.5 mr-2" /> Reject Employee
+                                </button>
+                              )}
                             </div>
                           </>
                         )}

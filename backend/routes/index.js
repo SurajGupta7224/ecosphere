@@ -23,6 +23,7 @@ const businessSubRegionController = require("../controllers/Admin/businessSubReg
 const employeeController = require("../controllers/Admin/employeeController");
 const vehicleController = require("../controllers/Admin/vehicleController");
 const wasteOrderController = require("../controllers/Admin/wasteOrderController");
+const notificationController = require("../controllers/Admin/notificationController");
 
 
 
@@ -139,6 +140,8 @@ router.get("/aggregator-employees/:id", verifyToken, requirePermission('aggregat
 router.post("/aggregator-employees", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.createEmployee);
 router.put("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeUploads, employeeController.updateEmployee);
 router.patch("/aggregator-employees/:id/status", verifyToken, requirePermission('aggregator_employee'), employeeController.updateEmployeeStatus);
+router.patch("/aggregator-employees/:id/approve", verifyToken, requirePermission('aggregator_employee'), employeeController.approveEmployee);
+router.patch("/aggregator-employees/:id/reject", verifyToken, requirePermission('aggregator_employee'), employeeController.rejectEmployee);
 router.delete("/aggregator-employees/:id", verifyToken, requirePermission('aggregator_employee'), employeeController.deleteEmployee);
 
 // Aggregator Vehicle routes
@@ -147,7 +150,13 @@ router.get("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregato
 router.post("/aggregator-vehicles", verifyToken, requirePermission('aggregator_vehicle'), vehicleUploads, vehicleController.createVehicle);
 router.put("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleUploads, vehicleController.updateVehicle);
 router.patch("/aggregator-vehicles/:id/status", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.updateVehicleStatus);
+router.patch("/aggregator-vehicles/:id/approve", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.approveVehicle);
+router.patch("/aggregator-vehicles/:id/reject", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.rejectVehicle);
 router.delete("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.deleteVehicle);
+
+// Notification routes
+router.get("/notifications", verifyToken, notificationController.getNotifications);
+router.patch("/notifications/:id/read", verifyToken, notificationController.markAsRead);
 
 
 
@@ -234,10 +243,10 @@ router.patch("/waste-collection-requests/lead/:leadId/status", verifyToken, requ
 router.patch("/waste-collection-requests/lead/:leadId/book", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.bookWasteCollectionRequest);
 
 // Waste Order routes
-router.get("/waste-orders", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrders);
-router.get("/waste-orders/:id", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderById);
-router.get("/waste-orders/:id/qr", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderQR);
-router.patch("/waste-orders/lead/:leadId/cancel", verifyToken, requirePermission(['waste_requests_list']), wasteOrderController.cancelWasteOrder);
+router.get("/waste-orders", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrders);
+router.get("/waste-orders/:id", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderById);
+router.get("/waste-orders/:id/qr", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderQR);
+router.patch("/waste-orders/lead/:leadId/cancel", verifyToken, requirePermission(['order_management', 'waste_requests_list']), wasteOrderController.cancelWasteOrder);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);

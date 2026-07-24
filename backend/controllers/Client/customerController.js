@@ -21,7 +21,48 @@ const writeAuditLog = async (req, action, module, oldValue, newValue) => {
   }
 };
 
-// GET /api/admin/customers — list all customers
+// GET /api/customer/profile (Fetch authenticated customer details)
+const getProfile = async (req, res) => {
+  try {
+    // req.user contains the verified customer object from authMiddleware
+    return res.status(200).json({
+      success: true,
+      customer: req.user
+    });
+  } catch (err) {
+    console.error("profile fetch error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch profile" });
+  }
+};
+
+// PUT /api/customer/profile (Update authenticated customer details)
+const updateProfile = async (req, res) => {
+  const { customer_name, profie_pic, notification_status } = req.body || {};
+
+  try {
+    const customer = await Customer.findByPk(req.user.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer profile not found" });
+    }
+
+    await customer.update({
+      customer_name: customer_name !== undefined ? customer_name : customer.customer_name,
+      profie_pic: profie_pic !== undefined ? profie_pic : customer.profie_pic,
+      notification_status: notification_status !== undefined ? notification_status : customer.notification_status
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      customer
+    });
+  } catch (err) {
+    console.error("profile update error:", err);
+    return res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+};
+
+// GET /api/customers — list all customers
 const getAllCustomers = async (req, res) => {
   try {
     const { status, customer_type, created_by } = req.query;
@@ -41,7 +82,7 @@ const getAllCustomers = async (req, res) => {
   }
 };
 
-// GET /api/admin/customers/:id — get customer details
+// GET /api/customers/:id — get customer details
 const getCustomerById = async (req, res) => {
   try {
     const customer = await Customer.findByPk(req.params.id);
@@ -53,9 +94,9 @@ const getCustomerById = async (req, res) => {
     console.error("getCustomerById error:", err);
     return res.status(500).json({ message: "Failed to fetch customer details" });
   }
-}; 
+};
 
-// POST /api/admin/customers — create customer (Admin side)
+// POST /api/customers — create customer
 const createCustomer = async (req, res) => {
   const {
     customer_name, mobile, email, status,
@@ -89,7 +130,7 @@ const createCustomer = async (req, res) => {
       notification_status: notification_status !== undefined ? notification_status : true,
       login_type: login_type || "email",
       customer_type: customer_type || "admin",
-      created_by: created_by || "admin" // Defaults to admin if created via admin panel API
+      created_by: created_by || "admin"
     });
 
     // Write audit log
@@ -105,7 +146,7 @@ const createCustomer = async (req, res) => {
   }
 };
 
-// PUT /api/admin/customers/:id — update customer details
+// PUT /api/customers/:id — update customer details
 const updateCustomer = async (req, res) => {
   const { id } = req.params;
   const {
@@ -149,7 +190,7 @@ const updateCustomer = async (req, res) => {
   }
 };
 
-// DELETE /api/admin/customers/:id — delete customer
+// DELETE /api/customers/:id — delete customer
 const deleteCustomer = async (req, res) => {
   const { id } = req.params;
 
@@ -173,6 +214,8 @@ const deleteCustomer = async (req, res) => {
 };
 
 module.exports = {
+  getProfile,
+  updateProfile,
   getAllCustomers,
   getCustomerById,
   createCustomer,

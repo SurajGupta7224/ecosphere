@@ -83,6 +83,34 @@ const VehiclesList = () => {
     }
   };
 
+  const handleApproveVehicle = async (vehicleId) => {
+    try {
+      await api.patch(`/aggregator-vehicles/${vehicleId}/approve`);
+      toast.success("Vehicle approved successfully!");
+      fetchVehicles();
+      if (detailedVehicle && detailedVehicle.id === vehicleId) {
+        setDetailedVehicle(prev => ({ ...prev, approval_status: 'approved' }));
+      }
+    } catch (err) {
+      console.error("handleApproveVehicle error:", err);
+      toast.error(err.response?.data?.message || "Failed to approve vehicle");
+    }
+  };
+
+  const handleRejectVehicle = async (vehicleId) => {
+    try {
+      await api.patch(`/aggregator-vehicles/${vehicleId}/reject`);
+      toast.success("Vehicle rejected");
+      fetchVehicles();
+      if (detailedVehicle && detailedVehicle.id === vehicleId) {
+        setDetailedVehicle(prev => ({ ...prev, approval_status: 'rejected' }));
+      }
+    } catch (err) {
+      console.error("handleRejectVehicle error:", err);
+      toast.error(err.response?.data?.message || "Failed to reject vehicle");
+    }
+  };
+
   // Close active dropdowns on click-out
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -600,6 +628,7 @@ const VehiclesList = () => {
                   <th className="p-4">Brand & Model</th>
                   <th className="p-4">Assigned Driver</th>
                   <th className="p-4">Compliance Status</th>
+                  <th className="p-4">Approval Status</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 pr-6 text-right">Actions</th>
                 </tr>
@@ -647,6 +676,15 @@ const VehiclesList = () => {
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-lg border ${
+                          veh.approval_status === 'approved' ? 'bg-green-50 text-green-600 border-green-100' :
+                          veh.approval_status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                          'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          {veh.approval_status || 'pending'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-lg border ${
                           veh.vehicle_status === 'Active' ? 'bg-green-50 text-green-600 border-green-100' :
                           veh.vehicle_status === 'Under Maintenance' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                           'bg-red-50 text-red-600 border-red-100'
@@ -669,7 +707,7 @@ const VehiclesList = () => {
                         {activeDropdownId === veh.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-6 top-12 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-30 py-1.5 text-left animate-in fade-in slide-in-from-top-1 duration-150"
+                            className="absolute right-6 top-12 w-44 bg-white border border-slate-100 rounded-xl shadow-xl z-30 py-1.5 text-left animate-in fade-in slide-in-from-top-1 duration-150"
                           >
                             <button
                               onClick={() => {
@@ -689,6 +727,30 @@ const VehiclesList = () => {
                             >
                               <Edit3 className="w-3.5 h-3.5 mr-2 text-slate-400" /> Edit Record
                             </button>
+
+                            {veh.approval_status !== 'approved' && (
+                              <button
+                                onClick={() => {
+                                  handleApproveVehicle(veh.id);
+                                  setActiveDropdownId(null);
+                                }}
+                                className="w-full px-4 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center"
+                              >
+                                <Check className="w-3.5 h-3.5 mr-2" /> Approve Vehicle
+                              </button>
+                            )}
+
+                            {veh.approval_status !== 'rejected' && (
+                              <button
+                                onClick={() => {
+                                  handleRejectVehicle(veh.id);
+                                  setActiveDropdownId(null);
+                                }}
+                                className="w-full px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center"
+                              >
+                                <X className="w-3.5 h-3.5 mr-2" /> Reject Vehicle
+                              </button>
+                            )}
 
                             <div className="border-t border-slate-100 my-1" />
 

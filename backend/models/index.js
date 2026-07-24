@@ -31,9 +31,7 @@ const BusinessSubRegion = require("./businessSubRegionModel");
 const Employee = require("./employeeModel");
 const Vehicle = require("./vehicleModel");
 const WasteOrder = require("./wasteOrderModel");
-
-
-
+const Notification = require("./notificationModel");
 
 // User ↔ Role
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
@@ -163,6 +161,11 @@ Vehicle.belongsTo(Employee, { foreignKey: "driver_id", as: "driver" });
 Vehicle.belongsTo(Employee, { foreignKey: "helper_id", as: "helper" });
 Employee.hasMany(Vehicle, { foreignKey: "driver_id", as: "driverVehicles" });
 Employee.hasMany(Vehicle, { foreignKey: "helper_id", as: "helperVehicles" });
+Vehicle.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+
+// Notification associations
+Notification.belongsTo(User, { foreignKey: "user_id", as: "targetUser" });
+User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 
 module.exports = { 
   User, Role, Permission, RolePermission,
@@ -171,7 +174,7 @@ module.exports = {
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
   TimeSlot, ModuleGeneratorHistory, Customer,
-  BusinessRegion, BusinessSubRegion, Employee, Vehicle, WasteOrder
+  BusinessRegion, BusinessSubRegion, Employee, Vehicle, WasteOrder, Notification
 };
 
 

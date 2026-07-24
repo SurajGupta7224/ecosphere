@@ -2,6 +2,8 @@ const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariatio
 const { Op } = require("sequelize");
 const sequelize = require("../../config/db");
 const axios = require("axios");
+const { sendCustomerCredentialsEmail, generateProductionPassword } = require("../../services/emailService");
+const bcrypt = require("bcrypt");
 
 // GET /api/waste-collection-requests
 const getWasteCollectionRequests = async (req, res) => {
@@ -1160,6 +1162,69 @@ const bookWasteCollectionRequest = async (req, res) => {
     });
 
     await t.commit();
+
+    try {
+      const customerName = requests[0]?.customer_legal_name || requests[0]?.apartment_name || "Customer";
+      const { Notification } = require("../../models/index");
+      await Notification.create({
+        type: "order_booked",
+        title: "New Waste Order Booked",
+        message: `Waste Order #${orderId} has been booked for ${customerName}.`,
+        reference_id: requests[0]?.id || null,
+        reference_type: "order"
+      });
+    } catch (notifErr) {
+      console.error("Failed to create order notification:", notifErr);
+    }
+
+    // Auto-create/update customer account and send credentials via email
+    try {
+      const firstReq = requests[0];
+      const customerEmail = firstReq?.email || firstReq?.email_2;
+      const customerMobile = firstReq?.mobile_number || firstReq?.phone_number_2;
+      const customerName = firstReq?.customer_legal_name || firstReq?.customer_trade_name || firstReq?.contact_person || firstReq?.waste_generator_name || "Customer";
+
+      if (customerEmail) {
+        let existingCustomer = await Customer.findOne({ where: { email: customerEmail } });
+        const plainPassword = generateProductionPassword();
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
+        let isNewAccount = false;
+
+        if (!existingCustomer) {
+          existingCustomer = await Customer.create({
+            customer_name: customerName,
+            email: customerEmail,
+            mobile: customerMobile || null,
+            password: hashedPassword,
+            login_type: "email",
+            status: "active",
+            customer_type: "website",
+            created_by: "admin",
+            notification_status: true
+          });
+          isNewAccount = true;
+        } else {
+          // Update customer password with fresh credentials and ensure active status
+          await existingCustomer.update({
+            password: hashedPassword,
+            customer_name: customerName || existingCustomer.customer_name,
+            mobile: customerMobile || existingCustomer.mobile,
+            status: "active"
+          });
+          isNewAccount = false;
+        }
+
+        sendCustomerCredentialsEmail({
+          toEmail: customerEmail,
+          plainPassword,
+          orderId,
+          customerName,
+          isNewAccount
+        }).catch(e => console.error("Error sending customer credentials email:", e));
+      }
+    } catch (custErr) {
+      console.error("Failed to process customer account/email on order booking:", custErr);
+    }
 
     return res.status(200).json({
       message: "Order booked successfully.",

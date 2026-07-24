@@ -1,4 +1,4 @@
-const { Employee, User, Vehicle } = require("../../models/index");
+const { Employee, User, Vehicle, Notification } = require("../../models/index");
 const { Op } = require("sequelize");
 
 // GET /api/employees - List all employees
@@ -160,6 +160,18 @@ const createEmployee = async (req, res) => {
       ...fileData
     });
 
+    try {
+      await Notification.create({
+        type: "employee_registration",
+        title: "New Aggregator Employee Registration",
+        message: `Employee "${employee.name}" (${employee.staff_type}) has been registered and is pending approval.`,
+        reference_id: employee.id,
+        reference_type: "employee"
+      });
+    } catch (notifErr) {
+      console.error("Failed to create employee notification:", notifErr);
+    }
+
     return res.status(201).json({ message: "Employee created successfully", employeeId: employee.id });
   } catch (err) {
     console.error("createEmployee error:", err);
@@ -285,11 +297,55 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
+// PATCH /api/employees/:id/approve - Approve employee profile
+const approveEmployee = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    await employee.update({
+      profile_approval_status: "approved",
+      approved_by: req.user ? req.user.id : null,
+      approved_date: new Date()
+    });
+
+    return res.status(200).json({ message: "Employee profile approved successfully", employee });
+  } catch (err) {
+    console.error("approveEmployee error:", err);
+    return res.status(500).json({ message: "Failed to approve employee profile" });
+  }
+};
+
+// PATCH /api/employees/:id/reject - Reject employee profile
+const rejectEmployee = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    await employee.update({
+      profile_approval_status: "rejected"
+    });
+
+    return res.status(200).json({ message: "Employee profile rejected", employee });
+  } catch (err) {
+    console.error("rejectEmployee error:", err);
+    return res.status(500).json({ message: "Failed to reject employee profile" });
+  }
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
   createEmployee,
   updateEmployee,
   updateEmployeeStatus,
-  deleteEmployee
+  deleteEmployee,
+  approveEmployee,
+  rejectEmployee
 };

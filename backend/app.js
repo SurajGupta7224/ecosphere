@@ -48,7 +48,7 @@ console.log("TRACE: Routes required successfully.");
 app.use("/api/admin", adminRoutes); 
 
 // Client-side storefront routes
-const clientRoutes = require("./routes/api");
+const clientRoutes = require("./routes/client");
 app.use("/api", clientRoutes);
 
 // Root route
@@ -85,11 +85,25 @@ sequelize.sync()
       // Column might already exist, ignore
     }
 
-    // Seed aggregator_employee and aggregator_vehicle permission if not exists
+    try {
+      await sequelize.query("ALTER TABLE aggregator_vehicles ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending';");
+      console.log("Added approval_status column to aggregator_vehicles table");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE aggregator_vehicles ADD COLUMN approved_by INT NULL;");
+      console.log("Added approved_by column to aggregator_vehicles table");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE aggregator_vehicles ADD COLUMN approved_date DATETIME NULL;");
+      console.log("Added approved_date column to aggregator_vehicles table");
+    } catch (err) {}
+
+    // Seed aggregator_employee, aggregator_vehicle, and order_management permissions if not exist
     try {
       const { Permission, RolePermission, Role } = require("./models/index");
       
-      // employee permission
       const [permEmp, createdEmp] = await Permission.findOrCreate({
         where: { permission_name: 'aggregator_employee' }
       });
@@ -100,6 +114,12 @@ sequelize.sync()
         where: { permission_name: 'aggregator_vehicle' }
       });
       if (createdVeh) console.log("Seeded 'aggregator_vehicle' permission successfully.");
+
+      // order_management permission
+      const [permOrd, createdOrd] = await Permission.findOrCreate({
+        where: { permission_name: 'order_management' }
+      });
+      if (createdOrd) console.log("Seeded 'order_management' permission successfully.");
 
       // Fetch all roles from database dynamically
       const roles = await Role.findAll();
@@ -121,6 +141,15 @@ sequelize.sync()
         if (!associationVeh) {
           await RolePermission.create({ role_id: role.id, permission_id: permVeh.id });
           console.log(`Associated 'aggregator_vehicle' permission with role ${role.role_name}.`);
+        }
+
+        // Associate order_management permission
+        const associationOrd = await RolePermission.findOne({
+          where: { role_id: role.id, permission_id: permOrd.id }
+        });
+        if (!associationOrd) {
+          await RolePermission.create({ role_id: role.id, permission_id: permOrd.id });
+          console.log(`Associated 'order_management' permission with role ${role.role_name}.`);
         }
       }
 
