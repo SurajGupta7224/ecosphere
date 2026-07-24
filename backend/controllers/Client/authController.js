@@ -1,17 +1,15 @@
-const express = require("express");
-const router = express.Router();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { Customer } = require("../models");
-const { verifyToken } = require("../middleware/authMiddleware");
+const { Customer } = require("../../models");
+const { sendResetOTPEmail } = require("../../services/emailService");
 
-// Helper to generate a simple OTP
+// Helper to generate a simple 4-digit OTP
 const generateOTP = () => {
-  return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+  return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
 // POST /api/customer/register (Email/Password registration)
-router.post("/customer/register", async (req, res) => {
+const registerCustomer = async (req, res) => {
   const { customer_name, email, password, mobile } = req.body || {};
 
   if (!email || !password || !customer_name) {
@@ -69,10 +67,10 @@ router.post("/customer/register", async (req, res) => {
     console.error("customer register error:", err);
     return res.status(500).json({ success: false, message: "Registration failed", error: err.message });
   }
-});
+};
 
 // POST /api/customer/login (Email/Password login)
-router.post("/customer/login", async (req, res) => {
+const loginCustomer = async (req, res) => {
   const { email, password } = req.body || {};
 
   if (!email || !password) {
@@ -130,10 +128,10 @@ router.post("/customer/login", async (req, res) => {
     console.error("customer login error:", err);
     return res.status(500).json({ success: false, message: "Login failed", error: err.message });
   }
-});
+};
 
 // POST /api/customer/forgot-password (Request reset OTP)
-router.post("/customer/forgot-password", async (req, res) => {
+const forgotPassword = async (req, res) => {
   const { email } = req.body || {};
 
   if (!email) {
@@ -143,30 +141,31 @@ router.post("/customer/forgot-password", async (req, res) => {
   try {
     const customer = await Customer.findOne({ where: { email } });
     if (!customer) {
-      return res.status(404).json({ success: false, message: "No customer account registered with this email" });
+      return res.status(404).json({ success: false, message: "No customer account registered with this email address" });
     }
 
     const otp = generateOTP();
     await customer.update({ otp });
 
-    // Print to backend stdout for local convenience
-    console.log(`\n--- PASSWORD RESET OTP FOR ${email} ---`);
-    console.log(`OTP: ${otp}`);
-    console.log(`-----------------------------------------\n`);
+    // Send OTP to customer email
+    sendResetOTPEmail({
+      toEmail: email,
+      otp,
+      customerName: customer.customer_name
+    }).catch(e => console.error("Error sending reset OTP email:", e));
 
     return res.status(200).json({
       success: true,
-      message: "Reset OTP sent successfully to your email",
-      otp // Returning OTP directly in response for local testing convenience
+      message: "Verification OTP has been sent to your email address."
     });
   } catch (err) {
     console.error("forgot-password error:", err);
     return res.status(500).json({ success: false, message: "Failed to send reset OTP", error: err.message });
   }
-});
+};
 
 // POST /api/customer/reset-password (Reset password with OTP verification)
-router.post("/customer/reset-password", async (req, res) => {
+const resetPassword = async (req, res) => {
   const { email, otp, new_password } = req.body || {};
 
   if (!email || !otp || !new_password) {
@@ -194,10 +193,10 @@ router.post("/customer/reset-password", async (req, res) => {
     console.error("reset-password error:", err);
     return res.status(500).json({ success: false, message: "Failed to reset password", error: err.message });
   }
-});
+};
 
-// 1. POST /api/customer/send-otp (Signup / Login Trigger)
-router.post("/customer/send-otp", async (req, res) => {
+// POST /api/customer/send-otp (Signup / Login Trigger)
+const sendOtp = async (req, res) => {
   const { email, mobile, login_type } = req.body || {};
 
   if (login_type === "email" && !email) {
@@ -247,10 +246,10 @@ router.post("/customer/send-otp", async (req, res) => {
     console.error("send-otp error:", err);
     return res.status(500).json({ success: false, message: "Failed to send OTP", error: err.message });
   }
-});
+};
 
-// 2. POST /api/customer/verify-otp (Verify & Login)
-router.post("/customer/verify-otp", async (req, res) => {
+// POST /api/customer/verify-otp (Verify & Login)
+const verifyOtp = async (req, res) => {
   const { email, mobile, otp } = req.body || {};
 
   if (!otp) {
@@ -303,47 +302,13 @@ router.post("/customer/verify-otp", async (req, res) => {
     console.error("verify-otp error:", err);
     return res.status(500).json({ success: false, message: "Verification failed", error: err.message });
   }
-});
+};
 
-// 3. GET /api/customer/profile (Fetch authenticated customer details)
-router.get("/customer/profile", verifyToken, async (req, res) => {
-  try {
-    // req.user contains the verified customer object from authMiddleware
-    return res.status(200).json({
-      success: true,
-      customer: req.user
-    });
-  } catch (err) {
-    console.error("profile fetch error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch profile" });
-  }
-});
-
-// 4. PUT /api/customer/profile (Update authenticated customer details)
-router.put("/customer/profile", verifyToken, async (req, res) => {
-  const { customer_name, profie_pic, notification_status } = req.body || {};
-
-  try {
-    const customer = await Customer.findByPk(req.user.id);
-    if (!customer) {
-      return res.status(404).json({ success: false, message: "Customer profile not found" });
-    }
-
-    await customer.update({
-      customer_name: customer_name !== undefined ? customer_name : customer.customer_name,
-      profie_pic: profie_pic !== undefined ? profie_pic : customer.profie_pic,
-      notification_status: notification_status !== undefined ? notification_status : customer.notification_status
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      customer
-    });
-  } catch (err) {
-    console.error("profile update error:", err);
-    return res.status(500).json({ success: false, message: "Failed to update profile" });
-  }
-});
-
-module.exports = router;
+module.exports = {
+  registerCustomer,
+  loginCustomer,
+  forgotPassword,
+  resetPassword,
+  sendOtp,
+  verifyOtp
+};

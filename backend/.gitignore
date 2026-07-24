@@ -1,0 +1,17 @@
+# Node dependencies
+node_modules/
+
+# Environment files
+.env
+*.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Public uploads
+public/uploads/*
+!public/uploads/.gitkeep

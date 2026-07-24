@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import api, { IMAGE_BASE_URL } from '../api';
 import { useSettings } from '../context/SettingsContext';
@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Code2, Globe, Truck
+  Clock, ClipboardList, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -18,10 +18,10 @@ const DashboardLayout = () => {
   const { settings, t } = useSettings();
 
   // Dynamic theme values from settings
-  const sidebarBg  = settings?.theme?.sidebar_color || '#1e133c';
-  const navbarBg   = settings?.theme?.navbar_color  || '#ffffff';
+  const sidebarBg = settings?.theme?.sidebar_color || '#1e133c';
+  const navbarBg = settings?.theme?.navbar_color || '#ffffff';
   const primaryColor = settings?.theme?.primary_color || '#6366f1';
-  const appName    = settings?.appName;
+  const appName = settings?.appName;
 
   const [currentStatus, setCurrentStatus] = useState(user.profile_status || 'pending');
   const isVendor = user.role?.role_name?.toLowerCase().includes('vendor') || user.role?.role_name?.toLowerCase().includes('seller');
@@ -31,8 +31,28 @@ const DashboardLayout = () => {
   const [openSections, setOpenSections] = useState({ access: true, master: false, catalog: true, bwg_mapping: false });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
+  const [activeNotifTab, setActiveNotifTab] = useState('all');
   const [pendingVendors, setPendingVendors] = useState(0);
+  const [pendingEmployeesCount, setPendingEmployeesCount] = useState(0);
+  const [pendingVehiclesCount, setPendingVehiclesCount] = useState(0);
+  const [totalPending, setTotalPending] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [actionLoading, setActionLoading] = useState({});
   const [logoError, setLogoError] = useState(false);
+
+  const notifDropdownRef = useRef(null);
+
+  // Click outside to close notification dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
+        setIsNotifDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setLogoError(false);
@@ -40,11 +60,6 @@ const DashboardLayout = () => {
 
   useEffect(() => {
     fetchProfileStatus();
-    if (isAdmin) {
-      fetchPendingCount();
-      const interval = setInterval(fetchPendingCount, 60000); // Check every minute
-      return () => clearInterval(interval);
-    }
   }, [isAdmin]);
 
   // Route protection for pending accounts (redirect non-admins to dashboard/profile)
@@ -52,20 +67,18 @@ const DashboardLayout = () => {
     if (!isAdmin && !isApproved) {
       const allowedPaths = ['/', '/profile'];
       if (!allowedPaths.includes(location.pathname)) {
-        navigate('/', { replace: true });
+        navigate('/');
       }
     }
-  }, [location.pathname, isAdmin, isApproved, navigate]);
+  }, [isApproved, isAdmin, location.pathname, navigate]);
 
   const fetchProfileStatus = async () => {
     try {
-      const res = await api.get('/profile');
-      if (res.data.user) {
+      const res = await api.get('/auth/me');
+      if (res.data?.user?.profile_status) {
         const freshStatus = res.data.user.profile_status;
         setCurrentStatus(freshStatus);
-
-        // Update localStorage if status has changed
-        if (freshStatus !== user.profile_status) {
+        if (user.profile_status !== freshStatus) {
           const updatedUser = { ...user, profile_status: freshStatus };
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
@@ -75,12 +88,91 @@ const DashboardLayout = () => {
     }
   };
 
-  const fetchPendingCount = async () => {
+  const fetchNotifications = async () => {
     try {
-      const res = await api.get('/users/pending/count');
-      setPendingVendors(res.data.count || 0);
+      const res = await api.get('/notifications');
+      setNotifications(res.data.notifications || []);
+      setTotalPending(res.data.totalPending || 0);
+      setPendingEmployeesCount(res.data.pendingEmployeesCount || 0);
+      setPendingVehiclesCount(res.data.pendingVehiclesCount || 0);
+      setPendingVendors(res.data.pendingVendorsCount || 0);
     } catch (err) {
-      console.error("Error fetching pending vendors:", err);
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
+
+  const handleApprove = async (type, refId, notifId) => {
+    const key = notifId || `${type}-${refId}`;
+    setActionLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      if (type === 'employee' || type === 'employee_registration') {
+        await api.patch(`/aggregator-employees/${refId}/approve`);
+      } else if (type === 'vehicle' || type === 'vehicle_registration') {
+        await api.patch(`/aggregator-vehicles/${refId}/approve`);
+      }
+      if (notifId) {
+        await api.patch(`/notifications/${notifId}/read`);
+      }
+      // Optimistically update local item state instantly
+      setNotifications(prev => prev.map(item => {
+        if (item.id === notifId || (item.reference_id === refId && (item.reference_type === type || item.type === type))) {
+          return { ...item, approval_status: 'approved', is_read: true };
+        }
+        return item;
+      }));
+      setTotalPending(prev => Math.max(0, prev - 1));
+      fetchNotifications();
+    } catch (err) {
+      console.error("Failed to approve item:", err);
+      alert(err.response?.data?.message || "Failed to approve item");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleReject = async (type, refId, notifId) => {
+    const key = notifId || `${type}-${refId}`;
+    setActionLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      if (type === 'employee' || type === 'employee_registration') {
+        await api.patch(`/aggregator-employees/${refId}/reject`);
+      } else if (type === 'vehicle' || type === 'vehicle_registration') {
+        await api.patch(`/aggregator-vehicles/${refId}/reject`);
+      }
+      if (notifId) {
+        await api.patch(`/notifications/${notifId}/read`);
+      }
+      // Optimistically update local item state instantly
+      setNotifications(prev => prev.map(item => {
+        if (item.id === notifId || (item.reference_id === refId && (item.reference_type === type || item.type === type))) {
+          return { ...item, approval_status: 'rejected', is_read: true };
+        }
+        return item;
+      }));
+      setTotalPending(prev => Math.max(0, prev - 1));
+      fetchNotifications();
+    } catch (err) {
+      console.error("Failed to reject item:", err);
+      alert(err.response?.data?.message || "Failed to reject item");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch('/notifications/all/read');
+      await fetchNotifications();
+    } catch (err) {
+      console.error("Failed to mark all read:", err);
     }
   };
 
@@ -153,7 +245,7 @@ const DashboardLayout = () => {
     },
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
-    { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
+    { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
     {
       id: 'aggregator_employees_group',
       title: 'Aggregator Employees',
@@ -233,7 +325,7 @@ const DashboardLayout = () => {
         <div className="px-6 py-4">
           <div
             className="font-normal text-xs uppercase py-2 rounded-full tracking-[2px] text-center flex justify-center items-center"
-            style={{color: '#ffffff', border: '1px solid #e2e8f0' }}
+            style={{ color: '#ffffff', border: '1px solid #e2e8f0' }}
           >
             <Users className="w-4 h-4 mr-4" /> {user.role?.role_name || 'ADMIN'}
           </div>
@@ -333,17 +425,218 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center space-x-6">
-            <button
-              onClick={() => isAdmin && navigate('/users')}
-              className="relative text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <Bell className="w-5 h-5" />
-              {pendingVendors > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                  {pendingVendors}
-                </span>
+            <div className="relative" ref={notifDropdownRef}>
+              <button
+                onClick={() => {
+                  if (isAdmin) {
+                    setIsNotifDropdownOpen(!isNotifDropdownOpen);
+                    setIsProfileDropdownOpen(false);
+                  }
+                }}
+                className="relative text-slate-500 hover:text-slate-700 transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+                title="Notifications & Alerts"
+              >
+                <Bell className="w-5 h-5" />
+                {totalPending > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white px-1 shadow-sm animate-pulse">
+                    {totalPending}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown Panel */}
+              {isNotifDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-[460px] md:w-[480px] bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-emerald-600" /> Notifications & Alerts
+                      </h4>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {totalPending > 0 ? `${totalPending} unread notification${totalPending > 1 ? 's' : ''}` : 'No unread notifications'}
+                      </p>
+                    </div>
+                    {/* {notifications.length > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg transition hover:bg-emerald-100"
+                      >
+                        Mark All Read
+                      </button>
+                    )} */}
+                  </div>
+
+                  {/* Interactive Filter Tabs */}
+                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-xs">
+                    <button
+                      onClick={() => setActiveNotifTab('all')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all ${activeNotifTab === 'all'
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      All ({notifications.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveNotifTab('orders')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${activeNotifTab === 'orders'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" /> Orders
+                    </button>
+                    <button
+                      onClick={() => setActiveNotifTab('vehicles')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${activeNotifTab === 'vehicles'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <Truck className="w-3.5 h-3.5" /> Vehicles
+                    </button>
+                    <button
+                      onClick={() => setActiveNotifTab('staff')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${activeNotifTab === 'staff'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <Users className="w-3.5 h-3.5" /> Staff
+                    </button>
+                    <button
+                      onClick={() => setActiveNotifTab('vendors')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${activeNotifTab === 'vendors'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> Vendors
+                    </button>
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="max-h-84 overflow-y-auto divide-y divide-slate-100">
+                    {(() => {
+                      const filteredNotifs = notifications.filter(notif => {
+                        if (activeNotifTab === 'orders') return notif.type === 'order_booked' || notif.reference_type === 'order';
+                        if (activeNotifTab === 'vehicles') return notif.type === 'vehicle_registration' || notif.reference_type === 'vehicle';
+                        if (activeNotifTab === 'staff') return notif.type === 'employee_registration' || notif.reference_type === 'employee';
+                        if (activeNotifTab === 'vendors') return notif.type === 'vendor_approval' || notif.reference_type === 'vendor';
+                        return true;
+                      });
+
+                      if (filteredNotifs.length === 0) {
+                        return (
+                          <div className="px-4 py-10 text-center text-slate-400">
+                            <Bell className="w-9 h-9 mx-auto mb-2 opacity-30 text-slate-400" />
+                            <p className="text-sm font-semibold text-slate-500">No notifications found</p>
+                            <p className="text-xs text-slate-400 mt-1">Notifications will appear here automatically</p>
+                          </div>
+                        );
+                      }
+
+                      return filteredNotifs.map(notif => {
+                        const isLoading = actionLoading[notif.id || `${notif.reference_type}-${notif.reference_id}`];
+                        const isVehicle = notif.type === 'vehicle_registration' || notif.reference_type === 'vehicle';
+                        const isEmployee = notif.type === 'employee_registration' || notif.reference_type === 'employee';
+                        const isOrder = notif.type === 'order_booked' || notif.reference_type === 'order';
+                        const isVendorNotif = notif.type === 'vendor_approval' || notif.reference_type === 'vendor';
+                        const approvalStatus = notif.approval_status || 'pending';
+
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => {
+                              if (isOrder) {
+                                setIsNotifDropdownOpen(false);
+                                navigate('/waste-orders');
+                              }
+                            }}
+                            className={`p-4 transition hover:bg-slate-50 ${isOrder ? 'cursor-pointer' : ''} ${!notif.is_read ? 'bg-amber-50/20' : ''}`}
+                          >
+                            <div className="flex items-start gap-3.5">
+                              <div className={`p-2.5 rounded-2xl shrink-0 mt-0.5 shadow-sm ${isOrder ? 'bg-blue-100 text-blue-600' :
+                                isVehicle ? 'bg-amber-100 text-amber-600' :
+                                  isEmployee ? 'bg-indigo-100 text-indigo-600' : 'bg-purple-100 text-purple-600'
+                                }`}>
+                                {isOrder ? <ShoppingBag className="w-5 h-5" /> :
+                                  isVehicle ? <Truck className="w-5 h-5" /> :
+                                    isEmployee ? <UserCircle className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{notif.title}</p>
+                                  <span className="text-[10px] text-slate-400 font-semibold shrink-0">
+                                    {new Date(notif.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{notif.message}</p>
+
+                                {/* Action / Status Display */}
+                                {(isVehicle || isEmployee) && (
+                                  <div className="mt-3">
+                                    {approvalStatus === 'approved' ? (
+                                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-lg">
+                                        <CheckCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                        Approved
+                                      </span>
+                                    ) : approvalStatus === 'rejected' ? (
+                                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg">
+                                        <XCircle className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                                        Rejected
+                                      </span>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          disabled={isLoading}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleApprove(notif.reference_type || (isVehicle ? 'vehicle' : 'employee'), notif.reference_id, notif.id);
+                                          }}
+                                          className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition active:scale-95 disabled:opacity-50"
+                                        >
+                                          <Check className="w-3.5 h-3.5 mr-1.5" />
+                                          Approve
+                                        </button>
+                                        <button
+                                          disabled={isLoading}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReject(notif.reference_type || (isVehicle ? 'vehicle' : 'employee'), notif.reference_id, notif.id);
+                                          }}
+                                          className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition active:scale-95 disabled:opacity-50 border border-slate-200/60"
+                                        >
+                                          <X className="w-3.5 h-3.5 mr-1.5" />
+                                          Reject
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {isVendorNotif && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsNotifDropdownOpen(false);
+                                      navigate('/users');
+                                    }}
+                                    className="mt-2.5 text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline inline-flex items-center gap-1"
+                                  >
+                                    View Pending Vendor &rarr;
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             <div className="relative">
               <div
