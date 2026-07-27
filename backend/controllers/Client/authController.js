@@ -43,7 +43,7 @@ const registerCustomer = async (req, res) => {
       notification_status: true
     });
 
-    const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: customer.id, type: "customer" }, process.env.JWT_SECRET, {
       expiresIn: "30d"
     });
 

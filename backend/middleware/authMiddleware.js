@@ -14,31 +14,29 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let user;
+    let userType = decoded.type;
     
-    // Try finding in User table first (Admin/Seller)
-    let user = await User.findByPk(decoded.id, {
-      include: [
-        {
-          model: Role,
-          as: "role",
-          include: [
-            {
-              model: Permission,
-              as: "permissions",
-              attributes: ["permission_name"],
-              through: { attributes: [] }
-            }
-          ]
-        }
-      ]
-    });
-
-    let userType = 'user';
-
-    // If not found in User, try Customer table (Storefront)
-    if (!user) {
+    //check if the token is for a user or a customer
+    if (userType === 'customer') {
       user = await Customer.findByPk(decoded.id);
-      userType = 'customer';
+    }else if(userType === 'admin'){
+      user = await User.findByPk(decoded.id, {
+        include: [
+          {
+            model: Role,
+            as: "role",
+            include: [
+              {model: Permission, as: "permissions", attributes: ["permission_name"], through: { attributes: [] }} // Exclude join table attributes
+            ]
+          }
+        ]
+      });
+    }else{
+      return res.status(401).json({
+        status: 0,
+        message: "Invalid token type. Please login again."
+      });
     }
 
     if (!user) {
@@ -49,13 +47,13 @@ const verifyToken = async (req, res, next) => {
     }
 
     // Check status (handle both 'active' string for User and 1/active for Customer)
-    const isActive = userType === 'user' ? user.status === 'active' : (user.status == 1 || user.status === 'active');
+    const isActive = userType === 'admin' ? user.status === 'active' : (user.status == 1 || user.status === 'active');
     if (!isActive) {
       return res.status(401).json({ message: "User account suspended." });
     }
 
     // Enforce Single Session if allow_multiple_sessions is disabled
-    if (userType === 'user') {
+    if (userType === 'admin') {
       const security = await SecuritySettings.findByPk(1);
       if (security && !security.allow_multiple_sessions) {
         if (decoded.session_token !== user.current_session_token) {
@@ -69,13 +67,13 @@ const verifyToken = async (req, res, next) => {
 
     req.user = user;
     req.userType = userType;
-    req.userPermissions = userType === 'user' ? (user.role?.permissions?.map(p => p.permission_name) || []) : [];
+    req.userPermissions = userType === 'admin' ? (user.role?.permissions?.map(p => p.permission_name) || []) : [];
 
     // Enforce Maintenance Mode (block non-admins)
     try {
       const systemSettings = await SystemSettings.findByPk(1);
       if (systemSettings && systemSettings.maintenance_mode) {
-        const isAdmin = userType === 'user' && user.role?.role_name?.toLowerCase().includes('admin');
+        const isAdmin = userType === 'admin' && user.role?.role_name?.toLowerCase().includes('admin');
         if (!isAdmin) {
           return res.status(503).json({
             status: 0,
@@ -88,7 +86,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     // Check if user is pending approval
-    if (userType === 'user') {
+    if (userType === 'admin') {
       const isApproved = user.profile_status === 'approved';
       const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
       if (!isApproved && !isAdmin) {
