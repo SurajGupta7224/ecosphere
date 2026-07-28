@@ -5,17 +5,38 @@ const QRCode = require("qrcode");
 
 // GET /api/admin/waste-orders - Fetch all orders
 const getWasteOrders = async (req, res) => {
-  const { page = 1, limit = 500, search = '', status = '' } = req.query;
+  const { page = 1, limit = 500, search = '', status = '', customer_id = '', user_id = '' } = req.query;
   const offset = (page - 1) * limit;
   const where = {};
 
   if (status !== '') {
     where.status = status;
   }
+  if (customer_id) {
+    where.customer_id = customer_id;
+  }
+  if (user_id) {
+    where.user_id = user_id;
+  }
 
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-  if (!isAdmin) {
-    where.user_id = req.user.id;
+  if (!isAdmin && !customer_id && !user_id) {
+    const custRecord = await Customer.findOne({
+      where: {
+        [Op.or]: [
+          req.user.email ? { email: req.user.email } : null,
+          req.user.phone ? { mobile: req.user.phone } : null
+        ].filter(Boolean)
+      }
+    });
+    const cId = custRecord ? custRecord.id : null;
+
+    where[Op.or] = [
+      { user_id: req.user.id },
+      cId ? { customer_id: cId } : null,
+      req.user.email ? { email: req.user.email } : null,
+      req.user.phone ? { mobile_number: req.user.phone } : null
+    ].filter(Boolean);
   }
 
   try {

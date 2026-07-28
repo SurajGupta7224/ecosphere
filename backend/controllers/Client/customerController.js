@@ -119,6 +119,8 @@ const createCustomer = async (req, res) => {
       return res.status(409).json({ message: "Customer with this email or mobile already exists" });
     }
 
+    const validCustType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : "B2B";
+
     const newCustomer = await Customer.create({
       customer_name,
       mobile: mobile || null,
@@ -129,8 +131,8 @@ const createCustomer = async (req, res) => {
       referral_id: referral_id || null,
       notification_status: notification_status !== undefined ? notification_status : true,
       login_type: login_type || "email",
-      customer_type: customer_type || "admin",
-      created_by: created_by || "admin"
+      customer_type: validCustType,
+      created_by: created_by || (req.user ? req.user.name : "system")
     });
 
     // Write audit log
