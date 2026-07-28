@@ -411,11 +411,11 @@ const DashboardLayout = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: 'var(--content-bg)' }}>
+      <div className="flex-1 flex flex-col min-w-0 relative z-0" style={{ backgroundColor: 'var(--content-bg)' }}>
 
         {/* Top Header - dynamic bg from settings */}
         <header
-          className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0 shadow-sm z-10"
+          className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0 shadow-sm relative z-50"
           style={{ backgroundColor: navbarBg }}
         >
           <div className="flex items-center">
@@ -446,7 +446,7 @@ const DashboardLayout = () => {
 
               {/* Notification Dropdown Panel */}
               {isNotifDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-[460px] md:w-[480px] bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-3 w-[460px] md:w-[480px] bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="px-5 pb-3 border-b border-slate-100 flex items-center justify-between">
                     <div>
                       <h4 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
@@ -659,7 +659,7 @@ const DashboardLayout = () => {
 
               {/* Profile Dropdown */}
               {isProfileDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-[9999]">
                   <div className="px-4 py-2 border-b border-slate-50 mb-1">
                     <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
                     <p className="text-xs text-slate-500 truncate">{user.email}</p>
@@ -682,7 +682,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Canvas */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8 relative z-0">
           {isVendor && !isApproved && (
             <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm animate-pulse">
               <div className="flex items-center">
