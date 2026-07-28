@@ -731,15 +731,15 @@ export default function WasteCollectionRequests() {
 
   const handleSearchMobile = async () => {
     if (!searchMobile.trim()) {
-      toast.error("Please enter a mobile number to search.");
+      toast.error("Please enter a mobile number, customer name, or Lead ID to search.");
       return;
     }
     setSearchingMobile(true);
     try {
-      const res = await api.get('/waste-collection-requests/search-mobile', { params: { mobile: searchMobile } });
+      const res = await api.get('/waste-collection-requests/search-mobile', { params: { mobile: searchMobile.trim() } });
       if (res.data.success && res.data.requests) {
         if (res.data.requests.length === 0) {
-          toast.error("No existing request found with this mobile number.");
+          toast.error("No existing request found matching this search term.");
           return;
         }
 
@@ -766,7 +766,7 @@ export default function WasteCollectionRequests() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to search customer by mobile number.");
+      toast.error(err.response?.data?.message || "Failed to search customer requests.");
     } finally {
       setSearchingMobile(false);
     }
@@ -2074,13 +2074,13 @@ export default function WasteCollectionRequests() {
 
               {formData.customer_type === 'Existing Customer' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search Customer Mobile *</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search Customer (Mobile / Name / Lead ID) *</label>
                   <div className="flex gap-2">
                     <input
-                      type="tel"
+                      type="text"
                       value={searchMobile}
-                      onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="Enter the number"
+                      onChange={(e) => setSearchMobile(e.target.value)}
+                      placeholder="Enter mobile, customer name or Lead ID..."
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                     />
                     <button

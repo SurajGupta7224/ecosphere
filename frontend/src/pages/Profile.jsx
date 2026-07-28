@@ -139,10 +139,31 @@ const DocumentPreview = ({ label, path, fieldName, selectedFile, onFileChange })
   );
 };
 
+const ReadOnlyField = ({ label, value, icon: Icon }) => (
+  <div className="mb-5">
+    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+      {label}
+    </label>
+    <div className="relative flex items-center">
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center pl-3.5 pointer-events-none text-emerald-600">
+        <Icon className="w-4 h-4" />
+      </div>
+      <input 
+        type="text" 
+        value={value || 'N/A'} 
+        readOnly 
+        disabled
+        className="w-full bg-slate-100/90 border border-slate-200 py-2.5 pl-10 pr-4 rounded-xl text-sm font-bold text-slate-800 shadow-sm cursor-not-allowed select-none" 
+      />
+    </div>
+  </div>
+);
+
 const Profile = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [profilePreview, setProfilePreview] = useState(null);
   
   // BWG Mappings dropdowns
   const [corporations, setCorporations] = useState([]);
@@ -160,6 +181,16 @@ const Profile = () => {
   });
 
   useEffect(() => {
+    if (fileData.profile_photo) {
+      const url = URL.createObjectURL(fileData.profile_photo);
+      setProfilePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setProfilePreview(null);
+    }
+  }, [fileData.profile_photo]);
+
+  useEffect(() => {
     fetchProfile();
     fetchCorporations();
   }, []);
@@ -171,7 +202,7 @@ const Profile = () => {
       if (user) {
         setUserData(user);
         
-        // Pre-fetch dependent dropdown options based on current user location mapping
+        // Pre-fetch dependent location options based on current user mapping
         if (user.corporation_id) {
           await fetchZones(user.corporation_id);
         }
@@ -230,25 +261,6 @@ const Profile = () => {
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleCorporationChange = async (e) => {
-    const corpId = e.target.value;
-    setFormData(prev => ({ ...prev, corporation_id: corpId, zone_id: '', ward_id: '' }));
-    setZones([]);
-    setWards([]);
-    if (corpId) {
-      await fetchZones(corpId);
-    }
-  };
-
-  const handleZoneChange = async (e) => {
-    const zoneId = e.target.value;
-    setFormData(prev => ({ ...prev, zone_id: zoneId, ward_id: '' }));
-    setWards([]);
-    if (zoneId) {
-      await fetchWards(zoneId);
-    }
   };
 
   const handleFileChange = (e) => {
@@ -331,6 +343,14 @@ const Profile = () => {
     );
   }
 
+  const avatarSrc = profilePreview || (userData.profile_photo ? `${IMAGE_BASE_URL.replace('/uploads', '')}/uploads/Profile_Photo/${userData.profile_photo}` : null);
+
+  const corpName = userData.corporation?.corporation_name || userData.corporation_name || corporations.find(c => String(c.id) === String(formData.corporation_id))?.corporation_name || (formData.corporation_id ? `Corporation #${formData.corporation_id}` : 'N/A');
+
+  const zoneName = userData.zone?.zone_name || userData.zone_name || zones.find(z => String(z.id) === String(formData.zone_id))?.zone_name || (formData.zone_id ? `Zone #${formData.zone_id}` : 'N/A');
+
+  const wardName = userData.ward?.ward_name || userData.ward_name || wards.find(w => String(w.id) === String(formData.ward_id))?.ward_name || (formData.ward_id ? `Ward #${formData.ward_id}` : 'N/A');
+
   return (
     <div className="w-full pb-12 px-0 font-sans">
       {/* Header Profile Card */}
@@ -339,28 +359,47 @@ const Profile = () => {
         <div className="px-8 pb-8">
           <div className="relative -mt-20 flex flex-col md:flex-row md:items-end md:space-x-6">
             <div className="relative group inline-block">
-              <div className="w-40 h-40 rounded-3xl border-8 border-white bg-slate-100 shadow-2xl overflow-hidden group">
-                {userData.profile_photo ? (
+              <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-3xl border-4 sm:border-8 border-white bg-slate-100 shadow-2xl overflow-hidden relative group">
+                {avatarSrc ? (
                   <img 
-                    src={`${IMAGE_BASE_URL.replace('/uploads', '')}/uploads/Profile_Photo/${userData.profile_photo}`} 
+                    src={avatarSrc} 
                     alt="Profile" 
-                    className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" 
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-purple-50 text-purple-600 text-5xl font-black">
                     {userData.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                  <Camera className="text-white w-8 h-8" />
+                
+                {/* Upload Overlay */}
+                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer text-white z-10">
+                  <Camera className="w-8 h-8 text-white mb-1" />
+                  <span className="text-[11px] font-bold">Change Photo</span>
                   <input 
                     type="file" 
                     name="profile_photo"
                     onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    accept="image/*"
+                    className="hidden"
                   />
-                </div>
+                </label>
               </div>
+
+              {/* Floating Camera Button Badge */}
+              <label 
+                className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-[#7c3aed] text-white shadow-lg border-2 border-white flex items-center justify-center cursor-pointer hover:bg-purple-700 hover:scale-110 transition-all z-20"
+                title="Upload Profile Photo"
+              >
+                <Camera className="w-5 h-5" />
+                <input 
+                  type="file" 
+                  name="profile_photo"
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </label>
             </div>
             <div className="mt-6 md:mb-4 flex-1">
               <h1 className="text-3xl font-black text-slate-800 tracking-tight">{userData.name}</h1>
@@ -428,22 +467,13 @@ const Profile = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Location Context</h2>
-                  <p className="text-xs font-medium text-slate-400">Where you are mapped</p>
+                  <p className="text-xs font-medium text-slate-400">Where you are mapped (Read-Only System Mapping)</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
-                <SelectField 
-                  label="Corporation" name="corporation_id" value={formData.corporation_id} onChange={handleCorporationChange} icon={MapPin} required
-                  options={corporations.map(c => ({ value: c.id, label: c.corporation_name }))} 
-                />
-                <SelectField 
-                  label="Zone" name="zone_id" value={formData.zone_id} onChange={handleZoneChange} icon={MapPin} required disabled={!formData.corporation_id}
-                  options={zones.map(z => ({ value: z.id, label: z.zone_name }))} 
-                />
-                <SelectField 
-                  label="Ward" name="ward_id" value={formData.ward_id} onChange={handleInputChange} icon={MapPin} required disabled={!formData.zone_id}
-                  options={wards.map(w => ({ value: w.id, label: w.ward_name }))} 
-                />
+                <ReadOnlyField label="Corporation" value={corpName} icon={MapPin} />
+                <ReadOnlyField label="Zone" value={zoneName} icon={MapPin} />
+                <ReadOnlyField label="Ward" value={wardName} icon={MapPin} />
               </div>
             </div>
           </div>

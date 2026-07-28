@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 
 // GET /api/waste-collection-requests
 const getWasteCollectionRequests = async (req, res) => {
-  const { page = 1, limit = 10, search = '', status = '' } = req.query;
+  const { page = 1, limit = 10, search = '', status = '', customer_id = '', user_id = '' } = req.query;
   const offset = (page - 1) * limit;
 
   const where = {};
@@ -17,10 +17,33 @@ const getWasteCollectionRequests = async (req, res) => {
     where.status = status;
   }
 
-  // Role-based visibility: Non-admins only see their own requests
+  // Explicit filters
+  if (customer_id) {
+    where.customer_id = customer_id;
+  }
+  if (user_id) {
+    where.user_id = user_id;
+  }
+
+  // Role-based visibility: Non-admins only see requests matching their user ID, customer ID, or email/phone
   const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-  if (!isAdmin) {
-    where.user_id = req.user.id;
+  if (!isAdmin && !customer_id && !user_id) {
+    const custRecord = await Customer.findOne({
+      where: {
+        [Op.or]: [
+          req.user.email ? { email: req.user.email } : null,
+          req.user.phone ? { mobile: req.user.phone } : null
+        ].filter(Boolean)
+      }
+    });
+    const cId = custRecord ? custRecord.id : null;
+
+    where[Op.or] = [
+      { user_id: req.user.id },
+      cId ? { customer_id: cId } : null,
+      req.user.email ? { email: req.user.email } : null,
+      req.user.phone ? { mobile_number: req.user.phone } : null
+    ].filter(Boolean);
   }
 
   try {
@@ -297,29 +320,33 @@ const createWasteCollectionRequest = async (req, res) => {
       parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
     }
 
-    // Look up or create customer in customers table
+    // Create unique Customer record for this lead submission
     let customerId = null;
+    let targetUserId = loggedInId;
+
+    const validCustomerType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : 'B2B';
+    const newCust = await Customer.create({
+      customer_name: contact_person || waste_generator_name || customer_legal_name || 'B2B Customer',
+      mobile: mobile_number || null,
+      email: email || null,
+      customer_type: validCustomerType,
+      created_by: isAdmin ? 'admin' : (req.user ? req.user.name : 'user'),
+      status: 'active'
+    });
+    customerId = newCust.id;
+
     if (email || mobile_number) {
-      let existingCust = await Customer.findOne({
+      // Find matching User record for this customer
+      const existingUser = await User.findOne({
         where: {
           [Op.or]: [
             email ? { email } : null,
-            mobile_number ? { mobile: mobile_number } : null
+            mobile_number ? { phone: mobile_number } : null
           ].filter(Boolean)
         }
       });
-      if (existingCust) {
-        customerId = existingCust.id;
-      } else {
-        const newCust = await Customer.create({
-          customer_name: contact_person || waste_generator_name || 'B2B Customer',
-          mobile: mobile_number || null,
-          email: email || null,
-          customer_type: 'admin',
-          created_by: 'admin',
-          status: 'active'
-        });
-        customerId = newCust.id;
+      if (existingUser) {
+        targetUserId = existingUser.id;
       }
     }
 
@@ -349,11 +376,13 @@ const createWasteCollectionRequest = async (req, res) => {
           yearly_price = parseFloat(subItem.bulk_yearly_price || 0);
         }
 
+        const validCustType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : 'B2B';
+
         const request = await WasteCollectionRequest.create({
           lead_id: leadId,
-          user_id: loggedInId,
+          user_id: targetUserId || loggedInId,
           customer_id: customerId,
-          customer_type: customer_type || null,
+          customer_type: validCustType,
           contact_person: contact_person || null,
           mobile_number: mobile_number || null,
           email: email || null,
@@ -1036,25 +1065,79 @@ const updateWasteCollectionRequestStatus = async (req, res) => {
 };
 
 const searchRequestByMobile = async (req, res) => {
-  const { mobile } = req.query;
-  if (!mobile) {
-    return res.status(400).json({ message: "Mobile number is required." });
+  const { mobile, query, search } = req.query;
+  const searchTerm = (mobile || query || search || "").trim();
+
+  if (!searchTerm) {
+    return res.status(400).json({ message: "Search term (Mobile, Name, or Lead ID) is required." });
   }
 
   try {
-    // Find all WasteCollectionRequests matching this mobile number
+    // 1. Search in WasteCollectionRequest model using valid DB columns
     const requests = await WasteCollectionRequest.findAll({
-      where: { mobile_number: mobile },
+      where: {
+        [Op.or]: [
+          { mobile_number: { [Op.like]: `%${searchTerm}%` } },
+          { phone_number_2: { [Op.like]: `%${searchTerm}%` } },
+          { customer_legal_name: { [Op.like]: `%${searchTerm}%` } },
+          { customer_trade_name: { [Op.like]: `%${searchTerm}%` } },
+          { contact_person: { [Op.like]: `%${searchTerm}%` } },
+          { waste_generator_name: { [Op.like]: `%${searchTerm}%` } },
+          { lead_id: { [Op.like]: `%${searchTerm}%` } },
+          { email: { [Op.like]: `%${searchTerm}%` } },
+          { email_2: { [Op.like]: `%${searchTerm}%` } }
+        ]
+      },
       order: [['id', 'DESC']]
     });
 
+    if (requests.length > 0) {
+      return res.status(200).json({
+        success: true,
+        requests
+      });
+    }
+
+    // 2. Fallback search in Customer table by name / mobile / email
+    const matchingCustomers = await Customer.findAll({
+      where: {
+        [Op.or]: [
+          { customer_name: { [Op.like]: `%${searchTerm}%` } },
+          { mobile: { [Op.like]: `%${searchTerm}%` } },
+          { email: { [Op.like]: `%${searchTerm}%` } }
+        ]
+      }
+    });
+
+    if (matchingCustomers.length > 0) {
+      const customerMobiles = matchingCustomers.map(c => c.mobile).filter(Boolean);
+      const customerEmails = matchingCustomers.map(c => c.email).filter(Boolean);
+      const customerIds = matchingCustomers.map(c => c.id).filter(Boolean);
+
+      const customerRequests = await WasteCollectionRequest.findAll({
+        where: {
+          [Op.or]: [
+            ...(customerIds.length > 0 ? [{ customer_id: { [Op.in]: customerIds } }] : []),
+            ...(customerMobiles.length > 0 ? [{ mobile_number: { [Op.in]: customerMobiles } }] : []),
+            ...(customerEmails.length > 0 ? [{ email: { [Op.in]: customerEmails } }] : [])
+          ]
+        },
+        order: [['id', 'DESC']]
+      });
+
+      return res.status(200).json({
+        success: true,
+        requests: customerRequests
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      requests
+      requests: []
     });
   } catch (err) {
     console.error("searchRequestByMobile error:", err);
-    return res.status(500).json({ message: "Failed to search request by mobile number." });
+    return res.status(500).json({ message: "Failed to search customer requests.", error: err.message });
   }
 };
 
