@@ -5,6 +5,7 @@ const speakeasy = require("speakeasy");
 const qrcode = require("qrcode");
 const crypto = require("crypto");
 const { User, Role, Permission, SystemSettings, SecuritySettings } = require("../../models/index");
+const { type } = require("os");
 
 // GET /api/admin/auth/captcha
 const generateCaptcha = async (req, res) => {
@@ -202,7 +203,7 @@ const login = async (req, res) => {
     const timeout = security?.session_timeout || 30; // in minutes
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role_id: user.role_id, session_token: currentSessionToken },
+      { id: user.id, email: user.email, role_id: user.role_id, session_token: currentSessionToken, type: "admin" },
       process.env.JWT_SECRET,
       { expiresIn: `${timeout}m` }
     );
@@ -303,7 +304,7 @@ const verify2FA = async (req, res) => {
     const timeout = security?.session_timeout || 30; // in minutes
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role_id: user.role_id, session_token: currentSessionToken },
+      { id: user.id, email: user.email, role_id: user.role_id, session_token: currentSessionToken, type: "admin" },
       process.env.JWT_SECRET,
       { expiresIn: `${timeout}m` }
     );
