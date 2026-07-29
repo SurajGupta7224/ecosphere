@@ -1,4 +1,5 @@
-const { Customer, AuditLog } = require("../../models/index");
+const { Customer, AuditLog, WasteCollectionRequest, WasteOrder } = require("../../models/index");
+const { Op } = require("sequelize");
 
 // Helper to write audit log
 const writeAuditLog = async (req, action, module, oldValue, newValue) => {
@@ -215,6 +216,93 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
+// GET /api/customer/pickups (Fetch authenticated customer's pickups - both requests & orders)
+const getCustomerPickups = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+    const email = req.user.email;
+    const mobile = req.user.mobile;
+
+    // Fetch un-booked/non-booked waste collection requests for this customer
+    const requests = await WasteCollectionRequest.findAll({
+      where: {
+        status: {
+          [Op.ne]: 'Booked'
+        },
+        [Op.or]: [
+          { customer_id: customerId },
+          email ? { email: email } : null,
+          mobile ? { mobile_number: mobile } : null
+        ].filter(Boolean)
+      },
+      order: [["created_at", "DESC"]]
+    });
+
+    // Fetch waste orders for this customer (Booked, Completed, Cancelled)
+    const orders = await WasteOrder.findAll({
+      where: {
+        [Op.or]: [
+          { customer_id: customerId },
+          email ? { email: email } : null,
+          mobile ? { mobile_number: mobile } : null
+        ].filter(Boolean)
+      },
+      order: [["created_at", "DESC"]]
+    });
+
+    // Deduplicate requests by lead_id — keep only the first (most recent) per lead
+    const seenRequestLeads = new Set();
+    const uniqueRequests = requests.filter(reqItem => {
+      if (seenRequestLeads.has(reqItem.lead_id)) return false;
+      seenRequestLeads.add(reqItem.lead_id);
+      return true;
+    });
+
+    // Format unique requests
+    const formattedRequests = uniqueRequests.map(reqItem => ({
+      id: `req-${reqItem.id}`,
+      lead_id: reqItem.lead_id,
+      waste_generator_name: reqItem.waste_generator_name || 'Waste Collection Request',
+      pickup_date: reqItem.pickup_date,
+      pickup_time: reqItem.pickup_time,
+      status: reqItem.status,
+      created_at: reqItem.created_at
+    }));
+
+    // Deduplicate orders by order_id — keep only the first (most recent) per order
+    const seenOrderIds = new Set();
+    const uniqueOrders = orders.filter(ordItem => {
+      if (seenOrderIds.has(ordItem.order_id)) return false;
+      seenOrderIds.add(ordItem.order_id);
+      return true;
+    });
+
+    // Format unique orders
+    const formattedOrders = uniqueOrders.map(ordItem => ({
+      id: `ord-${ordItem.order_id}`,
+      lead_id: ordItem.lead_id,
+      waste_generator_name: ordItem.waste_generator_name || 'Waste Order',
+      pickup_date: ordItem.pickup_date,
+      pickup_time: ordItem.pickup_time,
+      status: ordItem.status,
+      created_at: ordItem.created_at
+    }));
+
+    // Combine and sort by created_at descending
+    const combinedPickups = [...formattedRequests, ...formattedOrders].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    return res.status(200).json({
+      success: true,
+      orders: combinedPickups
+    });
+  } catch (err) {
+    console.error("getCustomerPickups error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch customer pickups" });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -222,5 +310,6 @@ module.exports = {
   getCustomerById,
   createCustomer,
   updateCustomer,
-  deleteCustomer
+  deleteCustomer,
+  getCustomerPickups
 };

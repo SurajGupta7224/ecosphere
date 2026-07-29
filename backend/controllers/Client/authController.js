@@ -100,7 +100,7 @@ const loginCustomer = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: customer.id, type: "customer" }, process.env.JWT_SECRET, {
       expiresIn: "30d"
     });
 
@@ -273,7 +273,7 @@ const verifyOtp = async (req, res) => {
     }
 
     // Generate JWT token for storefront customer authentication
-    const token = jwt.sign({ id: customer.id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: customer.id, type: "customer" }, process.env.JWT_SECRET, {
       expiresIn: "30d" // 30 days session
     });
 

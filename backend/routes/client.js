@@ -11,7 +11,8 @@ const {
 } = require("../controllers/Client/authController");
 const {
   getProfile,
-  updateProfile
+  updateProfile,
+  getCustomerPickups
 } = require("../controllers/Client/customerController");
 
 // Storefront / Client Customer Authentication & Profile Routes
@@ -39,5 +40,8 @@ router.get("/customer/profile", verifyToken, getProfile);
 
 // PUT /api/customer/profile (Update authenticated customer details)
 router.put("/customer/profile", verifyToken, updateProfile);
+
+// GET /api/customer/pickups (Fetch authenticated customer's pickups)
+router.get("/customer/pickups", verifyToken, getCustomerPickups);
 
 module.exports = router;
