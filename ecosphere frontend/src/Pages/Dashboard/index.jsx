@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import BookPickup from "./BookPickup";
 import { useNavigate } from "react-router-dom";
 import {
   FiUser,
@@ -115,17 +116,22 @@ export default function CustomerDashboard() {
         {/* ──────────────── SIDEBAR ──────────────── */}
         <aside className="w-52 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col">
 
-          {/* My Account header */}
-          <div className="flex items-center gap-2 mb-4 px-1">
-            <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
-              <FiUser size={13} className="text-green-700" />
-            </div>
-            <span className="text-sm font-semibold text-gray-700">My Account</span>
-          </div>
+          {/* Overview button */}
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all mb-2 ${
+              activeTab === "overview"
+                ? "bg-green-50 text-green-700 font-semibold"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+            }`}
+          >
+            <FiLayout size={15} />
+            <span>Overview</span>
+          </button>
 
           {/* Book Pickup CTA */}
           <button
-            onClick={() => setActiveTab("overview")}
+            onClick={() => setActiveTab("pickups")}
             className="flex items-center justify-center gap-1.5 w-full bg-green-700 hover:bg-green-800 active:scale-95 text-white text-sm font-semibold py-2.5 rounded-xl mb-4 transition-all"
           >
             <FiPlus size={15} />
@@ -134,7 +140,7 @@ export default function CustomerDashboard() {
 
           {/* Nav items */}
           <nav className="flex flex-col gap-0.5 flex-1">
-            {sidebarNavItems.map((item) => {
+            {sidebarNavItems.filter((item) => item.id !== "overview").map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -367,41 +373,7 @@ export default function CustomerDashboard() {
           )}
 
           {/* ═══════════════ PICKUPS TAB ═══════════════ */}
-          {activeTab === "pickups" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">My Pickups</h2>
-              {loadingPickups ? (
-                <p className="text-gray-400 text-sm">Loading pickups...</p>
-              ) : pickups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                  <FiTruck size={40} className="mb-4" />
-                  <p>You have no pickups scheduled.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pickups.map((order) => (
-                    <div
-                      key={order.id}
-                      className="border border-gray-100 rounded-xl p-4 flex items-center justify-between hover:border-green-200 transition-colors"
-                    >
-                      <div className="min-w-0 mr-4">
-                        <p className="font-medium text-gray-800 truncate">
-                          {order.waste_generator_name}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          {order.pickup_date}
-                          {order.pickup_time ? ` · ${order.pickup_time}` : ""}
-                        </p>
-                      </div>
-                      <span className={`flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-full ${statusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === "pickups" && <BookPickup />}
 
           {/* ═══════════════ WALLET TAB ═══════════════ */}
           {activeTab === "wallet" && (
