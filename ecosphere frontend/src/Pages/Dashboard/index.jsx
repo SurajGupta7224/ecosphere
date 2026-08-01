@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import BookPickup from "./BookPickup";
 import { useNavigate } from "react-router-dom";
+import MyDetails from "./MyDetails";
+import { QrCode } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
+
 import {
   FiUser,
   FiPlus,
@@ -15,9 +19,43 @@ import {
   FiLogOut,
   FiDollarSign,
   FiLayout,
-  FiZap,
+  FiX,
+  FiDownload,
+  FiFileText,
+  FiAlertCircle,
+  FiCalendar,
+  FiMail,
+  FiPhone,
+  FiFilter,
+  FiCheckCircle,
 } from "react-icons/fi";
+
 import { customerFetch } from "../../api";
+
+// -----------------------------------------------------------
+// NEW: extracted dashboard pieces + shared helpers
+// Adjust these relative paths to wherever you place the files
+// -----------------------------------------------------------
+import PlanStatusCard from "./PlanStatusCard";
+import OverviewStats from "./OverviewStats";
+import WasteBreakdownCard from "./WasteBreakdownCard";
+import RecentPickupsStrip from "./RecentPickupsStrip";
+import NotificationsPanel from "./NotificationsPanel";
+
+import {
+  statusColor,
+  isToday,
+  isMissedPickup,
+  formatDate,
+  formatDateTime,
+  getVehicleNumber,
+  getDriverName,
+  getWetWeight,
+  getDryWeight,
+  getSanitaryWeight,
+  getSpecialCareWeight,
+  getTotalWeight,
+} from "./pickupHelpers";
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
@@ -25,7 +63,6 @@ export default function CustomerDashboard() {
   const token = localStorage.getItem("customer_token");
   const localUser = localStorage.getItem("customer_user");
 
-  // Strict check: if no token, immediately redirect to login and render nothing
   if (!token) {
     window.location.href = "/login";
     return null;
@@ -43,37 +80,79 @@ export default function CustomerDashboard() {
   const [pickups, setPickups] = useState([]);
   const [loadingPickups, setLoadingPickups] = useState(false);
 
-  // Fetch pickups on mount so overview stats and active pickup are available immediately
+  // QR popup
+  const [showQR, setShowQR] = useState(false);
+
+  // Pickup history filters
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  // Complaint form
+  const [complaintType, setComplaintType] = useState("Missed Pickup");
+  const [complaintPickup, setComplaintPickup] = useState("");
+  const [complaintDescription, setComplaintDescription] = useState("");
+
+  // ---------------------------------------------------------
+  // FETCH PICKUPS
+  // ---------------------------------------------------------
   useEffect(() => {
     setLoadingPickups(true);
+
     customerFetch("/customer/pickups")
-      .then((data) => setPickups(data.orders || []))
-      .catch((err) => console.error("Pickups fetch error:", err))
-      .finally(() => setLoadingPickups(false));
+      .then((data) => {
+        setPickups(data.orders || []);
+      })
+      .catch((err) => {
+        console.error("Pickups fetch error:", err);
+      })
+      .finally(() => {
+        setLoadingPickups(false);
+      });
   }, []);
 
+  
+
+  // ---------------------------------------------------------
+  // FETCH PROFILE
+  // ---------------------------------------------------------
   useEffect(() => {
     customerFetch("/customer/profile")
       .then((data) => {
         if (data.customer) {
           setCustomer(data.customer);
-          localStorage.setItem("customer_user", JSON.stringify(data.customer));
+          localStorage.setItem(
+            "customer_user",
+            JSON.stringify(data.customer)
+          );
         }
       })
-      .catch((err) => console.error("Dashboard profile fetch error:", err));
+      .catch((err) => {
+        console.error("Dashboard profile fetch error:", err);
+      });
   }, []);
 
+  // ---------------------------------------------------------
+  // LOGOUT
+  // ---------------------------------------------------------
   const handleLogout = () => {
     localStorage.removeItem("customer_token");
     localStorage.removeItem("customer_user");
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
+  // ---------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------
   const capitalizeWords = (str) => {
     if (!str) return str;
+
     return str
       .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map(
+        (word) =>
+          word.charAt(0).toUpperCase() +
+          word.slice(1).toLowerCase()
+      )
       .join(" ");
   };
 
@@ -81,385 +160,934 @@ export default function CustomerDashboard() {
   const customerEmail = customer?.email;
   const customerMobile = customer?.phone || customer?.mobile;
 
+  // ---------------------------------------------------------
+  // NAV ITEMS
+  // ---------------------------------------------------------
   const sidebarNavItems = [
-    { id: "overview",      label: "Overview",       icon: FiLayout   },
-    { id: "pickups",       label: "My Pickups",     icon: FiTruck    },
-    { id: "wallet",        label: "Wallet",         icon: FiCreditCard },
-    { id: "rewards",       label: "Rewards",        icon: FiGift     },
-    { id: "payments",      label: "Payments",       icon: FiDollarSign },
-    { id: "notifications", label: "Notifications",  icon: FiBell     },
-    { id: "addresses",     label: "Addresses",      icon: FiMapPin   },
-    { id: "support",       label: "Support",        icon: FiHelpCircle },
-    { id: "settings",      label: "Settings",       icon: FiSettings },
+    { id: "overview", label: "Overview", icon: FiLayout },
+    { id: "my-details", label: "My Details", icon: FiUser },
+    { id: "pickups", label: "My Pickups", icon: FiTruck },
+    { id: "wallet", label: "Wallet", icon: FiCreditCard },
+    { id: "rewards", label: "Rewards", icon: FiGift },
+    { id: "payments", label: "Payments", icon: FiDollarSign },
+    { id: "addresses", label: "Address", icon: FiMapPin },
+    { id: "notifications", label: "Notifications", icon: FiBell },
+    { id: "complaints", label: "Raise a Complaint", icon: FiAlertCircle },
+    { id: "support", label: "Support", icon: FiHelpCircle },
+    { id: "settings", label: "Settings", icon: FiSettings },
   ];
 
-  const statusColor = (status) => {
-    switch (status) {
-      case "Booked":     return "bg-blue-100 text-blue-700";
-      case "Approved":   return "bg-emerald-100 text-emerald-700";
-      case "Rejected":   return "bg-red-100 text-red-700";
-      case "Cancelled":  return "bg-gray-100 text-gray-500";
-      case "Completed":  return "bg-teal-100 text-teal-700";
-      default:           return "bg-amber-100 text-amber-700";
-    }
-  };
+  // ---------------------------------------------------------
+  // ACTIVE PICKUP (any pickup that's still in flight)
+  // ---------------------------------------------------------
+  const activePickup = pickups.find((p) => {
+    const status = String(p.status || "").toLowerCase();
+    return (
+      status === "booked" ||
+      status === "pending" ||
+      status === "approved" ||
+      status === "in progress" ||
+      status === "in-progress"
+    );
+  });
 
-  const activePickup = pickups.find(
-    (p) => p.status === "Booked" || p.status === "Pending" || p.status === "Approved"
-  );
   const totalPickups = pickups.length;
 
+  // ---------------------------------------------------------
+  // TODAY'S PICKUP
+  // ---------------------------------------------------------
+  const todaysPickup = useMemo(() => {
+    return pickups.find((p) => isToday(p.pickup_date));
+  }, [pickups]);
+
+  // ---------------------------------------------------------
+  // MISSED PICKUPS (past date, never collected)
+  // ---------------------------------------------------------
+  const missedPickups = useMemo(() => {
+    return [...pickups]
+      .filter(isMissedPickup)
+      .sort((a, b) => new Date(b.pickup_date) - new Date(a.pickup_date));
+  }, [pickups]);
+
+  // ---------------------------------------------------------
+  // RECENT PICKUPS (last 10, most recent first)
+  // ---------------------------------------------------------
+  const recentPickups = useMemo(() => {
+    return [...pickups]
+      .sort((a, b) => {
+        const dateA = new Date(
+          `${a.pickup_date || ""} ${a.pickup_time || ""}`
+        ).getTime();
+
+        const dateB = new Date(
+          `${b.pickup_date || ""} ${b.pickup_time || ""}`
+        ).getTime();
+
+        return dateB - dateA;
+      })
+      .slice(0, 10);
+  }, [pickups]);
+
+  // ---------------------------------------------------------
+  // FILTER PICKUPS (pickup history tab)
+  // ---------------------------------------------------------
+  const filteredPickups = useMemo(() => {
+    return pickups.filter((pickup) => {
+      if (!pickup.pickup_date) return true;
+
+      const pickupDate = new Date(pickup.pickup_date);
+
+      if (Number.isNaN(pickupDate.getTime())) {
+        return true;
+      }
+
+      if (fromDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0);
+        if (pickupDate < start) return false;
+      }
+
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        if (pickupDate > end) return false;
+      }
+
+      return true;
+    });
+  }, [pickups, fromDate, toDate]);
+
+  // ---------------------------------------------------------
+  // REPORT SUMMARY
+  // ---------------------------------------------------------
+  const reportSummary = useMemo(() => {
+    return filteredPickups.reduce(
+      (summary, pickup) => {
+        summary.wet += getWetWeight(pickup);
+        summary.dry += getDryWeight(pickup);
+        summary.sanitary += getSanitaryWeight(pickup);
+        summary.special += getSpecialCareWeight(pickup);
+        summary.total += getTotalWeight(pickup);
+        return summary;
+      },
+      { wet: 0, dry: 0, sanitary: 0, special: 0, total: 0 }
+    );
+  }, [filteredPickups]);
+
+  // ---------------------------------------------------------
+  // CSV DOWNLOAD
+  // ---------------------------------------------------------
+  const downloadCSV = () => {
+    if (!filteredPickups.length) {
+      alert("No pickup records available for the selected date range.");
+      return;
+    }
+
+    const headers = [
+      "Date & Time",
+      "Vehicle No.",
+      "Driver",
+      "Trip Status",
+      "Wet (kg)",
+      "Dry (kg)",
+      "Sanitary (kg)",
+      "Special Care (kg)",
+      "Total (kg)",
+    ];
+
+    const rows = filteredPickups.map((pickup) => [
+      formatDateTime(pickup),
+      getVehicleNumber(pickup),
+      getDriverName(pickup),
+      pickup.status || "—",
+      getWetWeight(pickup),
+      getDryWeight(pickup),
+      getSanitaryWeight(pickup),
+      getSpecialCareWeight(pickup),
+      getTotalWeight(pickup),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ecosphere-pickup-history.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // ---------------------------------------------------------
+  // GENERATE REPORT
+  // ---------------------------------------------------------
+  const generateReport = () => {
+    if (!filteredPickups.length) {
+      alert("No pickup records available for the selected date range.");
+      return;
+    }
+
+    alert(
+      `Report generated successfully.\n\n` +
+        `Total Pickups: ${filteredPickups.length}\n` +
+        `Total Waste: ${reportSummary.total.toFixed(2)} kg`
+    );
+  };
+
+  // ---------------------------------------------------------
+  // COMPLAINT SUBMIT
+  // ---------------------------------------------------------
+  const handleComplaintSubmit = (e) => {
+    e.preventDefault();
+
+    if (!complaintDescription.trim()) {
+      alert("Please describe your complaint.");
+      return;
+    }
+
+    console.log({ complaintType, complaintPickup, complaintDescription });
+
+    alert("Your complaint has been submitted successfully.");
+
+    setComplaintDescription("");
+    setComplaintPickup("");
+  };
+
+  // ---------------------------------------------------------
+  // NAV BUTTON
+  // ---------------------------------------------------------
+  const NavButton = ({ item, badge }) => {
+    const Icon = item.icon;
+    const isActive = activeTab === item.id;
+
+    return (
+      <button
+        onClick={() => setActiveTab(item.id)}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all w-full ${
+          isActive
+            ? "bg-green-50 text-green-700 font-semibold"
+            : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+        }`}
+      >
+        <Icon size={15} />
+        <span className="flex-1">{item.label}</span>
+        {badge > 0 && (
+          <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            {badge}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+const downloadCustomerQR = () => {
+  const canvas = document.querySelector("#customer-qr canvas");
+
+  if (!canvas) return;
+
+  const link = document.createElement("a");
+
+  link.download = `customer-qr-${
+    customer?.customer_id || "customer"
+  }.png`;
+
+  link.href = canvas.toDataURL("image/png");
+
+  link.click();
+};
+
+
+
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
-    <div className="min-h-screen bg-[#f0f3f1] pt-48 sm:pt-52 lg:pt-56 pb-24 px-4 sm:px-6 lg:px-10">
-      <div className="flex items-start justify-center gap-5 max-w-7xl mx-auto">
+    <>
+      <div className="min-h-screen bg-[#f0f3f1] pt-48 sm:pt-52 lg:pt-56 pb-24 px-4 sm:px-6 lg:px-10">
 
-        {/* ──────────────── SIDEBAR ──────────────── */}
-        <aside className="w-52 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col">
+        <div className="flex items-start justify-center gap-5 max-w-7xl mx-auto">
 
-          {/* Overview button */}
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all mb-2 ${
-              activeTab === "overview"
-                ? "bg-green-50 text-green-700 font-semibold"
-                : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-            }`}
-          >
-            <FiLayout size={15} />
-            <span>Overview</span>
-          </button>
+          {/* SIDEBAR */}
+          <aside className="w-52 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
 
-          {/* Book Pickup CTA */}
-          <button
-            onClick={() => setActiveTab("pickups")}
-            className="flex items-center justify-center gap-1.5 w-full bg-green-700 hover:bg-green-800 active:scale-95 text-white text-sm font-semibold py-2.5 rounded-xl mb-4 transition-all"
-          >
-            <FiPlus size={15} />
-            Book Pickup
-          </button>
+            <NavButton item={sidebarNavItems.find((i) => i.id === "overview")} />
+            <NavButton item={sidebarNavItems.find((i) => i.id === "my-details")} />
 
-          {/* Nav items */}
-          <nav className="flex flex-col gap-0.5 flex-1">
-            {sidebarNavItems.filter((item) => item.id !== "overview").map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all ${
-                    isActive
-                      ? "bg-green-50 text-green-700 font-semibold"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                  }`}
-                >
-                  <Icon size={15} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+            <div className="h-px bg-gray-100 my-3" />
 
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 mt-3 rounded-xl text-red-500 hover:bg-red-50 w-full text-sm transition-all"
-          >
-            <FiLogOut size={15} />
-            <span>Logout</span>
-          </button>
-        </aside>
+            <nav className="flex flex-col gap-0.5 flex-1">
+              <NavButton item={sidebarNavItems.find((i) => i.id === "pickups")} />
 
-        {/* ──────────────── MAIN CONTENT ──────────────── */}
-        <main className="flex-1 min-w-0 flex flex-col gap-4">
+              <button
+                onClick={() => setActiveTab("pickup-history")}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all w-full ${
+                  activeTab === "pickup-history"
+                    ? "bg-green-50 text-green-700 font-semibold"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                }`}
+              >
+                <FiCalendar size={15} />
+                <span>Pickup History</span>
+              </button>
 
-          {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
-          {activeTab === "overview" && (
-            <div className="flex flex-col gap-4">
+              <NavButton item={sidebarNavItems.find((i) => i.id === "payments")} />
+              <NavButton item={sidebarNavItems.find((i) => i.id === "addresses")} />
+              <NavButton
+                item={sidebarNavItems.find((i) => i.id === "notifications")}
+                badge={missedPickups.length}
+              />
+              <NavButton item={sidebarNavItems.find((i) => i.id === "complaints")} />
+              <NavButton item={sidebarNavItems.find((i) => i.id === "support")} />
+            </nav>
 
-              {/* Welcome Banner */}
-              <div className="bg-green-800 rounded-2xl p-6 flex items-center gap-5">
-                <div className="w-16 h-16 rounded-full bg-green-600/60 border-2 border-green-500/40 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 select-none">
-                  {customerName?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-green-300 text-[10px] font-semibold uppercase tracking-widest mb-1">
-                    Welcome Back
-                  </p>
-                  <h2 className="text-white text-xl font-bold leading-tight mb-1.5 truncate">
-                    {customerName || "..."}
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-green-200">
-                    {customerEmail && <span className="truncate">{customerEmail}</span>}
-                    {customerMobile && <span>· {customerMobile}</span>}
-                    <span className="inline-flex items-center bg-teal-500/80 text-white text-[10px] px-2.5 py-0.5 rounded-full font-semibold tracking-wide">
-                      ✦ Platinum member
-                    </span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2.5 mt-3 rounded-xl text-red-500 hover:bg-red-50 w-full text-sm transition-all"
+            >
+              <FiLogOut size={15} />
+              <span>Logout</span>
+            </button>
+
+          </aside>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-1 min-w-0 flex flex-col gap-4">
+
+            {/* ============================ OVERVIEW ============================ */}
+            {activeTab === "overview" && (
+              <div className="flex flex-col gap-4">
+
+                {/* Welcome Banner */}
+                <div className="bg-green-800 rounded-2xl p-5 sm:p-6 flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-full bg-green-600/60 border-2 border-green-500/40 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 select-none">
+                    {customerName?.charAt(0)?.toUpperCase() || "U"}
                   </div>
-                </div>
-              </div>
 
-              {/* Stats Row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Wallet Balance */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center mb-3">
-                    <FiCreditCard size={17} className="text-green-700" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">
-                    Wallet Balance
-                  </p>
-                  <p className="text-[22px] font-bold text-gray-800 leading-tight">₹0.00</p>
-                </div>
-
-                {/* Reward Points */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-                    <FiGift size={17} className="text-amber-500" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">
-                    Reward Points
-                  </p>
-                  <p className="text-[22px] font-bold text-gray-800 leading-tight">0</p>
-                </div>
-
-                {/* Total Pickups */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-                    <FiTruck size={17} className="text-blue-500" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">
-                    Total Pickups
-                  </p>
-                  <p className="text-[22px] font-bold text-gray-800 leading-tight">
-                    {loadingPickups ? "–" : totalPickups}
-                  </p>
-                </div>
-
-                {/* Impact Tier */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
-                    <FiZap size={17} className="text-purple-500" />
-                  </div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">
-                    Impact Tier
-                  </p>
-                  <p className="text-[22px] font-bold text-gray-800 leading-tight">Platinum</p>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <button
-                  onClick={() => setActiveTab("pickups")}
-                  className="group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm text-left hover:shadow-md hover:border-green-200 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center mb-3 group-hover:bg-green-100 transition-colors">
-                    <FiTruck size={17} className="text-green-700" />
-                  </div>
-                  <p className="font-semibold text-gray-800 text-sm mb-0.5">Book Pickup</p>
-                  <p className="text-xs text-gray-400">Schedule a new collection</p>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("pickups")}
-                  className="group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm text-left hover:shadow-md hover:border-green-200 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center mb-3 group-hover:bg-green-100 transition-colors">
-                    <FiMapPin size={17} className="text-green-700" />
-                  </div>
-                  <p className="font-semibold text-gray-800 text-sm mb-0.5">Track Pickup</p>
-                  <p className="text-xs text-gray-400">See live driver ETA</p>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("rewards")}
-                  className="group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm text-left hover:shadow-md hover:border-amber-200 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-3 group-hover:bg-amber-100 transition-colors">
-                    <FiGift size={17} className="text-amber-500" />
-                  </div>
-                  <p className="font-semibold text-gray-800 text-sm mb-0.5">View Rewards</p>
-                  <p className="text-xs text-gray-400">Redeem your points</p>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("payments")}
-                  className="group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm text-left hover:shadow-md hover:border-blue-200 transition-all"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                    <FiDollarSign size={17} className="text-blue-500" />
-                  </div>
-                  <p className="font-semibold text-gray-800 text-sm mb-0.5">Payment History</p>
-                  <p className="text-xs text-gray-400">Download invoices</p>
-                </button>
-              </div>
-
-              {/* Active Pickup */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-4">
-                  Active Pickup
-                </p>
-                {loadingPickups ? (
-                  <p className="text-sm text-gray-400">Loading...</p>
-                ) : activePickup ? (
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-800 text-sm truncate">
-                        #{activePickup.lead_id?.slice(-8)?.toUpperCase()} ·{" "}
-                        {activePickup.waste_generator_name}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Status:{" "}
-                        <span className="font-semibold text-green-600">
-                          {activePickup.status}
-                        </span>
-                        {activePickup.pickup_date && ` · ${activePickup.pickup_date}`}
-                        {activePickup.pickup_time && ` · ${activePickup.pickup_time}`}
-                      </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-green-300 text-[10px] font-semibold uppercase tracking-widest mb-1">
+                      Welcome Back
+                    </p>
+                    <h2 className="text-white text-xl font-bold leading-tight mb-1.5 truncate">
+                      {customerName || "..."}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2.5 text-xs text-green-200">
+                      {customerEmail && <span className="truncate">{customerEmail}</span>}
+                      {customerMobile && <span>· {customerMobile}</span>}
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => setActiveTab("pickups")}
-                      className="flex-shrink-0 flex items-center gap-2 bg-green-700 hover:bg-green-800 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all"
+                      onClick={() => setShowQR(true)}
+                      title="Show Customer QR"
+                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition-all"
                     >
-                      Track <FiArrowRight size={13} />
+                      <QrCode size={20} strokeWidth={2} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Plan / contract status — wire startDate/endDate to your
+                    customer or subscription object once that field exists */}
+                <PlanStatusCard
+                  planName={customer?.plan_name || "Service Plan"}
+                  siteName={customer?.site_name|| "Bangalore Site"}
+                  endDate={customer?.plan_end_date||"2026-12-31"}
+                  onDownloadReport={generateReport}
+                />
+
+                {/* Stat row — first card merges today's pickup detail
+                    (vehicle, driver, mobile, Track) with the stat tiles.
+                    openComplaints is a placeholder until complaints are
+                    fetched from the backend. */}
+                <OverviewStats
+                  loadingPickups={loadingPickups}
+                  todaysPickup={todaysPickup}
+                  fallbackMobile={customerMobile}
+                  onTrack={() => setActiveTab("pickups")}
+                  totalPickups={totalPickups}
+                  totalWasteKg={reportSummary.total}
+                  openComplaints={0}
+                />
+
+                {/* Waste breakdown */}
+                <WasteBreakdownCard reportSummary={reportSummary} />
+
+                {/* Recent pickups strip */}
+                <RecentPickupsStrip
+                  pickups={recentPickups}
+                  loadingPickups={loadingPickups}
+                  onViewAll={() => setActiveTab("pickup-history")}
+                />
+
+                {/* Active Pickup */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-4">
+                    Active Pickup
+                  </p>
+
+                  {loadingPickups ? (
+                    <p className="text-sm text-gray-400">Loading...</p>
+                  ) : activePickup ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-800 text-sm truncate">
+                          #{activePickup.lead_id?.slice(-8)?.toUpperCase()} ·{" "}
+                          {activePickup.waste_generator_name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Status:{" "}
+                          <span className="font-semibold text-green-600">
+                            {activePickup.status}
+                          </span>
+                          {activePickup.pickup_date && ` · ${activePickup.pickup_date}`}
+                          {activePickup.pickup_time && ` · ${activePickup.pickup_time}`}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveTab("pickups")}
+                        className="flex-shrink-0 flex items-center gap-2 bg-green-700 hover:bg-green-800 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all"
+                      >
+                        Track
+                        <FiArrowRight size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">No active pickup scheduled.</p>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* ============================ MY PICKUPS ============================ */}
+            {activeTab === "pickups" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+                      Collection Service
+                    </p>
+                    <h2 className="text-xl font-bold text-gray-800 mt-1">My Pickups</h2>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTab("pickup-history")}
+                    className="flex items-center gap-2 text-sm text-green-700 font-semibold"
+                  >
+                    Pickup History
+                    <FiArrowRight size={15} />
+                  </button>
+                </div>
+
+                {pickups.length === 0 ? (
+                  <div className="py-16 text-center text-gray-400">
+                    <FiTruck size={40} className="mx-auto mb-4" />
+                    <p>No pickup records available.</p>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm text-gray-400">No active pickup scheduled.</p>
-                    <button
-                      onClick={() => setActiveTab("pickups")}
-                      className="flex-shrink-0 flex items-center gap-2 bg-green-700 hover:bg-green-800 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all"
-                    >
-                      Book Now <FiArrowRight size={13} />
-                    </button>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-left">
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Date & Time</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Vehicle</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Driver</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Status</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pickups.map((pickup, index) => (
+                          <tr
+                            key={pickup._id || pickup.id || pickup.lead_id || index}
+                            className="border-b border-gray-50 hover:bg-gray-50"
+                          >
+                            <td className="px-4 py-4 text-gray-700">{formatDateTime(pickup)}</td>
+                            <td className="px-4 py-4 text-gray-700">{getVehicleNumber(pickup)}</td>
+                            <td className="px-4 py-4 text-gray-700">{getDriverName(pickup)}</td>
+                            <td className="px-4 py-4">
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor(pickup.status)}`}>
+                                {pickup.status || "Pending"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 font-bold text-gray-800">{getTotalWeight(pickup)} kg</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ MY ACCOUNT TAB ═══════════════ */}
-          {activeTab === "account" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-800">My Account</h2>
-                <button className="flex items-center gap-2 text-sm text-green-600 hover:text-green-700 transition-colors">
-                  <FiSettings size={16} />
-                  Edit Profile
-                </button>
-              </div>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                  <FiUser size={28} className="text-gray-600" />
+            {activeTab === "my-details" && <MyDetails customer={customer} />}
+
+            {/* ============================ PICKUP HISTORY ============================ */}
+            {activeTab === "pickup-history" && (
+              <div className="flex flex-col gap-4">
+
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+                        Collection Records
+                      </p>
+                      <h2 className="text-xl font-bold text-gray-800 mt-1">Pickup History</h2>
+                      <p className="text-sm text-gray-400 mt-1">
+                        View and download your complete waste collection history.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={generateReport}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50"
+                      >
+                        <FiFileText size={14} />
+                        Generate Report
+                      </button>
+
+                      <button
+                        onClick={downloadCSV}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-xs font-semibold"
+                      >
+                        <FiDownload size={14} />
+                        Download CSV
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-gray-800 text-lg">{customerName}</p>
-                  <p className="text-sm text-gray-500">{customerEmail}</p>
+
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FiFilter size={15} className="text-green-700" />
+                    <h3 className="text-sm font-semibold text-gray-800">Filter by Date</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">From Date</label>
+                      <input
+                        type="date"
+                        value={fromDate}
+                        onChange={(e) => setFromDate(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">To Date</label>
+                      <input
+                        type="date"
+                        value={toDate}
+                        onChange={(e) => setToDate(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setFromDate("");
+                        setToDate("");
+                      }}
+                      className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Clear Filter
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Pickups</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{filteredPickups.length}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Wet</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{reportSummary.wet.toFixed(0)} kg</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Dry</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{reportSummary.dry.toFixed(0)} kg</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Sanitary</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{reportSummary.sanitary.toFixed(0)} kg</p>
+                  </div>
+                  <div className="bg-green-50 rounded-xl border border-green-100 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-green-700 font-semibold">Total Waste</p>
+                    <p className="text-xl font-bold text-green-800 mt-1">{reportSummary.total.toFixed(0)} kg</p>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1100px] text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Date & Time</th>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Vehicle No.</th>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Driver</th>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Trip Status</th>
+                          <th className="px-4 py-4 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">Wet (kg)</th>
+                          <th className="px-4 py-4 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">Dry (kg)</th>
+                          <th className="px-4 py-4 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">Sanitary (kg)</th>
+                          <th className="px-4 py-4 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">Special Care (kg)</th>
+                          <th className="px-4 py-4 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">Total (kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPickups.length === 0 ? (
+                          <tr>
+                            <td colSpan="9" className="text-center py-16 text-gray-400">
+                              <FiTruck size={32} className="mx-auto mb-3" />
+                              No pickup records found for this date range.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredPickups.map((pickup, index) => (
+                            <tr
+                              key={pickup._id || pickup.id || pickup.lead_id || index}
+                              className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                            >
+                              <td className="px-4 py-4 text-gray-700 whitespace-nowrap">{formatDateTime(pickup)}</td>
+                              <td className="px-4 py-4 font-medium text-gray-700">{getVehicleNumber(pickup)}</td>
+                              <td className="px-4 py-4 text-gray-700">{getDriverName(pickup)}</td>
+                              <td className="px-4 py-4">
+                                <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusColor(pickup.status)}`}>
+                                  {String(pickup.status || "").toLowerCase() === "completed" && <FiCheckCircle size={11} />}
+                                  {pickup.status || "Pending"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getWetWeight(pickup).toFixed(1)}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getDryWeight(pickup).toFixed(1)}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getSanitaryWeight(pickup).toFixed(1)}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getSpecialCareWeight(pickup).toFixed(1)}</td>
+                              <td className="px-4 py-4 text-right font-bold text-gray-900">{getTotalWeight(pickup).toFixed(1)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ============================ PAYMENTS ============================ */}
+            {activeTab === "payments" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+                    <FiDollarSign size={18} className="text-green-700" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800">Payments</h2>
+                    <p className="text-sm text-gray-400">View your payment history and invoices.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <FiDollarSign size={40} className="mx-auto mb-4" />
+                  <p>No payments yet.</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="border border-gray-100 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Email</p>
-                  <p className="font-medium text-gray-700">{customerEmail}</p>
+            )}
+
+            {/* ============================ ADDRESS ============================ */}
+            {activeTab === "addresses" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+                      Collection Location
+                    </p>
+                    <h2 className="text-xl font-semibold text-gray-800 mt-1">Address</h2>
+                  </div>
+
+                  <button className="flex items-center gap-2 text-sm text-green-600 hover:text-green-700 transition-colors">
+                    <FiPlus size={16} />
+                    Add Address
+                  </button>
                 </div>
-                <div className="border border-gray-100 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Mobile Number</p>
-                  <p className="font-medium text-gray-700">{customerMobile}</p>
+
+                <div className="border border-gray-100 rounded-2xl p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                      <FiMapPin size={18} className="text-green-700" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">Collection Address</p>
+                      <p className="text-sm text-gray-500 mt-2 leading-6">
+                        {customer?.address || customer?.location || "No collection address saved."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ PICKUPS TAB ═══════════════ */}
-          {activeTab === "pickups" && <BookPickup />}
+            {/* ============================ NOTIFICATIONS ============================ */}
+            {activeTab === "notifications" && (
+              <NotificationsPanel
+                missedPickups={missedPickups}
+                loadingPickups={loadingPickups}
+                onRaiseComplaint={(pickup) => {
+                  setComplaintType("Missed Pickup");
+                  setComplaintPickup(pickup.lead_id || pickup._id || pickup.id || "");
+                  setActiveTab("complaints");
+                }}
+              />
+            )}
 
-          {/* ═══════════════ WALLET TAB ═══════════════ */}
-          {activeTab === "wallet" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Wallet</h2>
-              <div className="bg-green-50 border border-green-100 rounded-xl p-6">
-                <p className="text-sm text-gray-500 mb-1">Available Balance</p>
-                <p className="text-2xl font-semibold text-green-700">₹0.00</p>
+            {/* ============================ RAISE COMPLAINT ============================ */}
+            {activeTab === "complaints" && (
+              <div className="flex flex-col gap-4">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                      <FiAlertCircle size={18} className="text-red-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">Raise a Complaint</h2>
+                      <p className="text-sm text-gray-400">Tell us what went wrong and we'll help resolve it.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleComplaintSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Complaint Type</label>
+                      <select
+                        value={complaintType}
+                        onChange={(e) => setComplaintType(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      >
+                        <option>Missed Pickup</option>
+                        <option>Vehicle Delay</option>
+                        <option>Incorrect Waste Weight</option>
+                        <option>Driver Behaviour</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Pickup / Reference</label>
+                      <select
+                        value={complaintPickup}
+                        onChange={(e) => setComplaintPickup(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      >
+                        <option value="">Select pickup</option>
+                        {pickups.map((pickup, index) => (
+                          <option
+                            key={pickup._id || pickup.id || index}
+                            value={pickup.lead_id || pickup._id || pickup.id || ""}
+                          >
+                            {pickup.lead_id
+                              ? `#${pickup.lead_id.slice(-8).toUpperCase()}`
+                              : formatDate(pickup.pickup_date)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Description</label>
+                      <textarea
+                        value={complaintDescription}
+                        onChange={(e) => setComplaintDescription(e.target.value)}
+                        rows={5}
+                        placeholder="Describe the issue..."
+                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none resize-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="bg-green-700 hover:bg-green-800 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all"
+                      >
+                        Submit Complaint
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ REWARDS TAB ═══════════════ */}
-          {activeTab === "rewards" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Rewards</h2>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiGift size={40} className="mx-auto mb-4" />
-                <p>No rewards earned yet.</p>
-              </div>
-            </div>
-          )}
+            {/* ============================ SUPPORT ============================ */}
+            {activeTab === "support" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="mb-6">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Customer Care</p>
+                  <h2 className="text-xl font-semibold text-gray-800 mt-1">Support</h2>
+                  <p className="text-sm text-gray-400 mt-1">Need help with your waste collection?</p>
+                </div>
 
-          {/* ═══════════════ PAYMENTS TAB ═══════════════ */}
-          {activeTab === "payments" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Payments</h2>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiDollarSign size={40} className="mx-auto mb-4" />
-                <p>No payments yet.</p>
-              </div>
-            </div>
-          )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <a
+                    href="mailto:info@ecospherewm.com"
+                    className="border border-gray-100 rounded-2xl p-5 hover:border-green-200 hover:shadow-sm transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                      <FiMail size={18} className="text-green-700" />
+                    </div>
+                    <p className="font-semibold text-gray-800">Email Support</p>
+                    <p className="text-sm text-gray-500 mt-1">info@ecospherewm.com</p>
+                    <p className="text-xs text-gray-400 mt-3">Send us your query and we'll get back to you.</p>
+                  </a>
 
-          {/* ═══════════════ NOTIFICATIONS TAB ═══════════════ */}
-          {activeTab === "notifications" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Notifications</h2>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiBell size={40} className="mx-auto mb-4" />
-                <p>You're all caught up.</p>
+                  <a
+                    href="tel:+919035489496"
+                    className="border border-gray-100 rounded-2xl p-5 hover:border-green-200 hover:shadow-sm transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                      <FiPhone size={18} className="text-green-700" />
+                    </div>
+                    <p className="font-semibold text-gray-800">Call Support</p>
+                    <p className="text-sm text-gray-500 mt-1">+91 90354 89496</p>
+                    <p className="text-xs text-gray-400 mt-3">Mon–Sat · 8:00 AM – 8:00 PM</p>
+                  </a>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ ADDRESSES TAB ═══════════════ */}
-          {activeTab === "addresses" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">Addresses</h2>
-                <button className="flex items-center gap-2 text-sm text-green-600 hover:text-green-700 transition-colors">
-                  <FiPlus size={16} />
-                  Add Address
-                </button>
+            {/* ============================ WALLET (hidden from sidebar) ============================ */}
+            {activeTab === "wallet" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Wallet</h2>
+                <div className="bg-green-50 border border-green-100 rounded-xl p-6">
+                  <p className="text-sm text-gray-500 mb-1">Available Balance</p>
+                  <p className="text-2xl font-semibold text-green-700">₹0.00</p>
+                </div>
               </div>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiMapPin size={40} className="mx-auto mb-4" />
-                <p>No saved addresses.</p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ SUPPORT TAB ═══════════════ */}
-          {activeTab === "support" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Support</h2>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiHelpCircle size={40} className="mx-auto mb-4" />
-                <p>Need help? Reach out to our support team.</p>
+            {/* ============================ REWARDS (hidden from sidebar) ============================ */}
+            {activeTab === "rewards" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Rewards</h2>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <FiGift size={40} className="mx-auto mb-4" />
+                  <p>No rewards earned yet.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ═══════════════ SETTINGS TAB ═══════════════ */}
-          {activeTab === "settings" && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Settings</h2>
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <FiSettings size={40} className="mb-3" />
-                <p>Account settings coming soon.</p>
+            {/* ============================ BOOK PICKUP (hidden from sidebar) ============================ */}
+            {activeTab === "book-pickup" && <BookPickup />}
+
+            {/* ============================ SETTINGS (hidden from sidebar) ============================ */}
+            {activeTab === "settings" && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Settings</h2>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <FiSettings size={40} className="mb-3" />
+                  <p>Account settings coming soon.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-        </main>
+          </main>
+
+        </div>
+
       </div>
+      {/* QR MODAL */}
+     {showQR && (
+  <div
+    className="fixed left-0 top-0 z-[999999] flex h-screen w-screen items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+    onClick={() => setShowQR(false)}
+  >
+    <div
+      className="relative flex w-[380px] flex-col items-center rounded-[28px] bg-white px-6 py-7 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* CLOSE */}
+      <button
+        type="button"
+        onClick={() => setShowQR(false)}
+        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
+      >
+        <FiX size={18} />
+      </button>
+
+      {/* TITLE */}
+      <div className="w-full text-center">
+        <h2 className="text-[20px] font-bold text-gray-900">
+          Customer QR Code
+        </h2>
+
+        <p className="mt-1 text-[13px] text-gray-500">
+          Scan to view customer details
+        </p>
+      </div>
+
+      {/* QR */}
+      <div
+        className="mt-6 flex h-[260px] w-[260px] items-center justify-center"
+        style={{
+          position: "relative",
+          overflow: "visible",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          id="customer-qr"
+          style={{
+            position: "relative",
+            width: "240px",
+            height: "240px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#ffffff",
+            padding: "8px",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+            boxSizing: "border-box",
+          }}
+        >
+          <QRCodeCanvas
+            value={
+              customer?.customer_id ||
+              customer?._id ||
+              "customer"
+            }
+            size={230}
+            level="H"
+            includeMargin={true}
+          />
+        </div>
+      </div>
+
+      {/* DOWNLOAD */}
+      <button
+        type="button"
+        onClick={downloadCustomerQR}
+        className="mt-5 flex h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gray-900 text-sm font-semibold text-white transition hover:bg-gray-800"
+      >
+        <FiDownload size={17} />
+        Download QR
+      </button>
     </div>
+  </div>
+)}
+    </>
   );
 }
