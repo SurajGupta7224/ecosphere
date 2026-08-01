@@ -15,6 +15,8 @@ const {
   getCustomerPickups
 } = require("../controllers/Client/customerController");
 
+const customerRegistrationController = require("../controllers/Client/customerRegistrationController");
+
 // Storefront / Client Customer Authentication & Profile Routes
 
 // POST /api/customer/register (Email/Password registration)
@@ -43,5 +45,9 @@ router.put("/customer/profile", verifyToken, updateProfile);
 
 // GET /api/customer/pickups (Fetch authenticated customer's pickups)
 router.get("/customer/pickups", verifyToken, getCustomerPickups);
+
+
+// POST /api/customer-registration (Customer Registration Submission)
+router.post("/customer-registration",customerRegistrationController.submitRegistration);
 
 module.exports = router;

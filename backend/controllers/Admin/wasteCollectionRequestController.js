@@ -5,6 +5,8 @@ const axios = require("axios");
 const { sendCustomerCredentialsEmail, generateProductionPassword } = require("../../services/emailService");
 const bcrypt = require("bcrypt");
 
+const { generateLeadId } = require("../../services/leadIdService");
+
 // GET /api/waste-collection-requests
 const getWasteCollectionRequests = async (req, res) => {
   const { page = 1, limit = 10, search = '', status = '', customer_id = '', user_id = '' } = req.query;
@@ -351,7 +353,7 @@ const createWasteCollectionRequest = async (req, res) => {
     }
 
     // Generate single unique lead_id for this batch of requests
-    const leadId = "LD" + Date.now().toString() + Math.floor(1000 + Math.random() * 9000);
+    const leadId = await generateLeadId();
     const createdRequests = [];
 
     if (parsedSubcategories && parsedSubcategories.length > 0) {
