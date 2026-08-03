@@ -6,7 +6,7 @@ const customerInvitationController = require("../controllers/Admin/customerInvit
 
 console.log("DEBUG: Loading API routes from routes/index.js");
 
-const { login, generateCaptcha, verify2FA } = require("../controllers/Admin/authController");
+const { login, generateCaptcha, verify2FA, getMe } = require("../controllers/Admin/authController");
 const settingsController = require("../controllers/Admin/settingsController");
 const { getAllUsers, createUser, updateUser, updateUserStatus, deleteUser, getRoles } = require("../controllers/Admin/userController");
 const roleController = require("../controllers/Admin/roleController");
@@ -104,10 +104,11 @@ const vehicleUploads = upload.fields([
 ]);
 
 
-// Auth routes (public)
+// Auth routes
 router.post("/auth/login", login);
 router.get("/auth/captcha", generateCaptcha);
 router.post("/auth/2fa/verify", verify2FA);
+router.get("/auth/me", verifyToken, getMe);
 
 // Profile routes
 router.get("/profile", verifyToken, requirePermission('profile'), profileController.getProfile);
@@ -244,13 +245,13 @@ router.get("/waste-collection-requests/:id", verifyToken, requirePermission(['wa
 router.post("/waste-collection-requests", verifyToken, requirePermission(['waste_collection_requests', 'waste_requests_list']), requestUploads, wasteCollectionRequestController.createWasteCollectionRequest);
 router.put("/waste-collection-requests/lead/:leadId", verifyToken, requirePermission(['waste_requests_list']), requestUploads, wasteCollectionRequestController.updateWasteCollectionRequestByLeadId);
 router.patch("/waste-collection-requests/lead/:leadId/status", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.updateWasteCollectionRequestStatus);
-router.patch("/waste-collection-requests/lead/:leadId/book", verifyToken, requirePermission(['waste_requests_list']), wasteCollectionRequestController.bookWasteCollectionRequest);
-
+router.patch("/waste-collection-requests/lead/:leadId/book", verifyToken, requirePermission(['waste_requests_list']), requestUploads, wasteCollectionRequestController.bookWasteCollectionRequest);
 // Waste Order routes
 router.get("/waste-orders", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrders);
 router.get("/waste-orders/:id", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderById);
 router.get("/waste-orders/:id/qr", verifyToken, requirePermission(['order_management', 'waste_collection_requests', 'waste_requests_list']), wasteOrderController.getWasteOrderQR);
 router.patch("/waste-orders/lead/:leadId/cancel", verifyToken, requirePermission(['order_management', 'waste_requests_list']), wasteOrderController.cancelWasteOrder);
+router.patch("/waste-orders/:id/reassign", verifyToken, requirePermission(['order_management', 'waste_requests_list', 'bwg_mapping']), wasteOrderController.reassignWasteOrder);
 
 // Time Slot routes
 router.get("/time-slots", verifyToken, requirePermission('time_slot_management'), timeSlotController.getAllTimeSlots);

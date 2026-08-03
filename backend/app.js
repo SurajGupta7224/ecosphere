@@ -100,6 +100,16 @@ sequelize.sync()
       console.log("Added approved_date column to aggregator_vehicles table");
     } catch (err) {}
 
+    try {
+      await sequelize.query("ALTER TABLE waste_collection_requests ADD COLUMN occupied_flats INT NULL;");
+      console.log("Added occupied_flats column to waste_collection_requests table");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE waste_orders ADD COLUMN occupied_flats INT NULL;");
+      console.log("Added occupied_flats column to waste_orders table");
+    } catch (err) {}
+
     // Seed aggregator_employee, aggregator_vehicle, and order_management permissions if not exist
     try {
       const { Permission, RolePermission, Role } = require("./models/index");

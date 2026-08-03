@@ -60,6 +60,10 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     allowNull: true,
     field: 'flats'
   },
+  occupied_flats: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   complete_address: {
     type: DataTypes.TEXT,
     allowNull: true,

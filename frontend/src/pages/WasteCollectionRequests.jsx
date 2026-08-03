@@ -94,7 +94,9 @@ export default function WasteCollectionRequests() {
     cgst: 0,
     sgst: 0,
     gst_amount: 0,
-    final_price: 0
+    final_price: 0,
+    no_of_dwelling_units: '',
+    occupied_flats: ''
   });
 
   const navigate = useNavigate();
@@ -1358,34 +1360,9 @@ export default function WasteCollectionRequests() {
       }
     };
 
-    // Section 1: Company Details validations
-    if (!formData.site_request) {
-      invalidateField('site_request', "Please select a valid Site Request.");
-      return;
-    }
-    if (!formData.service_center_type) {
-      invalidateField('service_center_type', "Please select a valid Service Center Type.");
-      return;
-    }
-    if (!formData.billing_type) {
-      invalidateField('billing_type', "Please select a valid Billing Type.");
-      return;
-    }
-    if (!formData.business_region) {
-      invalidateField('business_region', "Please select a valid Business Region.");
-      return;
-    }
-    if (!formData.business_sub_region) {
-      invalidateField('business_sub_region', "Please select a valid Business Sub Region.");
-      return;
-    }
+    // Customer Details validations
     if (!formData.customer_type) {
-      invalidateField('customer_type', "Customer Type is required.");
-      return;
-    }
-    if (!formData.business_lead) {
-      invalidateField('business_lead', "Please select a valid Business Lead.");
-      return;
+      setFormData(prev => ({ ...prev, customer_type: 'New Customer' }));
     }
     if (activeTab === 'B2C') {
       if (!formData.contact_person?.trim()) {
@@ -1508,31 +1485,23 @@ export default function WasteCollectionRequests() {
 
     // Field Validations for active subcategory cards (Only validated if selected)
     const activeCards = subcategoryCards.filter(c => c.included);
+    if (activeCards.length === 0) {
+      toast.error("Please select at least one waste sub-category.");
+      return;
+    }
     for (const card of activeCards) {
-      if (card.pricing_mode === 'Bulk') {
-        if (!card.selected_variation_id) {
-          toast.error(`Please select a variation for ${card.subcategory_name}.`);
-          return;
-        }
-        const mp = parseFloat(card.bulk_monthly_price);
-        const yp = parseFloat(card.bulk_yearly_price);
-        if (isNaN(mp) || mp < 0 || isNaN(yp) || yp < 0) {
-          toast.error(`Please enter valid Monthly and Yearly bulk prices for ${card.subcategory_name}.`);
-          return;
-        }
-      } else {
-        if (!card.selected_variation_id || !card.expected_waste || !card.custom_price) {
-          toast.error(`Please select a variation, expected waste, and price for ${card.subcategory_name}.`);
+      if (!card.selected_variation_id) {
+        invalidateField(`variation_${card.subcategory_id}`, `Please select a variation for ${card.subcategory_name}.`);
+        return;
+      }
+      if (card.pricing_mode !== 'Bulk') {
+        if (!card.expected_waste) {
+          invalidateField(`expected_waste_${card.subcategory_id}`, `Please enter expected waste for ${card.subcategory_name}.`);
           return;
         }
         const val = parseFloat(card.expected_waste);
         if (isNaN(val) || val < 1) {
-          toast.error(`Please enter a valid Expected Waste (min 1 KG) for ${card.subcategory_name}.`);
-          return;
-        }
-        const priceVal = parseFloat(card.custom_price);
-        if (isNaN(priceVal) || priceVal < 0) {
-          toast.error(`Please enter a valid Price (min 0) for ${card.subcategory_name}.`);
+          invalidateField(`expected_waste_${card.subcategory_id}`, `Please enter a valid Expected Waste (min 1 KG) for ${card.subcategory_name}.`);
           return;
         }
       }
@@ -1548,17 +1517,6 @@ export default function WasteCollectionRequests() {
         invalidateField('pickup_date', "Pickup date cannot be in the past.");
         return;
       }
-    }
-
-    // Require MOM (Agreement) Copy (Always required)
-    if (!momFile && !existingMomFile) {
-      invalidateField('mom_file_upload', "MOM (Agreement) Copy is always required.", true);
-      return;
-    }
-    // Require PO Copy or Email Copy (At least one is required)
-    if (!poFile && !existingPoFile && !emailCopyFile && !existingEmailFile) {
-      invalidateField('po_file_upload', "Please upload at least one document: PO Copy or Email Copy.", true);
-      return;
     }
 
     setSubmitting(true);
@@ -1844,152 +1802,10 @@ export default function WasteCollectionRequests() {
 
       <form onSubmit={handleFormSubmit} noValidate className="space-y-4">
 
-        {/* B2B ONLY: Company Details */}
-        {activeTab === 'B2B' && (
-          <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 animate-in fade-in duration-300">
-            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Building className="w-5 h-5 text-violet-500" /> Section 1: Company Details
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Site Request *</label>
-                <select
-                  name="site_request"
-                  value={formData.site_request}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="" disabled hidden>Select Option</option>
-                  <option value="Commercial Route">Commercial Route</option>
-                  <option value="Commercial Onsite">Commercial Onsite</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Service Center Type *</label>
-                <select
-                  name="service_center_type"
-                  value={formData.service_center_type}
-                  onChange={handleInputChange}
-                  required
-                  autoComplete="off"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="" disabled hidden>Select Option</option>
-                  <option value="Ecosphere">Ecosphere</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Employee Name</label>
-                <input
-                  type="text"
-                  name="employee_name"
-                  readOnly
-                  value={formData.employee_name}
-                  onChange={handleInputChange}
-                  placeholder="Enter employee name"
-                  className="w-full cursor-not-allowed bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Billing *</label>
-                <select
-                  name="billing_type"
-                  value={formData.billing_type}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="" disabled hidden>Select Option</option>
-                  <option value="Head Office">Head Office</option>
-                  <option value="Regional Office">Regional Office</option>
-                  <option value="Branch Office">Branch Office</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Region *</label>
-                <select
-                  name="business_region"
-                  value={formData.business_region}
-                  onChange={handleRegionChange}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="" disabled hidden>Select Option</option>
-                  {Array.from(new Set(businessRegions.map(r => r.region_name || r.state))).filter(Boolean).map(stateName => {
-                    const regObj = businessRegions.find(r => (r.region_name || r.state) === stateName);
-                    if (!regObj) return null;
-                    return (
-                      <option key={regObj.id} value={stateName}>{stateName}</option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Sub Region *</label>
-                <select
-                  name="business_sub_region"
-                  value={formData.business_sub_region}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="" disabled hidden>- Select Branch -</option>
-                  {businessSubRegions.map(subReg => (
-                    <option key={subReg.id} value={subReg.sub_region_name}>{subReg.sub_region_name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Branch Code</label>
-                <input
-                  type="text"
-                  name="branch_code"
-                  value={formData.branch_code}
-                  readOnly
-                  placeholder="Auto-generated"
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              {/* Dynamically show sub-region branch details */}
-              {formData.business_sub_region && (() => {
-                const sub = (businessSubRegions || []).find(s => s.sub_region_name === formData.business_sub_region);
-                if (!sub) return null;
-                return (
-                  <div className="col-span-full bg-purple-50/50 border border-purple-100 rounded-xl p-4 text-xs space-y-2 mt-2">
-                    <p className="font-bold text-purple-800 flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-purple-600" /> Branch Information: {sub.branch_name || sub.sub_region_name}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
-                      <div><strong className="text-slate-500 font-bold">Branch Code:</strong> {sub.branch_code || 'N/A'}</div>
-                      <div><strong className="text-slate-500 font-bold">Contact Person:</strong> {sub.contact_person_name || 'N/A'}</div>
-                      <div><strong className="text-slate-500 font-bold">Contact Number:</strong> {sub.contact_number || 'N/A'}</div>
-                      <div><strong className="text-slate-500 font-bold">Email ID:</strong> {sub.email_id || 'N/A'}</div>
-                      {sub.office_address && <div className="sm:col-span-2"><strong className="text-slate-500 font-bold">Office Address:</strong> {sub.office_address}</div>}
-                      <div className="sm:col-span-2 flex flex-wrap gap-2 mt-1">
-                        {sub.gstn && <span className="bg-white border border-purple-100 px-2 py-0.5 rounded text-[10px] font-bold text-purple-700">GSTN: {sub.gstn}</span>}
-                        {sub.agri_licence && <span className="bg-white border border-purple-100 px-2 py-0.5 rounded text-[10px] font-bold text-purple-700">Agri Licence: {sub.agri_licence}</span>}
-                        {sub.shop_establishment && <span className="bg-white border border-purple-100 px-2 py-0.5 rounded text-[10px] font-bold text-purple-700">Shop Est: {sub.shop_establishment}</span>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 1/2: Customer Details */}
+        {/* SECTION 1: Customer Details */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8">
           <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <User className="w-5 h-5 text-violet-500" /> {activeTab === 'B2C' ? 'Section 1: Customer Details' : 'Section 2: Customer Details'}
+            <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
           </h2>
 
           {activeTab === 'B2C' ? (
@@ -2441,21 +2257,35 @@ export default function WasteCollectionRequests() {
                   </div>
                 </div>
 
-                {/* Row 5: Flats/Area based on sector (Full Width) */}
+                {/* Row 5: Flats/Area based on sector */}
                 {formData.sector && (
                   <div className="animate-in fade-in duration-300">
                     {formData.sector === 'Apartment' ? (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats *</label>
-                        <input
-                          type="number"
-                          name="no_of_dwelling_units"
-                          value={formData.no_of_dwelling_units}
-                          onChange={handleInputChange}
-                          required
-                          placeholder="e.g. 12"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats *</label>
+                          <input
+                            type="number"
+                            name="no_of_dwelling_units"
+                            value={formData.no_of_dwelling_units}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g. 150"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Occupied Flats *</label>
+                          <input
+                            type="number"
+                            name="occupied_flats"
+                            value={formData.occupied_flats}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g. 120"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div>
@@ -2981,6 +2811,8 @@ export default function WasteCollectionRequests() {
                         <div className="space-y-1.5">
                           <label className="block text-xs font-bold text-slate-700">Variation</label>
                           <select
+                            name={`variation_${card.subcategory_id}`}
+                            id={`variation_${card.subcategory_id}`}
                             value={card.selected_variation_id}
                             onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
                             className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
@@ -3013,146 +2845,29 @@ export default function WasteCollectionRequests() {
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
                           />
                         </div>
-
-                        {card.pricing_mode === 'Bulk' ? (
-                          <>
-                            {/* 5. Bulk Monthly Price */}
-                            <div className="space-y-1.5">
-                              <label className="block text-xs font-bold text-slate-700">Monthly Price *</label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  disabled={!selectedVar}
-                                  value={card.bulk_monthly_price}
-                                  onChange={e => handleCardBulkPriceChange(card.subcategory_id, 'bulk_monthly_price', e.target.value)}
-                                  placeholder="Enter monthly price"
-                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-8 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
-                                      ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
-                                      : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                    }`}
-                                />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
-                              </div>
-                            </div>
-
-                            {/* 6. Suggested Bulk Price */}
-                            <div className="space-y-1.5">
-                              <label className="block text-xs font-bold text-slate-700">Suggested Bulk Price</label>
-                              <input
-                                type="text"
-                                disabled
-                                value={selectedVar ? `₹${selectedVar.bulk_price || '0'}/Month` : ''}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
-                              />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {/* 5. Expected Waste Per Day */}
-                            <div className="space-y-1.5">
-                              <label className="block text-xs font-bold text-slate-700">Expected Waste (KG Per Day) *</label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="any"
-                                required
-                                disabled={!selectedVar}
-                                value={card.expected_waste}
-                                onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
-                                placeholder="Enter waste in KG per day"
-                                className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
-                                    ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
-                                    : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  }`}
-                              />
-                            </div>
-
-                            {/* 6. Agreed Price */}
-                            <div className="space-y-1.5">
-                              <label className="block text-xs font-bold text-slate-700">Agreed Price *</label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  required
-                                  disabled={!selectedVar}
-                                  value={card.custom_price}
-                                  onChange={e => handleCardPriceChange(card.subcategory_id, e.target.value)}
-                                  placeholder="Enter price"
-                                  className={`w-full border rounded-lg py-2.5 pl-3 pr-12 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
-                                      ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
-                                      : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                    }`}
-                                />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹/KG</span>
-                              </div>
-                            </div>
-
-                            {/* 7. Suggested Price */}
-                            <div className="space-y-1.5">
-                              <label className="block text-xs font-bold text-slate-700">Suggested Price</label>
-                              <input
-                                type="text"
-                                disabled
-                                value={selectedVar ? `₹${selectedVar.per_kg_price || '0'}/KG` : ''}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
-                              />
-                            </div>
-                          </>
+                        {/* 5. Expected Waste Per Day (Only shown for Per KG pricing, hidden for Bulk) */}
+                        {card.pricing_mode !== 'Bulk' && (
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <label className="block text-xs font-bold text-slate-700">Expected Waste (KG Per Day) *</label>
+                            <input
+                              name={`expected_waste_${card.subcategory_id}`}
+                              id={`expected_waste_${card.subcategory_id}`}
+                              type="number"
+                              min="1"
+                              step="any"
+                              required
+                              disabled={!selectedVar}
+                              value={card.expected_waste}
+                              onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
+                              placeholder="Enter waste in KG per day"
+                              className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
+                                  ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
+                                  : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                            />
+                          </div>
                         )}
                       </div>
-
-                      {/* Live Calculations Section */}
-                      {selectedVar && (
-                        card.pricing_mode === 'Bulk' ? (
-                          (parseFloat(card.bulk_monthly_price) > 0 || parseFloat(card.bulk_yearly_price) > 0) && (
-                            <div className="pt-4 border-t border-slate-100 space-y-4 animate-in fade-in duration-300">
-                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Price Summary</h4>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Monthly Price</span>
-                                  <span className="font-extrabold text-purple-700 text-sm block mt-0.5">
-                                    ₹{parseFloat(card.bulk_monthly_price || 0).toLocaleString('en-IN')}
-                                  </span>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Yearly Price</span>
-                                  <span className="font-extrabold text-purple-700 text-sm block mt-0.5">
-                                    ₹{parseFloat(card.bulk_yearly_price || 0).toLocaleString('en-IN')}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        ) : (
-                          expectedDaily > 0 && (
-                            <div className="pt-4 border-t border-slate-100 space-y-4 animate-in fade-in duration-300">
-                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Live Estimates</h4>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Monthly Waste</span>
-                                  <span className="font-extrabold text-slate-800 text-sm block mt-0.5">{estMonthlyWaste.toFixed(2).replace(/\.00$/, '')} KG</span>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Yearly Waste</span>
-                                  <span className="font-extrabold text-slate-800 text-sm block mt-0.5">{estYearlyWaste.toFixed(2).replace(/\.00$/, '')} KG</span>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Monthly Price</span>
-                                  <span className="font-extrabold text-purple-700 text-sm block mt-0.5">₹{estMonthlyPrice.toFixed(2).replace(/\.00$/, '')}</span>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Yearly Price</span>
-                                  <span className="font-extrabold text-purple-700 text-sm block mt-0.5">₹{estYearlyPrice.toFixed(2).replace(/\.00$/, '')}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        )
-                      )}
                     </div>
                   );
                 })}
@@ -3162,306 +2877,7 @@ export default function WasteCollectionRequests() {
           </div>
         </div>
 
-        {/* SECTION 6: Price Section */}
-        {activeTab === 'B2B' && (
-          <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 animate-in fade-in duration-300">
-            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 6: Price Section
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Order Value (Yearly)</label>
-                <input
-                  type="number"
-                  name="total_order_value"
-                  readOnly
-                  value={formData.total_order_value}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SEZ</label>
-                <select
-                  name="sez"
-                  value={formData.sez}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  <option value="No">No</option>
-                  <option value="Yes">Yes</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Taxability (%)</label>
-                <select
-                  name="taxibility"
-                  disabled={formData.sez === 'Yes'}
-                  value={formData.taxibility}
-                  onChange={handleInputChange}
-                  className={`w-full border border-slate-200 rounded-xl py-3 px-4 outline-none transition-all text-sm font-medium ${formData.sez === 'Yes' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-slate-50 text-slate-700 cursor-pointer focus:ring-4 focus:ring-violet-100 focus:border-violet-400'}`}
-                >
-                  <option value="0.00">0.00 %</option>
-                  <option value="5.00">5.00 %</option>
-                  <option value="12.00">12.00 %</option>
-                  <option value="18.00">18.00 %</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">CGST</label>
-                <input
-                  type="number"
-                  name="cgst"
-                  readOnly
-                  value={formData.cgst}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">SGST</label>
-                <input
-                  type="number"
-                  name="sgst"
-                  readOnly
-                  value={formData.sgst}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GST</label>
-                <input
-                  type="number"
-                  name="gst_amount"
-                  readOnly
-                  value={formData.gst_amount}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discount (Yearly)</label>
-                <input
-                  type="number"
-                  name="discount"
-                  min="0"
-                  step="any"
-                  value={formData.discount}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Discounted Price (Yearly)</label>
-                <input
-                  type="number"
-                  name="discounted_price"
-                  readOnly
-                  value={formData.discounted_price}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Final Price (Yearly)</label>
-                <input
-                  type="number"
-                  name="final_price"
-                  readOnly
-                  value={formData.final_price}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 outline-none text-sm font-semibold text-slate-500 cursor-not-allowed"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 7: Additional Details */}
-        <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Calendar className="w-5 h-5 text-violet-500" /> Section 7: Additional Details
-          </h2>
-          <div className="space-y-6">
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="date"
-                    name="pickup_date"
-                    value={formData.pickup_date}
-                    onChange={handleInputChange}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-semibold text-slate-700 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Time</label>
-                <div className="relative">
-                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    name="pickup_time"
-                    disabled
-                    value={formData.pickup_time}
-                    placeholder="Select a time slot card below..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-sm font-semibold text-slate-500 cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Selectable Time Slot Cards */}
-            {formData.pickup_date && (
-              <div className="space-y-3 pt-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Select Available Time Slot
-                </label>
-                {loadingSlots ? (
-                  <div className="text-slate-400 text-xs flex items-center gap-2 py-2">
-                    <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-                    Loading available time slots...
-                  </div>
-                ) : timeSlots.length === 0 ? (
-                  <div className="text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs font-bold flex items-center gap-2">
-                    <Info className="w-4 h-4 text-amber-500" />
-                    No active time slots are available for the selected date. Please choose another date.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {timeSlots.map((slot) => {
-                      const isSelected = formData.time_slot_id == slot.id;
-
-                      return (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              time_slot_id: slot.id,
-                              pickup_time: `${slot.start_time_formatted} - ${slot.end_time_formatted}`
-                            }));
-                          }}
-                          className={`flex flex-col justify-center p-4 rounded-2xl border text-left transition-all duration-200 h-20 ${isSelected
-                            ? 'bg-violet-600 border-violet-600 text-white shadow-md'
-                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer text-slate-700'
-                            }`}
-                        >
-                          <div className="w-full">
-                            <div className="flex items-center justify-between">
-                              <span className="font-extrabold text-sm block truncate max-w-[80%]">
-                                {slot.slot_name}
-                              </span>
-                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected
-                                ? 'border-white bg-white'
-                                : 'border-slate-300 bg-white'
-                                }`}>
-                                {isSelected && (
-                                  <div className="w-2 h-2 rounded-full bg-violet-600" />
-                                )}
-                              </div>
-                            </div>
-                            <span className={`text-[11px] font-bold block mt-1 ${isSelected ? 'text-violet-100' : 'text-slate-500'}`}>
-                              {slot.start_time_formatted} - {slot.end_time_formatted}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pickup Notes</label>
-              <textarea
-                name="pickup_notes"
-                value={formData.pickup_notes}
-                onChange={handleInputChange}
-                rows="3"
-                placeholder="Provide instructions, landmarks, or special details for the driver..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
-              />
-            </div>
-
-            {/* Upload Waste Images */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload Waste Images (Multiple)</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-
-                {/* Image Add Box */}
-                <div className="relative h-28 border-2 border-dashed border-slate-200 hover:border-violet-400 transition-colors bg-slate-50/50 rounded-xl flex flex-col items-center justify-center cursor-pointer text-center text-slate-400 p-2">
-                  <ImageIcon className="w-7 h-7 mb-1 opacity-50 text-slate-400" />
-                  <span className="text-[10px] font-bold">Add Photo</span>
-                  <input
-                    type="file"
-                    onChange={handleFileChange}
-                    multiple
-                    accept="image/*"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                </div>
-
-                {/* Previews */}
-                {filePreviews.map((url, idx) => (
-                  <div key={idx} className="relative h-28 border border-slate-200 rounded-xl bg-slate-100 overflow-hidden">
-                    <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(idx)}
-                      className="absolute top-1.5 right-1.5 p-1 bg-rose-500 text-white rounded-full opacity-90 hover:opacity-100 shadow-md transition-all active:scale-90"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-
-              </div>
-            </div>
-
-            {/* Document Uploads: MOM / PO / Email Copy */}
-            <div className="pt-6 border-t border-slate-100 space-y-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                Required Documents <span className="text-[10px] text-slate-400 font-medium font-sans normal-case">(MOM is always required; Either PO or Email copy is required)</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-
-                {/* MOM (Agreement) Copy */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600 flex items-center gap-1">
-                    MOM (Agreement) Copy <span className="text-rose-500 font-bold">*</span>
-                  </label>
-                  {renderDocumentUploadField(momFile, setMomFile, existingMomFile, setExistingMomFile, "Upload MOM / Agreement Copy", ".pdf,image/*", "mom_file_upload")}
-                </div>
-
-                {/* PO Copy */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">PO Copy</label>
-                  {renderDocumentUploadField(poFile, setPoFile, existingPoFile, setExistingPoFile, "Upload PO Copy", ".pdf,image/*", "po_file_upload")}
-                </div>
-
-                {/* Email Copy */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">Email Copy</label>
-                  {renderDocumentUploadField(emailCopyFile, setEmailCopyFile, existingEmailFile, setExistingEmailFile, "Upload Email Copy", ".pdf,image/*", "email_file_upload")}
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
 
         {/* Form Action Footer */}
         <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200">

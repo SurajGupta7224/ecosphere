@@ -115,6 +115,7 @@ WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_
 WasteCollectionRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
 
+
 // Waste Order associations
 WasteOrder.belongsTo(User, { foreignKey: "user_id", as: "customer" });
 User.hasMany(WasteOrder, { foreignKey: "user_id", as: "wasteOrders" });
