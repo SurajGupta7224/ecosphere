@@ -12,7 +12,8 @@ const {
 const {
   getProfile,
   updateProfile,
-  getCustomerPickups
+  getCustomerPickups,
+  getCustomerOrderQR
 } = require("../controllers/Client/customerController");
 
 // Storefront / Client Customer Authentication & Profile Routes
@@ -43,5 +44,12 @@ router.put("/customer/profile", verifyToken, updateProfile);
 
 // GET /api/customer/pickups (Fetch authenticated customer's pickups)
 router.get("/customer/pickups", verifyToken, getCustomerPickups);
+
+// GET /api/customer/pickups/:id/qr (Fetch QR code for a specific pickup)
+router.get(
+  "/customer/pickups/:id/qr",
+  verifyToken,
+  getCustomerOrderQR
+);
 
 module.exports = router;

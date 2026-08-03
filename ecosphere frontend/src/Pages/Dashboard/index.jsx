@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import BookPickup from "./BookPickup";
 import { useNavigate } from "react-router-dom";
-import MyDetails from "./MyDetails";
 import { QrCode } from "lucide-react";
-import { QRCodeCanvas } from "qrcode.react";
 
 import {
   FiUser,
@@ -21,6 +19,7 @@ import {
   FiLayout,
   FiX,
   FiDownload,
+  FiUpload,
   FiFileText,
   FiAlertCircle,
   FiCalendar,
@@ -28,8 +27,8 @@ import {
   FiPhone,
   FiFilter,
   FiCheckCircle,
+  FiAlertTriangle
 } from "react-icons/fi";
-
 import { customerFetch } from "../../api";
 
 // -----------------------------------------------------------
@@ -41,6 +40,9 @@ import OverviewStats from "./OverviewStats";
 import WasteBreakdownCard from "./WasteBreakdownCard";
 import RecentPickupsStrip from "./RecentPickupsStrip";
 import NotificationsPanel from "./NotificationsPanel";
+import MyDetails from "./MyDetails";
+import RaiseComplaint from "./RaiseComplaint";
+import MyComplaints from "./MyComplaints";
 
 import {
   statusColor,
@@ -82,15 +84,14 @@ export default function CustomerDashboard() {
 
   // QR popup
   const [showQR, setShowQR] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
+  const [qrLoading, setQrLoading] = useState(false);
 
   // Pickup history filters
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // Complaint form
-  const [complaintType, setComplaintType] = useState("Missed Pickup");
-  const [complaintPickup, setComplaintPickup] = useState("");
-  const [complaintDescription, setComplaintDescription] = useState("");
+  
 
   // ---------------------------------------------------------
   // FETCH PICKUPS
@@ -109,6 +110,30 @@ export default function CustomerDashboard() {
         setLoadingPickups(false);
       });
   }, []);
+
+  const loadPickupQR = async (pickupId) => {
+    try {
+      setQrLoading(true);
+      setQrCodeDataUrl("");
+
+      console.log("Loading QR for pickup:", pickupId);
+
+      const data = await customerFetch(
+        `/customer/pickups/${pickupId}/qr`
+      );
+
+      console.log("QR RESPONSE:", data);
+
+      setQrCodeDataUrl(data.qr);
+
+      setShowQR(true);
+    } catch (err) {
+      console.error("QR fetch error:", err);
+      alert("Failed to load pickup QR code.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
   
 
@@ -173,6 +198,7 @@ export default function CustomerDashboard() {
     { id: "addresses", label: "Address", icon: FiMapPin },
     { id: "notifications", label: "Notifications", icon: FiBell },
     { id: "complaints", label: "Raise a Complaint", icon: FiAlertCircle },
+    { id: "mycomplaints", label: "My Complaints", icon: FiAlertTriangle },
     { id: "support", label: "Support", icon: FiHelpCircle },
     { id: "settings", label: "Settings", icon: FiSettings },
   ];
@@ -345,24 +371,7 @@ export default function CustomerDashboard() {
     );
   };
 
-  // ---------------------------------------------------------
-  // COMPLAINT SUBMIT
-  // ---------------------------------------------------------
-  const handleComplaintSubmit = (e) => {
-    e.preventDefault();
-
-    if (!complaintDescription.trim()) {
-      alert("Please describe your complaint.");
-      return;
-    }
-
-    console.log({ complaintType, complaintPickup, complaintDescription });
-
-    alert("Your complaint has been submitted successfully.");
-
-    setComplaintDescription("");
-    setComplaintPickup("");
-  };
+ 
 
   // ---------------------------------------------------------
   // NAV BUTTON
@@ -391,21 +400,22 @@ export default function CustomerDashboard() {
     );
   };
 
-const downloadCustomerQR = () => {
-  const canvas = document.querySelector("#customer-qr canvas");
+  const downloadCustomerQR = () => {
+    if (!qrCodeDataUrl) {
+      alert("QR code is not loaded yet.");
+      return;
+    }
 
-  if (!canvas) return;
+    const link = document.createElement("a");
 
-  const link = document.createElement("a");
+    link.href = qrCodeDataUrl;
 
-  link.download = `customer-qr-${
-    customer?.customer_id || "customer"
-  }.png`;
+    link.download = `pickup-qr.png`;
 
-  link.href = canvas.toDataURL("image/png");
-
-  link.click();
-};
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
 
 
@@ -449,6 +459,7 @@ const downloadCustomerQR = () => {
                 badge={missedPickups.length}
               />
               <NavButton item={sidebarNavItems.find((i) => i.id === "complaints")} />
+              <NavButton item={sidebarNavItems.find((i) => i.id === "mycomplaints")} />
               <NavButton item={sidebarNavItems.find((i) => i.id === "support")} />
             </nav>
 
@@ -490,8 +501,12 @@ const downloadCustomerQR = () => {
 
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => setShowQR(true)}
-                      title="Show Customer QR"
+                      onClick={() => {
+                        if (activePickup?.id) {
+                          loadPickupQR(activePickup.id);
+                        }
+                      }}
+                      title="Show Pickup QR"
                       className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition-all"
                     >
                       <QrCode size={20} strokeWidth={2} />
@@ -847,9 +862,8 @@ const downloadCustomerQR = () => {
               <NotificationsPanel
                 missedPickups={missedPickups}
                 loadingPickups={loadingPickups}
-                onRaiseComplaint={(pickup) => {
-                  setComplaintType("Missed Pickup");
-                  setComplaintPickup(pickup.lead_id || pickup._id || pickup.id || "");
+                onRaiseComplaint={() => {
+                  setSubject("Missed Pickup");
                   setActiveTab("complaints");
                 }}
               />
@@ -857,77 +871,12 @@ const downloadCustomerQR = () => {
 
             {/* ============================ RAISE COMPLAINT ============================ */}
             {activeTab === "complaints" && (
-              <div className="flex flex-col gap-4">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                      <FiAlertCircle size={18} className="text-red-500" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-800">Raise a Complaint</h2>
-                      <p className="text-sm text-gray-400">Tell us what went wrong and we'll help resolve it.</p>
-                    </div>
-                  </div>
+              <RaiseComplaint customer={customer} />
+            )}
 
-                  <form onSubmit={handleComplaintSubmit} className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-2">Complaint Type</label>
-                      <select
-                        value={complaintType}
-                        onChange={(e) => setComplaintType(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                      >
-                        <option>Missed Pickup</option>
-                        <option>Vehicle Delay</option>
-                        <option>Incorrect Waste Weight</option>
-                        <option>Driver Behaviour</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-2">Pickup / Reference</label>
-                      <select
-                        value={complaintPickup}
-                        onChange={(e) => setComplaintPickup(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                      >
-                        <option value="">Select pickup</option>
-                        {pickups.map((pickup, index) => (
-                          <option
-                            key={pickup._id || pickup.id || index}
-                            value={pickup.lead_id || pickup._id || pickup.id || ""}
-                          >
-                            {pickup.lead_id
-                              ? `#${pickup.lead_id.slice(-8).toUpperCase()}`
-                              : formatDate(pickup.pickup_date)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-2">Description</label>
-                      <textarea
-                        value={complaintDescription}
-                        onChange={(e) => setComplaintDescription(e.target.value)}
-                        rows={5}
-                        placeholder="Describe the issue..."
-                        className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm outline-none resize-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="bg-green-700 hover:bg-green-800 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all"
-                      >
-                        Submit Complaint
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+            {/* ============================ MY COMPLAINTS ============================ */}
+            {activeTab === "mycomplaints" && (
+              <MyComplaints customer={customer} />
             )}
 
             {/* ============================ SUPPORT ============================ */}
@@ -1063,16 +1012,21 @@ const downloadCustomerQR = () => {
             boxSizing: "border-box",
           }}
         >
-          <QRCodeCanvas
-            value={
-              customer?.customer_id ||
-              customer?._id ||
-              "customer"
-            }
-            size={230}
-            level="H"
-            includeMargin={true}
-          />
+          {qrLoading ? (
+            <p className="text-sm text-gray-400">
+              Generating QR...
+            </p>
+          ) : qrCodeDataUrl ? (
+            <img
+              src={qrCodeDataUrl}
+              alt="Pickup QR Code"
+              className="h-[220px] w-[220px]"
+            />
+           ) : (
+            <p className="text-sm text-gray-400">
+              QR unavailable
+            </p>
+          )}
         </div>
       </div>
 
@@ -1080,7 +1034,7 @@ const downloadCustomerQR = () => {
       <button
         type="button"
         onClick={downloadCustomerQR}
-        className="mt-5 flex h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gray-900 text-sm font-semibold text-white transition hover:bg-gray-800"
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3.5 text-sm font-semibold text-white"
       >
         <FiDownload size={17} />
         Download QR
@@ -1091,3 +1045,4 @@ const downloadCustomerQR = () => {
     </>
   );
 }
+
