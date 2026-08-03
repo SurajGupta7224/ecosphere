@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck
+  Clock, ClipboardList, Calendar, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -88,7 +88,12 @@ const DashboardLayout = () => {
     }
   };
 
-  const fetchNotifications = async () => {
+  const consecutiveNotifErrorsRef = useRef(0);
+
+  const fetchNotifications = async (isManual = false) => {
+    if (!isManual && consecutiveNotifErrorsRef.current >= 3) {
+      return;
+    }
     try {
       const res = await api.get('/notifications');
       setNotifications(res.data.notifications || []);
@@ -96,15 +101,19 @@ const DashboardLayout = () => {
       setPendingEmployeesCount(res.data.pendingEmployeesCount || 0);
       setPendingVehiclesCount(res.data.pendingVehiclesCount || 0);
       setPendingVendors(res.data.pendingVendorsCount || 0);
+      consecutiveNotifErrorsRef.current = 0;
     } catch (err) {
-      console.error("Error fetching notifications:", err);
+      consecutiveNotifErrorsRef.current += 1;
+      if (isManual) {
+        console.error("Error fetching notifications:", err);
+      }
     }
   };
 
   useEffect(() => {
     if (isAdmin) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 10000);
+      fetchNotifications(true);
+      const interval = setInterval(() => fetchNotifications(false), 60000);
       return () => clearInterval(interval);
     }
   }, [isAdmin]);
@@ -246,6 +255,7 @@ const DashboardLayout = () => {
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
+    { name: 'Pickup / Trip Planner', path: '/trip-planner', icon: Calendar, isSubMenu: false },
     {
       id: 'aggregator_employees_group',
       title: 'Aggregator Employees',
