@@ -1,5 +1,9 @@
 const express = require("express");
 const router = express.Router();
+
+const customerInvitationController = require("../controllers/Admin/customerInvitationController");
+
+
 console.log("DEBUG: Loading API routes from routes/index.js");
 
 const { login, generateCaptcha, verify2FA, getMe } = require("../controllers/Admin/authController");
@@ -297,6 +301,22 @@ router.get("/settings/audit-logs", verifyToken, requirePermission('settings_mana
 
 // T&C Acceptance
 router.post("/tnc/accept", verifyToken, acceptTnc);
+
+// Customer Invitation API
+router.post(
+  "/customer-invitations",
+  customerInvitationController.sendInvitation
+);
+
+
+// Customer Registration Approval API
+
+router.patch(
+  "/customer-registration/:id/approve",
+  verifyToken,
+  customerInvitationController.approveCustomerRegistration
+);
+
 
 module.exports = router;
 

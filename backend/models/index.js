@@ -168,14 +168,18 @@ Vehicle.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 Notification.belongsTo(User, { foreignKey: "user_id", as: "targetUser" });
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 
-module.exports = { 
+module.exports = {
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
-  TimeSlot, ModuleGeneratorHistory, Customer,
-  BusinessRegion, BusinessSubRegion, Employee, Vehicle, WasteOrder, Notification
+  TimeSlot, ModuleGeneratorHistory,
+  Customer,
+  BusinessRegion, BusinessSubRegion,
+  Employee, Vehicle,
+  WasteOrder,
+  Notification
 };
 
 

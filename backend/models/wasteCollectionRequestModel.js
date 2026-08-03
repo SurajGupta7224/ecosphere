@@ -2,6 +2,10 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
 const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
+ 
+
+  
+ 
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
