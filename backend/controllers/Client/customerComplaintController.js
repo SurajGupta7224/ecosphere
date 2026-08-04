@@ -8,9 +8,10 @@ const createComplaint = async (req, res) => {
     const customer = req.user;
 
     const {
-      subject,
-      description
-    } = req.body;
+    pickup_date,
+    subject,
+    description
+} = req.body;
 
     if (!subject || !description) {
       return res.status(400).json({
@@ -19,33 +20,50 @@ const createComplaint = async (req, res) => {
       });
     }
 
+
+    if (!pickup_date) {
+  return res.status(400).json({
+    success: 0,
+    message: "Pickup date is required."
+  });
+}
+
     const complaintId = await generateComplaintId();
 
     const attachment = req.file ? req.file.filename : null;
 
     const complaint = await CustomerComplaint.create({
-      complaint_id: complaintId,
+  complaint_id: complaintId,
 
-      customer_id: customer.id,
-      customer_name: customer.customer_name,
-      customer_email: customer.email,
+  customer_id: customer.id,
+  customer_name: customer.customer_name,
+  customer_email: customer.email,
 
-      subject,
-      description,
+  pickup_date,
 
-      attachment,
+  subject,
+  description,
 
-      status: "Pending"
-    });
-     
-    await sendComplaintConfirmationEmail({
+  attachment,
+
+  status: "Pending"
+});
+
+
+    console.log("Before sending complaint confirmation email...");
+
+await sendComplaintConfirmationEmail({
   toEmail: complaint.customer_email,
   customerName: complaint.customer_name,
   complaintId: complaint.complaint_id,
+  pickupDate: complaint.pickup_date,
   subject: complaint.subject,
   description: complaint.description,
   status: complaint.status,
 });
+
+console.log("After sending complaint confirmation email...");
+
 
     return res.status(201).json({
       success: 1,
