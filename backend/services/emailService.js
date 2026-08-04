@@ -371,9 +371,154 @@ const sendCustomerInvitationEmail = async ({
   }
 };
 
+
+// Send complaint confirmation email to customer
+
+const sendComplaintConfirmationEmail = async ({
+  toEmail,
+  customerName,
+  complaintId,
+  subject,
+  description,
+  status,
+}) => {
+  try {
+     const transporter = createTransporter();
+const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    const mailOptions = {
+      from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
+      to: toEmail,
+      subject: `Complaint Received - ${complaintId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2 style="color:#2E7D32;">Complaint Submitted Successfully</h2>
+
+          <p>Dear <strong>${customerName}</strong>,</p>
+
+          <p>Thank you for contacting <strong>EcoSphere</strong>.</p>
+
+          <p>Your complaint has been successfully registered.</p>
+
+          <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;">
+            <tr>
+              <td><strong>Complaint ID</strong></td>
+              <td>${complaintId}</td>
+            </tr>
+            <tr>
+              <td><strong>Subject</strong></td>
+              <td>${subject}</td>
+            </tr>
+            <tr>
+              <td><strong>Description</strong></td>
+              <td>${description}</td>
+            </tr>
+            <tr>
+              <td><strong>Status</strong></td>
+              <td>${status}</td>
+            </tr>
+          </table>
+
+          <br>
+
+          <p>
+            Our support team will review your complaint and update you as soon as possible.
+          </p>
+
+          <p>
+            Please keep your Complaint ID for future reference.
+          </p>
+
+          <br>
+
+          <p>Regards,</p>
+          <p><strong>EcoSphere Support Team</strong></p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return true;
+  } catch (error) {
+    console.error("Complaint Confirmation Email Error:", error);
+    return false;
+  }
+};
+
+// Send complaint resolution email to customer
+
+const sendComplaintResolutionEmail = async ({
+  toEmail,
+  customerName,
+  complaintId,
+  subject,
+  status,
+  adminReply,
+}) => {
+  try {
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    const mailOptions = {
+      from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
+      to: toEmail,
+      subject: `Complaint Update - ${complaintId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height:1.6;">
+          <h2 style="color:#2E7D32;">Complaint Status Updated</h2>
+
+          <p>Dear <strong>${customerName}</strong>,</p>
+
+          <p>Your complaint has been reviewed by our support team.</p>
+
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td><strong>Complaint ID</strong></td>
+              <td>${complaintId}</td>
+            </tr>
+
+            <tr>
+              <td><strong>Subject</strong></td>
+              <td>${subject}</td>
+            </tr>
+
+            <tr>
+              <td><strong>Status</strong></td>
+              <td>${status}</td>
+            </tr>
+
+            <tr>
+              <td><strong>Admin Reply</strong></td>
+              <td>${adminReply}</td>
+            </tr>
+          </table>
+
+          <br>
+
+          <p>Thank you for choosing EcoSphere.</p>
+
+          <br>
+
+          <strong>EcoSphere Support Team</strong>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return true;
+  } catch (error) {
+    console.error("Complaint Resolution Email Error:", error);
+    return false;
+  }
+};
+
 module.exports = {
   generateProductionPassword,
   sendCustomerInvitationEmail,
   sendCustomerCredentialsEmail,
   sendResetOTPEmail,
+  sendComplaintConfirmationEmail,
+  sendComplaintResolutionEmail,
 };

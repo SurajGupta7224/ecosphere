@@ -33,6 +33,10 @@ const Vehicle = require("./vehicleModel");
 const WasteOrder = require("./wasteOrderModel");
 const Notification = require("./notificationModel");
 
+
+const CustomerComplaint = require("./customerComplaintModel");
+
+
 // User ↔ Role
 User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
 Role.hasMany(User, { foreignKey: "role_id", as: "users" });
@@ -179,7 +183,8 @@ module.exports = {
   BusinessRegion, BusinessSubRegion,
   Employee, Vehicle,
   WasteOrder,
-  Notification
+  Notification,
+  CustomerComplaint
 };
 
 
