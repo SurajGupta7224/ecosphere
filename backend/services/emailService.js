@@ -376,6 +376,7 @@ const sendCustomerInvitationEmail = async ({
 
 const sendComplaintConfirmationEmail = async ({
   toEmail,
+  pickupDate,
   customerName,
   complaintId,
   subject,
@@ -383,8 +384,20 @@ const sendComplaintConfirmationEmail = async ({
   status,
 }) => {
   try {
-     const transporter = createTransporter();
-const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    console.log("===== Complaint Confirmation Email Function Called =====");
+
+    console.log({
+      toEmail,
+      pickupDate,
+      customerName,
+      complaintId,
+      subject,
+      status,
+    });
+
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
 
     const mailOptions = {
       from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
@@ -405,6 +418,11 @@ const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
               <td><strong>Complaint ID</strong></td>
               <td>${complaintId}</td>
             </tr>
+         <tr>
+           <td><strong>Pickup Date</strong></td>
+          <td>${pickupDate}</td>
+         </tr>
+
             <tr>
               <td><strong>Subject</strong></td>
               <td>${subject}</td>
@@ -437,7 +455,10 @@ const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+
+console.log("Email sent successfully:");
+console.log(info.response);
 
     return true;
   } catch (error) {
@@ -459,6 +480,15 @@ const sendComplaintResolutionEmail = async ({
   try {
     const transporter = createTransporter();
     const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+       
+      const formattedPickupDate = pickupDate
+  ? new Date(pickupDate).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  : "-";
+
 
     const mailOptions = {
       from: `"Ecosphere Waste Solutions" <${fromEmail}>`,

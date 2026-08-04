@@ -31,6 +31,11 @@ const CustomerComplaint = sequelize.define(
       allowNull: false,
     },
 
+    pickup_date: {
+    type: DataTypes.DATEONLY,
+   allowNull: false,
+   },
+
     subject: {
       type: DataTypes.STRING,
       allowNull: false,
