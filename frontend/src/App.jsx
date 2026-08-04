@@ -270,7 +270,7 @@ function App() {
             }
           />
 
-</Route>
+          </Route>
 
         {/* Full Screen Unauthorized Error Page */}
         <Route path="/unauthorized" element={<Unauthorized />} />

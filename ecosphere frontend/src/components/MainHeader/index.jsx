@@ -83,7 +83,7 @@ const MainHeader = () => {
     setCustomer(null);
     setIsUserDropdownOpen(false);
     setIsMenuOpen(false);
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   // ---------- COMING SOON CONTENT LOGIC ----------
