@@ -1,5 +1,7 @@
-const { Vehicle, Employee, Notification } = require("../../models/index");
+const { Vehicle, Employee, Notification, Driver } = require("../../models/index");
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt");
+const { generateProductionPassword, sendDriverCredentialsEmail, sendDriverSMS } = require("../../services/emailService");
 
 // GET /api/aggregator-vehicles - List all vehicles
 const getAllVehicles = async (req, res) => {
@@ -341,11 +343,76 @@ const deleteVehicle = async (req, res) => {
   }
 };
 
+// Helper to auto-create Driver account upon vehicle approval
+const createOrResetDriverAccountForVehicle = async (vehicle) => {
+  try {
+    let driver = await Driver.findOne({
+      where: { vehicle_number: vehicle.registration_number }
+    });
+
+    if (driver) {
+      console.log(`Driver account already exists for vehicle ${vehicle.registration_number}`);
+      return { driver, created: false };
+    }
+
+    let driverName = "Driver (" + vehicle.registration_number + ")";
+    let driverEmail = null;
+    let driverMobile = vehicle.device_mobile_number_sim || "0000000000";
+
+    if (vehicle.driver) {
+      driverName = vehicle.driver.name || driverName;
+      driverEmail = vehicle.driver.email || null;
+      driverMobile = vehicle.driver.mobile_number || driverMobile;
+    } else if (vehicle.device_assigned_to) {
+      driverName = vehicle.device_assigned_to;
+    }
+
+    const plainPassword = generateProductionPassword();
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    driver = await Driver.create({
+      vehicle_id: vehicle.id,
+      vehicle_number: vehicle.registration_number,
+      name: driverName,
+      email: driverEmail,
+      mobile_number: driverMobile,
+      password: hashedPassword,
+      status: "active",
+      employee_id: vehicle.driver_id || null
+    });
+
+    console.log(`Driver account created for ${vehicle.registration_number} with password: ${plainPassword}`);
+
+    if (driverEmail) {
+      await sendDriverCredentialsEmail({
+        toEmail: driverEmail,
+        driverName,
+        vehicleNumber: vehicle.registration_number,
+        plainPassword
+      });
+    }
+
+    await sendDriverSMS({
+      mobileNumber: driverMobile,
+      message: `Your driver account for vehicle ${vehicle.registration_number} is approved. Password: ${plainPassword}`
+    });
+
+    return { driver, plainPassword, created: true };
+  } catch (err) {
+    console.error("createOrResetDriverAccountForVehicle error:", err);
+    throw err;
+  }
+};
+
 // PATCH /api/aggregator-vehicles/:id/approve - Approve vehicle
 const approveVehicle = async (req, res) => {
   const { id } = req.params;
   try {
-    const vehicle = await Vehicle.findByPk(id);
+    const vehicle = await Vehicle.findByPk(id, {
+      include: [
+        { model: Employee, as: "driver" }
+      ]
+    });
     if (!vehicle) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
@@ -356,7 +423,19 @@ const approveVehicle = async (req, res) => {
       approved_date: new Date()
     });
 
-    return res.status(200).json({ message: "Vehicle approved successfully", vehicle });
+    // Auto-create driver account upon approval if not already existing
+    const driverResult = await createOrResetDriverAccountForVehicle(vehicle);
+
+    return res.status(200).json({
+      message: "Vehicle approved successfully",
+      vehicle,
+      driverAccount: {
+        created: driverResult.created,
+        driverId: driverResult.driver.id,
+        vehicleNumber: driverResult.driver.vehicle_number,
+        tempPassword: driverResult.plainPassword || undefined
+      }
+    });
   } catch (err) {
     console.error("approveVehicle error:", err);
     return res.status(500).json({ message: "Failed to approve vehicle" });
@@ -391,5 +470,6 @@ module.exports = {
   updateVehicleStatus,
   deleteVehicle,
   approveVehicle,
-  rejectVehicle
+  rejectVehicle,
+  createOrResetDriverAccountForVehicle
 };
