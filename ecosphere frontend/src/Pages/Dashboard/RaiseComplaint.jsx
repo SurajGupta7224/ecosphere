@@ -10,7 +10,7 @@ import {
 
 import { customerFetch } from "../../api";
 
-export default function RaiseComplaint({ customer }) {
+export default function RaiseComplaint({ customer, onViewComplaints }) {
   // =========================
   // FORM STATES
   // =========================
@@ -149,12 +149,6 @@ export default function RaiseComplaint({ customer }) {
       alert("Please enter a subject.");
       return;
     }
-
-    if (!complaintDescription.trim()) {
-      alert("Please describe your complaint.");
-      return;
-    }
-
     try {
       setSubmitting(true);
 
@@ -175,16 +169,15 @@ export default function RaiseComplaint({ customer }) {
           formData.append("files", file);
         });
        
-        await customerFetch("/complaints", {
+        const response = await customerFetch("/complaints", {
           method: "POST",
           body: formData,
         });
        
 
-      const generatedComplaintId =
-        "CMP-" + Math.floor(100000 + Math.random() * 900000);
+    
 
-      setSubmittedComplaintId(generatedComplaintId);
+      setSubmittedComplaintId(response.complaintId || response._id || response.id);
       setComplaintSubmitted(true);
 
       // Reset form
@@ -324,9 +317,7 @@ export default function RaiseComplaint({ customer }) {
 
 				<button
 				type="button"
-				onClick={() => {
-					console.log("View My Complaints");
-				}}
+				onClick={onViewComplaints}
 				className="rounded-xl bg-green-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-800"
 				>
 				View My Complaints

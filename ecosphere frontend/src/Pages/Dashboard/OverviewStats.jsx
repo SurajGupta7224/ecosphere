@@ -9,7 +9,7 @@ import {
 
 export default function OverviewStats({
   loadingPickups,
-  todaysPickup,
+  upcomingPickup,
   fallbackMobile,
   onTrack,
   totalPickups,
@@ -19,48 +19,48 @@ export default function OverviewStats({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
 
-      {/* Today's Pickup — vehicle, driver, mobile + Track, all in one card */}
+      {/* Upcoming Pickup — vehicle, driver, mobile + Track, all in one card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
             <FiTruck size={17} className="text-green-700" />
           </div>
 
-          {todaysPickup && (
+          {upcomingPickup && (
             <span
               className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${statusColor(
-                todaysPickup.status
+                upcomingPickup.status
               )}`}
             >
-              {todaysPickup.status || "Pending"}
+              {upcomingPickup.status || "Pending"}
             </span>
           )}
         </div>
 
         <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1.5">
-          Today's Pickup
+          Upcoming Pickup
         </p>
 
         {loadingPickups ? (
           <p className="text-sm text-gray-400">Loading...</p>
-        ) : todaysPickup ? (
+        ) : upcomingPickup ? (
           <div className="flex-1 flex flex-col">
             <p className="text-xs text-gray-500 leading-5">
               Reg. No:{" "}
               <span className="font-semibold text-gray-700">
-                {getVehicleNumber(todaysPickup)}
+                {getVehicleNumber(upcomingPickup)}
               </span>
             </p>
             <p className="text-xs text-gray-500 leading-5">
               Driver:{" "}
               <span className="font-semibold text-gray-700">
-                {getDriverName(todaysPickup)}
+                {getDriverName(upcomingPickup)}
               </span>
             </p>
             <p className="text-xs text-gray-500 leading-5">
               Mobile:{" "}
               <span className="font-semibold text-gray-700">
-                {getDriverMobile(todaysPickup, fallbackMobile)}
+                {getDriverMobile(upcomingPickup, fallbackMobile)}
               </span>
             </p>
 
@@ -68,12 +68,12 @@ export default function OverviewStats({
               onClick={onTrack}
               className="mt-auto pt-3 flex items-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-800"
             >
-              <FiMapPin size={12} />
+              <FiMapPin size={12} />ic
               Track
             </button>
           </div>
         ) : (
-          <p className="text-sm text-gray-400">No pickup scheduled today.</p>
+          <p className="text-sm text-gray-400">No upcoming pickups.</p>
         )}
       </div>
 

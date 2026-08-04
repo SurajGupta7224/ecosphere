@@ -91,6 +91,24 @@ export default function CustomerDashboard() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  const loadPickupQR = async (pickupId) => {
+    try {
+      setQrLoading(true);
+      setQrCodeDataUrl("");
+
+      const data = await customerFetch(
+        `/customer/pickups/${pickupId}/qr`
+      );
+
+      setQrCodeDataUrl(data.qr);
+      setShowQR(true);
+    } catch (err) {
+      console.error("QR fetch error:", err);
+      alert("Failed to load pickup QR code.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
   
 
   // ---------------------------------------------------------
@@ -111,30 +129,7 @@ export default function CustomerDashboard() {
       });
   }, []);
 
-  const loadPickupQR = async (pickupId) => {
-    try {
-      setQrLoading(true);
-      setQrCodeDataUrl("");
-
-      console.log("Loading QR for pickup:", pickupId);
-
-      const data = await customerFetch(
-        `/customer/pickups/${pickupId}/qr`
-      );
-
-      console.log("QR RESPONSE:", data);
-
-      setQrCodeDataUrl(data.qr);
-
-      setShowQR(true);
-    } catch (err) {
-      console.error("QR fetch error:", err);
-      alert("Failed to load pickup QR code.");
-    } finally {
-      setQrLoading(false);
-    }
-  };
-
+  
   
 
   // ---------------------------------------------------------
@@ -191,7 +186,6 @@ export default function CustomerDashboard() {
   const sidebarNavItems = [
     { id: "overview", label: "Overview", icon: FiLayout },
     { id: "my-details", label: "My Details", icon: FiUser },
-    { id: "pickups", label: "My Pickups", icon: FiTruck },
     { id: "wallet", label: "Wallet", icon: FiCreditCard },
     { id: "rewards", label: "Rewards", icon: FiGift },
     { id: "payments", label: "Payments", icon: FiDollarSign },
@@ -203,28 +197,39 @@ export default function CustomerDashboard() {
     { id: "settings", label: "Settings", icon: FiSettings },
   ];
 
-  // ---------------------------------------------------------
-  // ACTIVE PICKUP (any pickup that's still in flight)
-  // ---------------------------------------------------------
-  const activePickup = pickups.find((p) => {
-    const status = String(p.status || "").toLowerCase();
-    return (
-      status === "booked" ||
-      status === "pending" ||
-      status === "approved" ||
-      status === "in progress" ||
-      status === "in-progress"
-    );
-  });
 
   const totalPickups = pickups.length;
 
   // ---------------------------------------------------------
   // TODAY'S PICKUP
   // ---------------------------------------------------------
-  const todaysPickup = useMemo(() => {
-    return pickups.find((p) => isToday(p.pickup_date));
-  }, [pickups]);
+  const upcomingPickup  = useMemo(() => {
+    const trackableStatuses = [
+      "booked",
+      "pending",
+      "approved",
+      "in progress",
+      "in-progress",
+    ];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return [...pickups]
+      .filter((p) => {
+        const status = String(p.status || "").toLowerCase();
+        if (!trackableStatuses.includes(status)) return false;
+
+        if (!p.pickup_date) return false;
+        const d = new Date(p.pickup_date);
+        if (Number.isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+
+        return d >= today;
+      })
+      .sort((a, b) => new Date(a.pickup_date) - new Date(b.pickup_date))[0];
+}, [pickups]);
+
 
   // ---------------------------------------------------------
   // MISSED PICKUPS (past date, never collected)
@@ -251,7 +256,7 @@ export default function CustomerDashboard() {
 
         return dateB - dateA;
       })
-      .slice(0, 10);
+      .slice(0, 7);
   }, [pickups]);
 
   // ---------------------------------------------------------
@@ -438,7 +443,6 @@ export default function CustomerDashboard() {
             <div className="h-px bg-gray-100 my-3" />
 
             <nav className="flex flex-col gap-0.5 flex-1">
-              <NavButton item={sidebarNavItems.find((i) => i.id === "pickups")} />
 
               <button
                 onClick={() => setActiveTab("pickup-history")}
@@ -502,8 +506,8 @@ export default function CustomerDashboard() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => {
-                        if (activePickup?.id) {
-                          loadPickupQR(activePickup.id);
+                        if (upcomingPickup?.id) {
+                          loadPickupQR(upcomingPickup.id);
                         }
                       }}
                       title="Show Pickup QR"
@@ -529,16 +533,16 @@ export default function CustomerDashboard() {
                     fetched from the backend. */}
                 <OverviewStats
                   loadingPickups={loadingPickups}
-                  todaysPickup={todaysPickup}
+                  upcomingPickup={upcomingPickup}
                   fallbackMobile={customerMobile}
-                  onTrack={() => setActiveTab("pickups")}
+                  onTrack={() => setActiveTab("pickup-history")}
                   totalPickups={totalPickups}
                   totalWasteKg={reportSummary.total}
                   openComplaints={0}
                 />
 
-                {/* Waste breakdown */}
-                <WasteBreakdownCard reportSummary={reportSummary} />
+                {/* Waste breakdown 
+                <WasteBreakdownCard reportSummary={reportSummary} />*/}
 
                 {/* Recent pickups strip */}
                 <RecentPickupsStrip
@@ -547,107 +551,10 @@ export default function CustomerDashboard() {
                   onViewAll={() => setActiveTab("pickup-history")}
                 />
 
-                {/* Active Pickup */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-4">
-                    Active Pickup
-                  </p>
-
-                  {loadingPickups ? (
-                    <p className="text-sm text-gray-400">Loading...</p>
-                  ) : activePickup ? (
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-800 text-sm truncate">
-                          #{activePickup.lead_id?.slice(-8)?.toUpperCase()} ·{" "}
-                          {activePickup.waste_generator_name}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Status:{" "}
-                          <span className="font-semibold text-green-600">
-                            {activePickup.status}
-                          </span>
-                          {activePickup.pickup_date && ` · ${activePickup.pickup_date}`}
-                          {activePickup.pickup_time && ` · ${activePickup.pickup_time}`}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => setActiveTab("pickups")}
-                        className="flex-shrink-0 flex items-center gap-2 bg-green-700 hover:bg-green-800 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all"
-                      >
-                        Track
-                        <FiArrowRight size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">No active pickup scheduled.</p>
-                  )}
-                </div>
-
               </div>
             )}
 
-            {/* ============================ MY PICKUPS ============================ */}
-            {activeTab === "pickups" && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
-                      Collection Service
-                    </p>
-                    <h2 className="text-xl font-bold text-gray-800 mt-1">My Pickups</h2>
-                  </div>
-
-                  <button
-                    onClick={() => setActiveTab("pickup-history")}
-                    className="flex items-center gap-2 text-sm text-green-700 font-semibold"
-                  >
-                    Pickup History
-                    <FiArrowRight size={15} />
-                  </button>
-                </div>
-
-                {pickups.length === 0 ? (
-                  <div className="py-16 text-center text-gray-400">
-                    <FiTruck size={40} className="mx-auto mb-4" />
-                    <p>No pickup records available.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100 text-left">
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Date & Time</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Vehicle</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Driver</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Status</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-400">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pickups.map((pickup, index) => (
-                          <tr
-                            key={pickup._id || pickup.id || pickup.lead_id || index}
-                            className="border-b border-gray-50 hover:bg-gray-50"
-                          >
-                            <td className="px-4 py-4 text-gray-700">{formatDateTime(pickup)}</td>
-                            <td className="px-4 py-4 text-gray-700">{getVehicleNumber(pickup)}</td>
-                            <td className="px-4 py-4 text-gray-700">{getDriverName(pickup)}</td>
-                            <td className="px-4 py-4">
-                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor(pickup.status)}`}>
-                                {pickup.status || "Pending"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 font-bold text-gray-800">{getTotalWeight(pickup)} kg</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* ============================ MY DETAILS ============================ */}
 
             {activeTab === "my-details" && <MyDetails customer={customer} />}
 
@@ -871,12 +778,18 @@ export default function CustomerDashboard() {
 
             {/* ============================ RAISE COMPLAINT ============================ */}
             {activeTab === "complaints" && (
-              <RaiseComplaint customer={customer} />
+              <RaiseComplaint 
+                customer={customer} 
+                onViewComplaints={() => setActiveTab("mycomplaints")}
+              />
             )}
 
             {/* ============================ MY COMPLAINTS ============================ */}
             {activeTab === "mycomplaints" && (
-              <MyComplaints customer={customer} />
+              <MyComplaints 
+                customer={customer} 
+                onRaiseComplaint={() => setActiveTab("complaints")}
+              />
             )}
 
             {/* ============================ SUPPORT ============================ */}
