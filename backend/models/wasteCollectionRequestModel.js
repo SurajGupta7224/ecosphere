@@ -2,6 +2,10 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
 const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
+ 
+
+  
+ 
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
@@ -55,6 +59,10 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
     type: DataTypes.INTEGER,
     allowNull: true,
     field: 'flats'
+  },
+  occupied_flats: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   },
   complete_address: {
     type: DataTypes.TEXT,

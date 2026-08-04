@@ -1774,17 +1774,31 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 {editFormData.sector && (
                   <div className="animate-in fade-in duration-300">
                     {editFormData.sector === 'Apartment' ? (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats *</label>
-                        <input
-                          type="number"
-                          name="no_of_dwelling_units"
-                          value={editFormData.no_of_dwelling_units}
-                          onChange={handleEditInputChange}
-                          required
-                          placeholder="e.g. 150"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flats *</label>
+                          <input
+                            type="number"
+                            name="no_of_dwelling_units"
+                            value={editFormData.no_of_dwelling_units}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="e.g. 150"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Occupied Flats *</label>
+                          <input
+                            type="number"
+                            name="occupied_flats"
+                            value={editFormData.occupied_flats || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="e.g. 120"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div>

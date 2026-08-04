@@ -285,8 +285,95 @@ const sendResetOTPEmail = async ({ toEmail, otp, customerName }) => {
   }
 };
 
+
+// Send customer invitation email with registration link
+
+const sendCustomerInvitationEmail = async ({
+  toEmail,
+  customerName,
+  registrationLink,
+}) => {
+  if (!toEmail) {
+    console.warn("No recipient email provided.");
+    return false;
+  }
+
+  try {
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    const subject = "You're Invited to Register with Ecosphere";
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:30px;">
+
+        <div style="max-width:600px;background:#fff;padding:30px;border-radius:10px;">
+
+          <h2 style="color:#065f46;">
+            Welcome to Ecosphere Waste Solutions
+          </h2>
+
+          <p>Hello <b>${customerName}</b>,</p>
+
+          <p>
+            You have been invited to register with Ecosphere Waste Solutions.
+          </p>
+
+          <p>
+            Please click the button below to complete your registration.
+          </p>
+
+          <a
+            href="${registrationLink}"
+            style="
+              display:inline-block;
+              padding:14px 30px;
+              background:#16a34a;
+              color:#fff;
+              text-decoration:none;
+              border-radius:8px;
+              font-weight:bold;
+            ">
+              Complete Registration
+          </a>
+
+          <br><br>
+
+          <p>If the button doesn't work, copy and paste this link:</p>
+
+          <p>${registrationLink}</p>
+
+          <br>
+
+          <p>Thank you.</p>
+
+          <p><b>Ecosphere Waste Solutions Team</b></p>
+
+        </div>
+
+      </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
+      to: toEmail,
+      subject,
+      html: htmlContent,
+    });
+
+    return true;
+  } catch (err) {
+    console.error("sendCustomerInvitationEmail:", err);
+    return false;
+  }
+};
+
 module.exports = {
   generateProductionPassword,
+  sendCustomerInvitationEmail,
   sendCustomerCredentialsEmail,
-  sendResetOTPEmail
+  sendResetOTPEmail,
 };

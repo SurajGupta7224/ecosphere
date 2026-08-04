@@ -16,6 +16,8 @@ const {
   getCustomerOrderQR
 } = require("../controllers/Client/customerController");
 
+const customerRegistrationController = require("../controllers/Client/customerRegistrationController");
+
 // Storefront / Client Customer Authentication & Profile Routes
 
 // POST /api/customer/register (Email/Password registration)
@@ -45,11 +47,17 @@ router.put("/customer/profile", verifyToken, updateProfile);
 // GET /api/customer/pickups (Fetch authenticated customer's pickups)
 router.get("/customer/pickups", verifyToken, getCustomerPickups);
 
+// HEAD
 // GET /api/customer/pickups/:id/qr (Fetch QR code for a specific pickup)
 router.get(
   "/customer/pickups/:id/qr",
   verifyToken,
   getCustomerOrderQR
 );
+
+
+// POST /api/customer-registration (Customer Registration Submission)
+router.post("/customer-registration",customerRegistrationController.submitRegistration);
+ aff7784d2dff58ce85e481ae79c6d3e9ee5a4f12
 
 module.exports = router;

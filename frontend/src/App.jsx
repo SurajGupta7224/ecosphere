@@ -29,6 +29,7 @@ import AddEmployee from './pages/AddEmployee';
 import VehiclesList from './pages/VehiclesList';
 import AddVehicle from './pages/AddVehicle';
 import WasteOrdersList from './pages/WasteOrdersList';
+import TripPlanner from './pages/TripPlanner';
 
 
 
@@ -203,6 +204,7 @@ function App() {
               </RequirePermission>
             }
           />
+          <Route path="trip-planner" element={<TripPlanner />} />
           <Route
             path="developer/module-creation"
             element={

@@ -235,9 +235,38 @@ const getWasteOrderQR = async (req, res) => {
   }
 };
 
+// PATCH /api/admin/waste-orders/:id/reassign - Reassign vendor/driver for Trip Planner
+const reassignWasteOrder = async (req, res) => {
+  const { id } = req.params;
+  const { vendor_id, driver_id } = req.body;
+
+  if (!vendor_id && !driver_id) {
+    return res.status(400).json({ message: "At least one of vendor_id or driver_id is required." });
+  }
+
+  try {
+    const order = await WasteOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({ message: "Waste order not found." });
+    }
+
+    const updates = {};
+    if (vendor_id) updates.vendor_id = vendor_id;
+    if (driver_id) updates.driver_id = driver_id;
+
+    await order.update(updates);
+
+    return res.status(200).json({ message: "Assignment updated successfully.", order });
+  } catch (err) {
+    console.error("reassignWasteOrder error:", err);
+    return res.status(500).json({ message: "Failed to update assignment.", error: err.message });
+  }
+};
+
 module.exports = {
   getWasteOrders,
   getWasteOrderById,
   cancelWasteOrder,
-  getWasteOrderQR
+  getWasteOrderQR,
+  reassignWasteOrder
 };

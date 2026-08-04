@@ -323,7 +323,7 @@ const getSubRegionsByRegion = async (req, res) => {
         status: 'Active'
       }
     });
-    return res.status(200).json({ businessSubRegions: subRegions });
+    return res.status(200).json({ subRegions, businessSubRegions: subRegions });
   } catch (err) {
     console.error("getSubRegionsByRegion error:", err);
     return res.status(500).json({ message: "Failed to load sub regions" });

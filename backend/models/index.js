@@ -115,6 +115,7 @@ WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_
 WasteCollectionRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
 
+
 // Waste Order associations
 WasteOrder.belongsTo(User, { foreignKey: "user_id", as: "customer" });
 User.hasMany(WasteOrder, { foreignKey: "user_id", as: "wasteOrders" });
@@ -167,14 +168,18 @@ Vehicle.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 Notification.belongsTo(User, { foreignKey: "user_id", as: "targetUser" });
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 
-module.exports = { 
+module.exports = {
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
   AppSettings, BrandingSettings, ThemeSettings, CompanySettings,
   EmailSettings, SecuritySettings, SystemSettings, AuditLog,
   Corporation, Zone, Ward, CollectionEvent, WasteCollectionRequest,
-  TimeSlot, ModuleGeneratorHistory, Customer,
-  BusinessRegion, BusinessSubRegion, Employee, Vehicle, WasteOrder, Notification
+  TimeSlot, ModuleGeneratorHistory,
+  Customer,
+  BusinessRegion, BusinessSubRegion,
+  Employee, Vehicle,
+  WasteOrder,
+  Notification
 };
 
 
