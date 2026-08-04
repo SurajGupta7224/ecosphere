@@ -63,7 +63,6 @@ router.get(
 
 // POST /api/customer-registration (Customer Registration Submission)
 router.post("/customer-registration",customerRegistrationController.submitRegistration);
- aff7784d2dff58ce85e481ae79c6d3e9ee5a4f12
 
 
 // POST /api/customer/complaints
