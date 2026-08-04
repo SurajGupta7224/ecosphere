@@ -14,7 +14,7 @@ const getAllSubCategories = async (req, res) => {
   try {
     const result = await subCategoryService.getSubCategories(
       req.query,
-      req.user.id,
+      req.user?.id,
       isAdmin,
       hasProductAccess,
       hasSubCategoryAccess,

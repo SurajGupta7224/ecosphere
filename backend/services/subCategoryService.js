@@ -27,7 +27,7 @@ const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSu
   }
 
   // Ownership security check
-  if (!isAdmin && !hasProductAccess && !hasSubCategoryAccess && !hasRequestAccess) {
+  if (userId && !isAdmin && !hasProductAccess && !hasSubCategoryAccess && !hasRequestAccess) {
     where.user_id = userId;
   }
 
