@@ -18,7 +18,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
   const [complaintName, setComplaintName] = useState("");
   const [complaintEmail, setComplaintEmail] = useState("");
 
-  const [complaintDate, setComplaintDate] = useState(
+  const [pickupDate, setPickupDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
@@ -27,8 +27,8 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 
   const [complaintDescription, setComplaintDescription] = useState("");
 
-  // Uploaded files
-  const [complaintFiles, setComplaintFiles] = useState([]);
+  // Single uploaded file (was array — now single object or null)
+  const [complaintFile, setComplaintFile] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [complaintSubmitted, setComplaintSubmitted] = useState(false);
@@ -62,18 +62,15 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
   }, [customer]);
 
   // =========================
-  // FILE UPLOAD
+  // FILE UPLOAD (single file only)
   // =========================
 
   const handleFileUpload = (event) => {
-    const selectedFiles = Array.from(event.target.files || []);
+    const selectedFile = event.target.files?.[0];
 
-    if (selectedFiles.length === 0) return;
+    if (!selectedFile) return;
 
-    setComplaintFiles((previousFiles) => [
-      ...previousFiles,
-      ...selectedFiles,
-    ]);
+    setComplaintFile(selectedFile);
 
     // Reset input so the same file can be selected again
     event.target.value = "";
@@ -83,12 +80,8 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
   // REMOVE FILE
   // =========================
 
-  const removeFile = (indexToRemove) => {
-    setComplaintFiles((previousFiles) =>
-      previousFiles.filter(
-        (_, index) => index !== indexToRemove
-      )
-    );
+  const removeFile = () => {
+    setComplaintFile(null);
   };
 
   // =========================
@@ -145,48 +138,50 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
       return;
     }
 
+    if (!pickupDate) {
+      alert("Please select a date.");
+      return;
+    }
+
     if (!finalSubject) {
       alert("Please enter a subject.");
       return;
     }
+
     try {
       setSubmitting(true);
 
-      
-      
-    	const formData = new FormData();
-       
-        formData.append("name", complaintName);
-        formData.append("email", complaintEmail);
-        formData.append("date", complaintDate);
-        formData.append("subject", finalSubject);
-        formData.append(
-          "description",
-          complaintDescription
-        );
-       
-        complaintFiles.forEach((file) => {
-          formData.append("files", file);
-        });
-       
-        const response = await customerFetch("/complaints", {
-          method: "POST",
-          body: formData,
-        });
-       
+      const formData = new FormData();
 
-    
+      formData.append("customer_name", complaintName);
+      formData.append("customer_email", complaintEmail);
+      formData.append("pickup_date", pickupDate);
+      formData.append("subject", finalSubject);
+      formData.append("description", complaintDescription);
 
-      setSubmittedComplaintId(response.complaintId || response._id || response.id);
+      if (complaintFile) {
+        formData.append("attachment", complaintFile);
+      }
+
+      const response = await customerFetch("/customer/complaints", {
+        method: "POST",
+        body: formData,
+      });
+
+      setSubmittedComplaintId(
+        response?.complaint?.complaint_id ||
+        response?.complaint_id ||
+        ""
+      );
       setComplaintSubmitted(true);
 
       // Reset form
       setSubject("Missed Pickup");
       setOtherSubject("");
       setComplaintDescription("");
-      setComplaintFiles([]);
+      setComplaintFile(null);
 
-      setComplaintDate(
+      setPickupDate(
         new Date().toISOString().split("T")[0]
       );
     } catch (error) {
@@ -205,7 +200,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
   // FILE PREVIEW
   // =========================
 
-  const FilePreview = ({ file, index }) => {
+  const FilePreview = ({ file }) => {
     const imageFile = isImageFile(file);
 
     return (
@@ -248,7 +243,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
             </p>
 
             <p className="mt-1 text-[10px] text-gray-400">
-              {getFileExtension(file)} ·{" "}
+              {getFileExtension(file.name)} ·{" "}
               {getFileSize(file.size)}
             </p>
           </div>
@@ -257,7 +252,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
         {/* Remove button */}
         <button
           type="button"
-          onClick={() => removeFile(index)}
+          onClick={removeFile}
           title="Remove file"
           className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition hover:bg-black/80 group-hover:opacity-100"
         >
@@ -302,15 +297,17 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 			</p>
 
 			{/* COMPLAINT ID */}
-			<div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-6 py-4">
-				<p className="text-xs font-medium text-gray-500">
-				Complaint ID
-				</p>
+			{submittedComplaintId && (
+				<div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-6 py-4">
+					<p className="text-xs font-medium text-gray-500">
+					Complaint ID
+					</p>
 
-				<p className="mt-1 text-lg font-bold tracking-wide text-gray-900">
-				{submittedComplaintId}
-				</p>
-			</div>
+					<p className="mt-1 text-lg font-bold tracking-wide text-gray-900">
+					{submittedComplaintId}
+					</p>
+				</div>
+			)}
 
 			{/* ACTION BUTTONS */}
 			<div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -377,7 +374,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				{/* NAME */}
 				<div>
 					<label className="mb-2 block text-xs font-semibold text-gray-600">
-					Name
+					Name <span className="text-red-500">*</span>
 					</label>
 
 					<input
@@ -394,7 +391,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				{/* EMAIL */}
 				<div>
 					<label className="mb-2 block text-xs font-semibold text-gray-600">
-					Email
+					Email <span className="text-red-500">*</span>
 					</label>
 
 					<input
@@ -411,14 +408,14 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				{/* DATE */}
 				<div>
 					<label className="mb-2 block text-xs font-semibold text-gray-600">
-					Date
+					Pickup Date <span className="text-red-500">*</span>
 					</label>
 
 					<input
 					type="date"
-					value={complaintDate}
+					value={pickupDate}
 					onChange={(e) =>
-						setComplaintDate(e.target.value)
+						setPickupDate(e.target.value)
 					}
 					className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
 					/>
@@ -427,7 +424,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				{/* SUBJECT */}
 				<div>
 					<label className="mb-2 block text-xs font-semibold text-gray-600">
-					Subject
+					Subject <span className="text-red-500">*</span>
 					</label>
 
 					<select
@@ -463,7 +460,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				{subject === "Other" && (
 					<div className="sm:col-span-2">
 					<label className="mb-2 block text-xs font-semibold text-gray-600">
-						Other Subject
+						Other Subject <span className="text-red-500">*</span>
 					</label>
 
 					<input
@@ -481,32 +478,24 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 				</div>
 
 				{/* =================================================
-					RIGHT SIDE — FILE UPLOAD
+					RIGHT SIDE — FILE UPLOAD (single file)
 				================================================== */}
 
 				<div>
 
 				<label className="mb-2 block text-xs font-semibold text-gray-600">
-					Attach Files
+					Attach Image
 				</label>
 
 				<div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-4">
 
-					{/* UPLOADED FILES */}
+					{/* UPLOADED FILE PREVIEW */}
 
-					{complaintFiles.length > 0 && (
-					<div className="mb-4 grid grid-cols-2 gap-3">
-						{complaintFiles.map((file, index) => (
-						<FilePreview
-							key={`${file.name}-${index}`}
-							file={file}
-							index={index}
-						/>
-						))}
+					{complaintFile ? (
+					<div className="mb-4">
+						<FilePreview file={complaintFile} />
 					</div>
-					)}
-
-					{/* UPLOAD / UPLOAD ANOTHER */}
+					) : (
 
 					<label
 					htmlFor="complaint-file-upload"
@@ -514,46 +503,35 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 					>
 
 					<div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-green-100">
-
-						{complaintFiles.length > 0 ? (
-						<FiUpload
-							size={19}
-							className="text-green-700"
-						/>
-						) : (
 						<FiImage
 							size={19}
 							className="text-green-700"
 						/>
-						)}
-
 					</div>
 
 					<p className="text-sm font-semibold text-gray-700">
-						{complaintFiles.length > 0
-						? "Upload another"
-						: "Upload files"}
+						Upload image
 					</p>
 
 					<p className="mt-1 text-center text-xs text-gray-400">
-						Add images, PDF, documents, videos or any
-						other file
+						Add a single image related to your complaint
 					</p>
 
 					<p className="mt-2 text-[11px] font-medium text-green-700">
-						Click to browse files
+						Click to browse
 					</p>
 
 					<input
 						id="complaint-file-upload"
 						type="file"
-						multiple
-						accept="*/*"
+						accept="image/*"
 						onChange={handleFileUpload}
 						className="hidden"
 					/>
 
 					</label>
+
+					)}
 
 				</div>
 				</div>
