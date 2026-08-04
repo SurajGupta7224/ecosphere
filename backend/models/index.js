@@ -35,6 +35,7 @@ const Notification = require("./notificationModel");
 
 
 const CustomerComplaint = require("./customerComplaintModel");
+const Driver = require("./driverModel");
 
 
 // User ↔ Role
@@ -172,6 +173,12 @@ Vehicle.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 Notification.belongsTo(User, { foreignKey: "user_id", as: "targetUser" });
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 
+// Driver associations
+Driver.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+Vehicle.hasOne(Driver, { foreignKey: "vehicle_id", as: "driverAccount" });
+Driver.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
+Employee.hasOne(Driver, { foreignKey: "employee_id", as: "driverAccount" });
+
 module.exports = {
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
@@ -181,7 +188,7 @@ module.exports = {
   TimeSlot, ModuleGeneratorHistory,
   Customer,
   BusinessRegion, BusinessSubRegion,
-  Employee, Vehicle,
+  Employee, Vehicle, Driver,
   WasteOrder,
   Notification,
   CustomerComplaint

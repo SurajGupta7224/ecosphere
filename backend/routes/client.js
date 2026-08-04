@@ -61,6 +61,21 @@ router.get(
 );
 
 
+const subCategoryController = require("../controllers/Admin/subCategoryController");
+const categoryController = require("../controllers/Admin/categoryController");
+const businessRegionController = require("../controllers/Admin/businessRegionController");
+const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
+const timeSlotController = require("../controllers/Admin/timeSlotController");
+const wasteCollectionRequestController = require("../controllers/Admin/wasteCollectionRequestController");
+
+// Public routes for Customer Forms
+router.get("/public/sub-categories", subCategoryController.getAllSubCategories);
+router.get("/public/categories", categoryController.getAllCategories);
+router.get("/public/business-regions", businessRegionController.getAllBusinessRegions);
+router.get("/public/business-regions/:id/sub-regions", businessSubRegionController.getSubRegionsByRegion);
+router.get("/public/time-slots/active", timeSlotController.getActiveTimeSlots);
+router.get("/public/waste-collection-requests/resolve-map-link", wasteCollectionRequestController.resolveMapLink);
+
 // POST /api/customer-registration (Customer Registration Submission)
 router.post("/customer-registration",customerRegistrationController.submitRegistration);
 

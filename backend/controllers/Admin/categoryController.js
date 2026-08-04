@@ -20,7 +20,7 @@ const getAllCategories = async (req, res) => {
   const hasCategoryAccess = req.userPermissions?.includes('category_management');
   
   // If not admin AND doesn't have product access AND doesn't have category access, filter by user_id
-  if (!isAdmin && !hasProductAccess && !hasCategoryAccess) {
+  if (req.user && !isAdmin && !hasProductAccess && !hasCategoryAccess) {
     where.user_id = req.user.id;
   }
 

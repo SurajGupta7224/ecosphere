@@ -26,6 +26,7 @@ import Segments from "./Pages/Segments";
 import PrivacyPolicy from "./Pages/PrivacyPolicy";
 import RefundPolicy from "./Pages/RefundPolicy";
 import CustomerDashboard from "./Pages/Dashboard";
+import WasteCollectionRequests from "./Pages/WasteCollectionRequests";
 
 // Strict route protection helper for Customer Dashboard
 function RequireCustomerAuth({ children }) {
@@ -41,7 +42,7 @@ function AppContent() {
   const location = useLocation();
 
   // Pages where we hide the header + footer + mobile navbar
-  const noHeaderRoutes = ["/partnerwithus"];
+  const noHeaderRoutes = ["/partnerwithus", "/waste-collection-requests", "/waste-collection-request"];
 
   const hideHeader = noHeaderRoutes.includes(location.pathname);
 
@@ -93,6 +94,8 @@ function AppContent() {
         <Route path="/segments" element={<Segments />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/waste-collection-requests" element={<WasteCollectionRequests />} />
+        <Route path="/waste-collection-request" element={<WasteCollectionRequests />} />
       </Routes>
 
       {/* SHOW FOOTER + MOBILE NAV ONLY IF HEADER IS SHOWN */}
