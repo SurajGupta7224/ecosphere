@@ -3,6 +3,7 @@ const router = express.Router();
 
 const customerInvitationController = require("../controllers/Admin/customerInvitationController");
 
+const customerComplaintController = require("../controllers/Admin/customerComplaintController");
 
 console.log("DEBUG: Loading API routes from routes/index.js");
 
@@ -315,6 +316,44 @@ router.patch(
   verifyToken,
   customerInvitationController.approveCustomerRegistration
 );
+
+// GET /api/admin/complaints
+router.get(
+  "/complaints",
+  verifyToken,
+  customerComplaintController.getAllComplaints
+);
+
+
+// Dashboard statistics
+router.get(
+  "/complaints/dashboard",
+  verifyToken,
+  customerComplaintController.getComplaintDashboard
+);
+
+// Export complaints to Excel
+router.get(
+  "/complaints/export",
+  verifyToken,
+  customerComplaintController.exportComplaints
+);
+
+
+// GET /api/admin/complaints/:id
+router.get(
+  "/complaints/:id",
+  verifyToken,
+  customerComplaintController.getComplaintById
+);
+
+// PATCH /api/admin/complaints/:id
+router.patch(
+  "/complaints/:id",
+  verifyToken,
+  customerComplaintController.updateComplaint
+);
+
 
 
 module.exports = router;

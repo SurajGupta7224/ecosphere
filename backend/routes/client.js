@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 const {
   registerCustomer,
   loginCustomer,
@@ -15,7 +16,11 @@ const {
   getCustomerPickups
 } = require("../controllers/Client/customerController");
 
+const complaintUpload = upload.single("attachment");
+
 const customerRegistrationController = require("../controllers/Client/customerRegistrationController");
+
+const customerComplaintController = require("../controllers/Client/customerComplaintController");
 
 // Storefront / Client Customer Authentication & Profile Routes
 
@@ -49,5 +54,23 @@ router.get("/customer/pickups", verifyToken, getCustomerPickups);
 
 // POST /api/customer-registration (Customer Registration Submission)
 router.post("/customer-registration",customerRegistrationController.submitRegistration);
+
+
+// POST /api/customer/complaints
+router.post("/customer/complaints",verifyToken,complaintUpload,customerComplaintController.createComplaint);
+
+// GET /api/customer/complaints
+router.get(
+  "/customer/complaints",
+  verifyToken,
+  customerComplaintController.getMyComplaints
+);
+
+// GET /api/customer/complaints/:id
+router.get(
+  "/customer/complaints/:id",
+  verifyToken,
+  customerComplaintController.getComplaintById
+);
 
 module.exports = router;
