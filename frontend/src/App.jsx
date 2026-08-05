@@ -30,7 +30,8 @@ import VehiclesList from './pages/VehiclesList';
 import AddVehicle from './pages/AddVehicle';
 import WasteOrdersList from './pages/WasteOrdersList';
 
-
+import CustomerComplaint from "./pages/CustomerComplaint";
+import ComplaintDetails from "./pages/ComplaintDetails";
 
 
 function App() {
@@ -259,6 +260,17 @@ function App() {
               </RequirePermission>
             }
           />
+          <Route
+  path="/complaints"
+  element={<CustomerComplaint />}
+/>
+
+<Route
+  path="/complaints/:id"
+  element={<ComplaintDetails />}
+/>
+
+
           <Route
             path="aggregator-vehicles/:id/edit"
             element={

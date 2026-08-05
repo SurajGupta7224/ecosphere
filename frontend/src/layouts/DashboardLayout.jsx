@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck
+  Clock, ClipboardList, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck ,  MessageSquare
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -246,6 +246,13 @@ const DashboardLayout = () => {
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
+    {
+  name: "Complaint Management",
+  path: "/complaints",
+  icon: MessageSquare,
+  isSubMenu: false,
+},
+   
     {
       id: 'aggregator_employees_group',
       title: 'Aggregator Employees',
