@@ -153,21 +153,27 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
 
   // Items pricing state (KG or Bulk wise per waste item)
   const [itemsPricing, setItemsPricing] = useState(() => {
-    return (selectedGroup.items || []).map(item => ({
-      id: item.id,
-      subcategory_id: item.subcategory_id,
-      subcategory_name: item.subCategory?.name || item.subCategory?.sub_category_name || item.subcategory_name || 'Waste Item',
-      category_name: item.category?.name || item.category?.category_name || item.category_name || 'Waste',
-      variation_id: item.selected_variation_id || item.variation?.id || '',
-      variation_name: item.variation?.variation_name || 'Daily 365(Days)',
-      number_of_sr: item.variation?.number_of_sr || 365,
-      schedule_after_days: item.variation?.schedule_after_days || 1,
-      expected_waste: item.expected_waste || 10,
-      agreed_price: item.agreed_price || item.variation?.per_kg_price || 10,
-      suggested_price: item.variation?.per_kg_price || 10,
-      pricing_mode: item.pricing_mode || 'KG',
-      bulk_monthly_price: item.bulk_monthly_price || item.variation?.bulk_price || 15000
-    }));
+    return (selectedGroup.items || []).map(item => {
+      const isBulk = item.pricing_mode === 'Bulk' || item.pricing_mode === 'bulk' ||
+        ((parseFloat(item.expected_waste || 0) === 0 || parseFloat(item.agreed_price || 0) === 0) &&
+         (parseFloat(item.monthly_price || 0) > 0 || parseFloat(item.yearly_price || 0) > 0 || parseFloat(item.bulk_monthly_price || 0) > 0));
+
+      return {
+        id: item.id,
+        subcategory_id: item.subcategory_id,
+        subcategory_name: item.subCategory?.name || item.subCategory?.sub_category_name || item.subcategory_name || 'Waste Item',
+        category_name: item.category?.name || item.category?.category_name || item.category_name || 'Waste',
+        variation_id: item.selected_variation_id || item.variation?.id || '',
+        variation_name: item.variation?.variation_name || 'Daily 365(Days)',
+        number_of_sr: item.variation?.number_of_sr || 365,
+        schedule_after_days: item.variation?.schedule_after_days || 1,
+        expected_waste: isBulk ? 0 : (parseFloat(item.expected_waste) || 0),
+        agreed_price: isBulk ? 0 : (parseFloat(item.agreed_price) || parseFloat(item.variation?.per_kg_price) || 0),
+        suggested_price: parseFloat(item.variation?.per_kg_price) || 0,
+        pricing_mode: isBulk ? 'Bulk' : 'KG',
+        bulk_monthly_price: isBulk ? (parseFloat(item.monthly_price) || parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0) : (parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0)
+      };
+    });
   });
 
   // Fetch initial registries on mount

@@ -569,7 +569,7 @@ export default function WasteCollectionRequestsList() {
                 <p className="text-sm font-semibold">No waste collection requests found.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pb-28 min-h-[340px]">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
@@ -578,11 +578,9 @@ export default function WasteCollectionRequestsList() {
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Generator / Contact</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Created By</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Created Date</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Categories Selected</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Items</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">Total Waste/Day</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">Monthly Rev.</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pickup Date</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
                       <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Actions</th>
                     </tr>
@@ -639,28 +637,6 @@ export default function WasteCollectionRequestsList() {
                           ) : '—'}
                         </td>
 
-                        <td className="px-5 py-4 max-w-[200px] align-top">
-                          {group.items.filter(item => item.category_id || item.subcategory_id).length === 0 ? (
-                            <span className="text-xs font-medium text-slate-400 italic">No waste details provided</span>
-                          ) : (
-                            group.items.map((item, i) => (
-                              <div key={i} className="flex items-center gap-1.5 mb-1 last:mb-0">
-                                {item.category?.name && (
-                                  <>
-                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
-                                      {item.category.name}
-                                    </span>
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                                  </>
-                                )}
-                                <span className="text-xs font-medium text-slate-700 truncate">
-                                  {item.subCategory?.name || '—'}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </td>
-
                         <td className="px-5 py-4 text-center align-top">
                           <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold flex items-center justify-center mx-auto">
                             {group.itemCount}
@@ -683,25 +659,6 @@ export default function WasteCollectionRequestsList() {
                           </span>
                         </td>
 
-                        <td className="px-5 py-4 align-top whitespace-nowrap">
-                          {group.first.pickup_date ? (
-                            <>
-                              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                                <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                                {group.first.pickup_date}
-                              </div>
-                              {group.first.pickup_time && (
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mt-0.5">
-                                  <Clock className="w-3 h-3 text-slate-300 flex-shrink-0" />
-                                  {group.first.pickup_time}
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-xs font-medium text-slate-400 italic">—</span>
-                          )}
-                        </td>
-
                         <td className="px-5 py-4 align-top">
                           <StatusBadge status={group.first.status} />
                         </td>
@@ -719,34 +676,43 @@ export default function WasteCollectionRequestsList() {
                               <MoreVertical className="w-3.5 h-3.5" />
                             </button>
                             {activeDropdownLeadId === group.lead_id && (
-                              <div className="absolute right-0 mt-1 w-28 bg-white rounded-xl border border-slate-200 shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-left">
-                                <button
-                                  type="button"
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveDropdownLeadId(null);
-                                    openPanel(group);
-                                    setIsEditing(false);
                                   }}
-                                  className="w-full px-3 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-violet-600 transition-colors flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
-                                  View
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveDropdownLeadId(null);
-                                    openPanel(group);
-                                    setIsEditing(true);
-                                  }}
-                                  className="w-full px-3 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-violet-600 transition-colors flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                                  Edit
-                                </button>
-                              </div>
+                                />
+                                <div className={`absolute right-0 ${idx >= filteredList.length - 2 && filteredList.length > 2 ? 'bottom-full mb-1' : 'top-full mt-1'} w-32 bg-white rounded-xl border border-slate-200 shadow-2xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-left`}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdownLeadId(null);
+                                      openPanel(group);
+                                      setIsEditing(false);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-violet-600 transition-colors flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                    View Details
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdownLeadId(null);
+                                      openPanel(group);
+                                      setIsEditing(true);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-violet-600 transition-colors flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                                    Edit Record
+                                  </button>
+                                </div>
+                              </>
                             )}
                           </div>
                         </td>

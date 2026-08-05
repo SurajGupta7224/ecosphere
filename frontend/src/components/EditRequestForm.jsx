@@ -260,7 +260,12 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
         const subCategories = subcatRes.data.subCategories || subcatRes.data || [];
         const subcatData = subCategories.map(sub => {
           const existingItem = selectedGroup.items.find(item => item.subcategory_id === sub.id);
-          const isBulk = existingItem && (parseFloat(existingItem.expected_waste) === 0 || !existingItem.expected_waste) && parseFloat(existingItem.monthly_price) > 0;
+          const isBulk = existingItem && (
+            existingItem.pricing_mode === 'Bulk' ||
+            existingItem.pricing_mode === 'bulk' ||
+            ((parseFloat(existingItem.expected_waste || 0) === 0 || parseFloat(existingItem.agreed_price || 0) === 0) &&
+             (parseFloat(existingItem.monthly_price || 0) > 0 || parseFloat(existingItem.yearly_price || 0) > 0 || parseFloat(existingItem.bulk_monthly_price || 0) > 0))
+          );
           return {
             category_id: sub.category_id,
             category_name: sub.category?.name || '',
@@ -269,11 +274,11 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             variations: sub.variations || [],
             included: !!existingItem,
             selected_variation_id: existingItem ? existingItem.variation_id : '',
-            custom_price: existingItem ? existingItem.agreed_price : '',
-            expected_waste: existingItem ? existingItem.expected_waste : '',
+            custom_price: existingItem ? (isBulk ? 0 : (existingItem.agreed_price ?? '')) : '',
+            expected_waste: existingItem ? (isBulk ? 0 : (existingItem.expected_waste ?? '')) : '',
             pricing_mode: isBulk ? 'Bulk' : 'KG',
-            bulk_monthly_price: existingItem ? existingItem.monthly_price : '',
-            bulk_yearly_price: existingItem ? existingItem.yearly_price : '',
+            bulk_monthly_price: existingItem ? (parseFloat(existingItem.monthly_price || existingItem.bulk_monthly_price || 0) || '') : '',
+            bulk_yearly_price: existingItem ? (parseFloat(existingItem.yearly_price || existingItem.bulk_yearly_price || (parseFloat(existingItem.monthly_price || 0) * 12)) || '') : '',
           };
         });
 
@@ -824,11 +829,13 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     setEditSubcategoryCards(prev => prev.map(card => {
       if (card.subcategory_id === subcatId) {
         const selectedVar = (card.variations || []).find(v => v.id == card.selected_variation_id) || null;
+        const initialBulkMonthly = card.bulk_monthly_price || selectedVar?.bulk_price?.toString() || '';
+        const initialBulkYearly = card.bulk_yearly_price || (initialBulkMonthly ? (parseFloat(initialBulkMonthly) * 12).toString() : '');
         return {
           ...card,
           pricing_mode: mode,
-          bulk_monthly_price: mode === 'Bulk' && selectedVar ? (selectedVar.bulk_price?.toString() || '') : card.bulk_monthly_price,
-          bulk_yearly_price: mode === 'Bulk' && selectedVar ? ((parseFloat(selectedVar.bulk_price || 0) * 12).toString() || '') : card.bulk_yearly_price
+          bulk_monthly_price: mode === 'Bulk' ? initialBulkMonthly : card.bulk_monthly_price,
+          bulk_yearly_price: mode === 'Bulk' ? initialBulkYearly : card.bulk_yearly_price
         };
       }
       return card;

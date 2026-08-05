@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Image as ImageIcon, CheckCircle, Trash2, Calendar, Clock,
   User, Phone, Mail, MapPin, Building, ShieldCheck, ClipboardCheck, FileText, ArrowLeft,
-  Info
+  Info, ExternalLink, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';

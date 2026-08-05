@@ -329,20 +329,27 @@ const createWasteCollectionRequest = async (req, res) => {
     let parsedSubcategories = [];
     const sourceData = subcategories || req.body.variations_data;
     if (sourceData) {
-      parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
+      try {
+        parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
+      } catch (parseErr) {
+        console.error("Failed to parse subcategories JSON:", parseErr);
+        parsedSubcategories = [];
+      }
     }
 
     // Create unique Customer record for this lead submission
     let customerId = null;
     let targetUserId = loggedInId;
 
-    const validCustomerType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : 'B2B';
+    const customerModelType = (isAdmin || (customer_type && customer_type.toLowerCase() === 'admin')) ? 'admin' : 'website';
+    const customerCreatedBy = isAdmin ? 'admin' : 'customer';
+
     const newCust = await Customer.create({
       customer_name: contact_person || waste_generator_name || customer_legal_name || 'B2B Customer',
       mobile: mobile_number || null,
       email: email || null,
-      customer_type: validCustomerType,
-      created_by: isAdmin ? 'admin' : (req.user ? req.user.name : 'user'),
+      customer_type: customerModelType,
+      created_by: customerCreatedBy,
       status: 'active'
     });
     customerId = newCust.id;
@@ -579,7 +586,11 @@ const createWasteCollectionRequest = async (req, res) => {
     });
   } catch (err) {
     console.error("createWasteCollectionRequest error:", err);
-    return res.status(500).json({ message: "Failed to generate waste collection request." });
+    return res.status(500).json({
+      message: err.message || "Failed to generate waste collection request.",
+      error: err.toString(),
+      details: err.errors ? err.errors.map(e => e.message) : undefined
+    });
   }
 };
 

@@ -376,6 +376,7 @@ const sendCustomerInvitationEmail = async ({
 
 const sendComplaintConfirmationEmail = async ({
   toEmail,
+  pickupDate,
   customerName,
   complaintId,
   subject,
@@ -383,8 +384,20 @@ const sendComplaintConfirmationEmail = async ({
   status,
 }) => {
   try {
-     const transporter = createTransporter();
-const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    console.log("===== Complaint Confirmation Email Function Called =====");
+
+    console.log({
+      toEmail,
+      pickupDate,
+      customerName,
+      complaintId,
+      subject,
+      status,
+    });
+
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
 
     const mailOptions = {
       from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
@@ -405,6 +418,11 @@ const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
               <td><strong>Complaint ID</strong></td>
               <td>${complaintId}</td>
             </tr>
+         <tr>
+           <td><strong>Pickup Date</strong></td>
+          <td>${pickupDate}</td>
+         </tr>
+
             <tr>
               <td><strong>Subject</strong></td>
               <td>${subject}</td>
@@ -437,7 +455,10 @@ const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+
+console.log("Email sent successfully:");
+console.log(info.response);
 
     return true;
   } catch (error) {
@@ -459,6 +480,15 @@ const sendComplaintResolutionEmail = async ({
   try {
     const transporter = createTransporter();
     const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+       
+      const formattedPickupDate = pickupDate
+  ? new Date(pickupDate).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  : "-";
+
 
     const mailOptions = {
       from: `"Ecosphere Waste Solutions" <${fromEmail}>`,
@@ -514,6 +544,110 @@ const sendComplaintResolutionEmail = async ({
   }
 };
 
+/**
+ * Send driver login credentials via email upon vehicle approval
+ */
+const sendDriverCredentialsEmail = async ({ toEmail, driverName, vehicleNumber, plainPassword }) => {
+  if (!toEmail) {
+    console.warn("sendDriverCredentialsEmail skipped: No recipient email provided.");
+    return false;
+  }
+
+  try {
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    const mailOptions = {
+      from: `"Ecosphere Operations" <${fromEmail}>`,
+      to: toEmail,
+      subject: `Ecosphere Driver Account Created - Vehicle ${vehicleNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #064e3b; margin-top: 0;">Ecosphere Driver Account Approved</h2>
+          <p>Hello <strong>${driverName || "Driver"}</strong>,</p>
+          <p>Your vehicle <strong>${vehicleNumber}</strong> has been approved by the Admin team. Your driver account is now active.</p>
+          
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0; font-weight: bold; color: #166534;">Your Driver Login Credentials:</p>
+            <p style="margin: 4px 0;"><strong>Vehicle Number:</strong> ${vehicleNumber}</p>
+            <p style="margin: 4px 0;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 16px;">${plainPassword}</code></p>
+          </div>
+
+          <p style="color: #475569; font-size: 14px;">Please use your Vehicle Number and Password to log in to the Driver app. You can reset your password anytime in the driver portal.</p>
+          <br>
+          <p style="margin-bottom: 0;">Regards,<br><strong>Ecosphere Operations Team</strong></p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Driver credentials email sent successfully to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error("sendDriverCredentialsEmail error:", error);
+    return false;
+  }
+};
+
+/**
+ * Send OTP to driver for password reset via email
+ */
+const sendDriverOTPEmail = async ({ toEmail, driverName, vehicleNumber, otp }) => {
+  if (!toEmail) {
+    console.warn("sendDriverOTPEmail skipped: No recipient email provided.");
+    return false;
+  }
+
+  try {
+    const transporter = createTransporter();
+    const fromEmail = process.env.EMAIL || "solutions@hommlie.com";
+
+    const mailOptions = {
+      from: `"Ecosphere Operations" <${fromEmail}>`,
+      to: toEmail,
+      subject: `Ecosphere Password Reset OTP - Vehicle ${vehicleNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #064e3b; margin-top: 0;">Password Reset OTP</h2>
+          <p>Hello <strong>${driverName || "Driver"}</strong>,</p>
+          <p>You requested a password reset for your driver account linked to vehicle <strong>${vehicleNumber}</strong>.</p>
+          
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 15px; text-align: center; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #1e40af;">Your 6-Digit OTP Code:</p>
+            <h1 style="margin: 10px 0 0 0; color: #1d4ed8; letter-spacing: 4px; font-size: 32px;">${otp}</h1>
+            <p style="margin: 6px 0 0 0; font-size: 12px; color: #64748b;">This OTP will expire in 10 minutes.</p>
+          </div>
+
+          <p style="color: #475569; font-size: 14px;">If you did not request this, please ignore this email.</p>
+          <br>
+          <p style="margin-bottom: 0;">Regards,<br><strong>Ecosphere Team</strong></p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Driver OTP email sent successfully to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error("sendDriverOTPEmail error:", error);
+    return false;
+  }
+};
+
+/**
+ * Send SMS to driver (Console simulation & SMS log)
+ */
+const sendDriverSMS = async ({ mobileNumber, message }) => {
+  if (!mobileNumber) {
+    console.warn("sendDriverSMS skipped: No mobile number provided.");
+    return false;
+  }
+
+  // Simulate SMS API dispatch & log
+  console.log(`[SMS DISPATCH] To: ${mobileNumber} | Message: "${message}"`);
+  return true;
+};
+
 module.exports = {
   generateProductionPassword,
   sendCustomerInvitationEmail,
@@ -521,4 +655,7 @@ module.exports = {
   sendResetOTPEmail,
   sendComplaintConfirmationEmail,
   sendComplaintResolutionEmail,
+  sendDriverCredentialsEmail,
+  sendDriverOTPEmail,
+  sendDriverSMS
 };

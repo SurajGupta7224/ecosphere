@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User, Role, Permission, Customer, SystemSettings, SecuritySettings } = require("../models/index");
+const { User, Role, Permission, Customer, SystemSettings, SecuritySettings, Driver, Vehicle } = require("../models/index");
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -13,7 +13,7 @@ const verifyToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_jwt_secret");
     let user;
     let userType = decoded.type;
     
@@ -118,6 +118,77 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+// Driver authentication middleware
+const verifyDriverToken = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({
+      status: 0,
+      message: "No token provided. Authorization denied.",
+      body: null
+    });
+  }
+
+  try {
+    const jwtSecret = process.env.JWT_SECRET || "default_jwt_secret";
+    const decoded = jwt.verify(token, jwtSecret);
+
+    if (decoded.type !== "driver") {
+      return res.status(403).json({
+        status: 0,
+        message: "Invalid token type for driver authorization.",
+        body: null
+      });
+    }
+
+    const driver = await Driver.findByPk(decoded.id, {
+      include: [{ model: Vehicle, as: "vehicle" }]
+    });
+
+    if (!driver) {
+      return res.status(401).json({
+        status: 0,
+        message: "Driver account missing or session expired.",
+        body: null
+      });
+    }
+
+    if (driver.status !== "active") {
+      return res.status(403).json({
+        status: 0,
+        message: "Driver account is inactive.",
+        body: null
+      });
+    }
+
+    if (!driver.vehicle || driver.vehicle.approval_status !== "approved") {
+      return res.status(403).json({
+        status: 0,
+        message: "Vehicle is not approved.",
+        body: null
+      });
+    }
+
+    req.driver = driver;
+    next();
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        status: 0,
+        message: "Your session has expired. Please login again.",
+        body: null
+      });
+    }
+    return res.status(401).json({
+      status: 0,
+      message: "Invalid or expired token.",
+      body: null
+    });
+  }
+};
+
 // Returns a middleware configured for a specific permission block
 const requirePermission = (requiredPermissions) => {
   return (req, res, next) => {
@@ -140,4 +211,4 @@ const requirePermission = (requiredPermissions) => {
   };
 };
 
-module.exports = { verifyToken, requirePermission };
+module.exports = { verifyToken, verifyDriverToken, requirePermission };
