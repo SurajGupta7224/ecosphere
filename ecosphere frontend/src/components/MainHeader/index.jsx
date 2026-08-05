@@ -199,7 +199,8 @@ const MainHeader = () => {
                     (isScrolled ? "text-[#1f2937]" : "text-white")
                   }
                 >
-                  <FiUser size={15} /> Log In ▾
+                  <FiUser size={15} />
+                  <span>Log In</span>
                 </button>
               )}
             </div>

@@ -240,6 +240,16 @@ export default function LoginPage() {
             </button>
           )}
 
+          {mode === "login" && (
+            <button
+              type="button"
+              onClick={() => window.location.href = "/waste-collection-requests"}
+              className="text-white/90 hover:text-white hover:underline font-semibold transition cursor-pointer text-sm"
+            >
+              New User? Register
+            </button>
+          )}
+
           {(mode === "forgot" || mode === "reset") && (
             <button
               onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
