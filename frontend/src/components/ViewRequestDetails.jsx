@@ -297,7 +297,9 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
                   const yearly_waste = parseFloat(item.yearly_waste || 0);
                   const monthly_price = parseFloat(item.monthly_price || 0);
                   const yearly_price = parseFloat(item.yearly_price || 0);
-                  const isBulk = item.pricing_mode === 'Bulk' || (parseFloat(item.expected_waste || 0) === 0 && monthly_price > 0);
+                  const isBulk = item.pricing_mode === 'Bulk' || item.pricing_mode === 'bulk' ||
+                    ((parseFloat(item.expected_waste || 0) === 0 || parseFloat(item.agreed_price || 0) === 0) &&
+                     (monthly_price > 0 || yearly_price > 0 || parseFloat(item.bulk_monthly_price || 0) > 0));
 
                   return (
                     <div key={idx} className="bg-slate-50/70 rounded-xl border border-slate-200 p-3.5 space-y-3">
