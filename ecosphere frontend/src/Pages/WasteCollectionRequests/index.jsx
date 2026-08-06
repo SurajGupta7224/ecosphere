@@ -1073,7 +1073,7 @@ export default function WasteCollectionRequests() {
               {/* SECTION 2: License Details */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details
+                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details (Optional)
                 </h2>
 
                 <div className="space-y-6">
@@ -1432,7 +1432,7 @@ export default function WasteCollectionRequests() {
                       Loading waste categories...
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {/* Category Selection Groups */}
                       <div className="space-y-6 pb-6 border-b border-slate-100">
                         {groupedCategories.map((cat) => {
@@ -1500,65 +1500,113 @@ export default function WasteCollectionRequests() {
 
                       {/* Subcategory Detail Cards for Included Items */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {subcategoryCards.filter(c => c.included).map((card) => (
-                          <div key={card.subcategory_id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm relative">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.category_name}</span>
-                                <h4 className="text-base font-bold text-slate-800">{card.subcategory_name}</h4>
+                        {subcategoryCards.filter(c => c.included).map((card) => {
+                          const selectedVar = (card.variations || []).find(v => v.id == card.selected_variation_id) || null;
+                          const expectedDaily = parseFloat(card.expected_waste) || 0;
+
+                          const defaultVarPrice = selectedVar ? parseFloat(selectedVar.per_kg_price || 0) : 0;
+                          const customPriceVal = parseFloat(card.custom_price);
+                          const finalPrice = (!isNaN(customPriceVal) && customPriceVal >= 0 && card.custom_price !== '')
+                            ? customPriceVal
+                            : defaultVarPrice;
+
+                          const estMonthlyWaste = expectedDaily * 30;
+                          const estYearlyWaste = expectedDaily * 365;
+
+                          const estMonthlyPrice = estMonthlyWaste * finalPrice;
+                          const estYearlyPrice = estYearlyWaste * finalPrice;
+
+                          return (
+                            <div
+                              key={card.subcategory_id}
+                              className="bg-white border border-slate-200 hover:border-slate-300 rounded-[16px] p-6 space-y-6 transition-all duration-300 hover:shadow-md "
+                            >
+                              {/* Card Header */}
+                              <div className="border-b border-slate-100 pb-3">
+                                <h3 className="text-lg font-extrabold text-emerald-800 tracking-tight">
+                                  {card.subcategory_name}
+                                </h3>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleInclude(card.subcategory_id)}
-                                className="text-slate-400 hover:text-rose-600 p-1"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                {/* 1. Billing Type Dropdown */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Billing Type</label>
+                                  <select
+                                    value={card.pricing_mode || 'KG'}
+                                    onChange={(e) => handleCardPricingModeChange(card.subcategory_id, e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                  >
+                                    <option value="KG">KG</option>
+                                    <option value="Bulk">Bulk</option>
+                                  </select>
+                                </div>
+
+                                {/* 2. Variation Dropdown */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Variation</label>
+                                  <select
+                                    name={`variation_${card.subcategory_id}`}
+                                    id={`variation_${card.subcategory_id}`}
+                                    value={card.selected_variation_id}
+                                    onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                  >
+                                    <option value="">-Select Type-</option>
+                                    {(card.variations || []).map((v) => (
+                                      <option key={v.id} value={v.id}>{v.variation_name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* 3. No. of Services */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">No. of Services</label>
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={selectedVar ? selectedVar.number_of_sr || '0' : ''}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                                  />
+                                </div>
+
+                                {/* 4. Scheduled Every */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Scheduled Every</label>
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={selectedVar ? `Every ${selectedVar.schedule_after_days || '1'} Days` : ''}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                                  />
+                                </div>
+
+                                {/* 5. Expected Waste Per Day (Only shown for Per KG pricing, hidden for Bulk) */}
+                                {card.pricing_mode !== 'Bulk' && (
+                                  <div className="space-y-1.5 sm:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-700">Expected Waste (KG Per Day) *</label>
+                                    <input
+                                      name={`expected_waste_${card.subcategory_id}`}
+                                      id={`expected_waste_${card.subcategory_id}`}
+                                      type="number"
+                                      min="1"
+                                      step="any"
+                                      required
+                                      disabled={!selectedVar}
+                                      value={card.expected_waste}
+                                      onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
+                                      placeholder="Enter waste in KG per day"
+                                      className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
+                                          ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
+                                          : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </div>
-
-                            {/* Variation Selection */}
-                            {card.variations && card.variations.length > 0 && (
-                              <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Subcategory Variation</label>
-                                <select
-                                  value={card.selected_variation_id}
-                                  onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                                >
-                                  <option value="">Select Variation</option>
-                                  {card.variations.map(v => (
-                                    <option key={v.id} value={v.id}>{v.name} (Suggested: ₹{v.per_kg_price}/kg)</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-
-                            {/* Mode & Inputs */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expected Waste (KG)</label>
-                                <input
-                                  type="number"
-                                  value={card.expected_waste}
-                                  onChange={(e) => handleCardWasteChange(card.subcategory_id, e.target.value)}
-                                  placeholder="e.g. 50"
-                                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Agreed Price (₹/KG)</label>
-                                <input
-                                  type="number"
-                                  value={card.custom_price}
-                                  onChange={(e) => handleCardPriceChange(card.subcategory_id, e.target.value)}
-                                  placeholder="₹ / KG"
-                                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
