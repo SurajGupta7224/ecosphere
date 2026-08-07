@@ -45,15 +45,15 @@ export default function TripPlanner() {
       const vehList = vehRes.data?.vehicles || vehRes.data?.data || [];
       const eList = empRes.data?.employees || empRes.data?.data || [];
 
-      // Filter vendors to ONLY include actual Vendor/Aggregator users (exclude Admins/Regular users)
-      const filteredVendors = allUsers.filter(u => {
-        const roleName = u.role?.role_name?.toLowerCase() || '';
-        return roleName.includes('vendor') || roleName.includes('aggregator') || roleName.includes('seller') || u.company_type;
+      // Filter vendors to ONLY include actual Vendor/Aggregator users (EXCLUDE Sales users, Admins, etc.)
+      const filteredVendors = allUsers.filter((u) => {
+        const roleName = (u.role?.role_name || u.role_name || '').toLowerCase();
+        return roleName === 'vendor' || roleName === 'aggregator';
       });
 
       // Also ensure any vendor currently assigned in waste-orders is included
-      orderData.forEach(o => {
-        if (o.vendor && !filteredVendors.some(v => String(v.id) === String(o.vendor.id))) {
+      orderData.forEach((o) => {
+        if (o.vendor && !filteredVendors.some((v) => String(v.id) === String(o.vendor.id))) {
           filteredVendors.push(o.vendor);
         }
       });
@@ -134,13 +134,38 @@ export default function TripPlanner() {
     });
   }, [orders, selectedDate, selectedCorp, selectedWard, selectedAggregator, searchTerm]);
 
+  const [expandedLeads, setExpandedLeads] = useState({});
+  const toggleExpand = (leadId) => {
+    setExpandedLeads((prev) => ({ ...prev, [leadId]: !prev[leadId] }));
+  };
+
+  // Group orders by lead_id (similar to Order Management UI)
+  const groupedOrders = useMemo(() => {
+    const map = {};
+    filteredOrders.forEach(o => {
+      const key = o.lead_id || o.order_id || o.id;
+      if (!map[key]) map[key] = [];
+      map[key].push(o);
+    });
+
+    return Object.entries(map).map(([lead_id, items]) => {
+      const first = items[0];
+      return {
+        lead_id,
+        items,
+        first
+      };
+    });
+  }, [filteredOrders]);
+
   // Stats
   const stats = useMemo(() => ({
-    total: filteredOrders.length,
+    total: groupedOrders.length,
     withVendor: filteredOrders.filter(o => o.vendor_id || o.vendor?.id).length,
-    withDriver: filteredOrders.filter(o => o.driver_id || o.driverEmployee?.id).length,
+    withVehicle: filteredOrders.filter(o => o.vehicle_id || o.vehicle?.id).length,
+    withDriver: filteredOrders.filter(o => o.vehicle?.driver_id || o.vehicle?.driver?.id || o.driver_id || o.driverEmployee?.id).length,
     pending: filteredOrders.filter(o => o.status === 'Booked').length,
-  }), [filteredOrders]);
+  }), [filteredOrders, groupedOrders]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen space-y-6">
@@ -171,10 +196,10 @@ export default function TripPlanner() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Orders', value: stats.total, color: 'text-slate-800' },
+          { label: 'Total Orders / Leads', value: stats.total, color: 'text-slate-800' },
           { label: 'Booked / Active', value: stats.pending, color: 'text-emerald-700' },
           { label: 'Aggregators Assigned', value: stats.withVendor, color: 'text-blue-700' },
-          { label: 'Drivers Assigned', value: stats.withDriver, color: 'text-amber-700' },
+          { label: 'Vehicles Assigned', value: stats.withVehicle, color: 'text-amber-700' },
         ].map(s => (
           <div key={s.label} className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-1">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">{s.label}</span>
@@ -263,7 +288,7 @@ export default function TripPlanner() {
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
             <p>Loading scheduled pickup routes...</p>
           </div>
-        ) : filteredOrders.length === 0 ? (
+        ) : groupedOrders.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-2">
             <Truck className="w-12 h-12 mx-auto text-slate-300" />
             <p className="text-base font-bold text-slate-700">No scheduled pickups found</p>
@@ -274,197 +299,183 @@ export default function TripPlanner() {
             <table className="w-full border-collapse text-left text-xs sm:text-sm">
               <thead>
                 <tr className="bg-slate-100/90 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3.5 px-4 min-w-[160px]">Waste Generator</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Schedule</th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Corporation</th>
-                  <th className="py-3.5 px-4 min-w-[120px]">Zone</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">Ward</th>
-                  <th className="py-3.5 px-4 min-w-[190px]">Aggregator / Agency</th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Agency Contact</th>
-                  <th className="py-3.5 px-4 min-w-[240px]">Driver & Vehicle</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 min-w-[150px]">Waste Generator</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Schedule</th>
+                  <th className="py-3 px-3 min-w-[110px]">Corporation</th>
+                  <th className="py-3 px-3 min-w-[100px]">Zone</th>
+                  <th className="py-3 px-3 min-w-[120px]">Ward</th>
+                  <th className="py-3 px-4 min-w-[420px]">Waste Logistics & Vehicle Assignments</th>
+                  <th className="py-3 px-4 whitespace-nowrap text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
-                {filteredOrders.map(o => {
-                  const bwgName = o.waste_generator_name || o.customer_legal_name || o.contact_person || o.customer?.name || '—';
-                  const corpName = o.corporation?.corporation_name || '—';
-                  const zoneName = o.zone?.zone_name || '—';
-                  const wardName = o.ward?.ward_number
-                    ? `${o.ward.ward_number} - ${o.ward.ward_name}`
-                    : (o.ward?.ward_name || '—');
+                {groupedOrders.map(({ lead_id, items, first }) => {
+                  const bwgName = first.waste_generator_name || first.customer_legal_name || first.contact_person || first.customer?.name || '—';
+                  const corpName = first.corporation?.corporation_name || '—';
+                  const zoneName = first.zone?.zone_name || '—';
+                  const wardName = first.ward?.ward_number
+                    ? `${first.ward.ward_number} - ${first.ward.ward_name}`
+                    : (first.ward?.ward_name || '—');
 
-                  const currentVendorId = String(o.vendor_id || o.vendor?.id || '');
-                  const currentDriverId = String(o.driver_id || o.driverEmployee?.id || '');
-
-                  // Find vehicle for this order (from driverVehicles or matching driver_id)
-                  const driverVehicle = o.driverEmployee?.driverVehicles?.[0];
-                  const matchedVeh = vehicles.find(v => 
-                    (currentDriverId && String(v.driver_id) === currentDriverId) ||
-                    (driverVehicle && String(v.id) === String(driverVehicle.id))
-                  );
-                  const currentVehicleId = matchedVeh ? String(matchedVeh.id) : (driverVehicle ? String(driverVehicle.id) : '');
-
-                  // Vehicles strictly filtered by selected Aggregator
-                  const rowVehicles = vehicles.filter(v => {
-                    if (!currentVendorId) return true;
-                    return String(v.user_id) === currentVendorId;
-                  });
-
-                  // Employees strictly filtered by selected Aggregator AND staff_type === 'driver' (EXCLUDE HELPERS)
-                  const rowDrivers = employees.filter(e => {
-                    const isDriver = (e.staff_type?.toLowerCase() === 'driver') || (e.staff_role?.toLowerCase() === 'driver');
-                    if (!isDriver) return false;
-                    if (!currentVendorId) return true;
-                    return String(e.user_id) === currentVendorId;
-                  });
-
-                  const vendorObj = vendors.find(v => String(v.id) === currentVendorId) || o.vendor;
-                  const vendorPhone = vendorObj?.phone || o.mobile_number || '—';
+                  const isExpanded = Boolean(expandedLeads[lead_id]);
 
                   return (
-                    <tr key={o.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={lead_id} className="hover:bg-slate-50/80 transition-colors">
 
-                      {/* Waste Generator */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900 text-xs">{bwgName}</div>
-                        {o.lead_id && (
-                          <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-0.5">
-                            {o.lead_id}
+                      {/* Waste Generator & Lead ID */}
+                      <td className="py-3 px-4 align-top">
+                        <div className="font-extrabold text-slate-900 text-xs sm:text-sm">{bwgName}</div>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {lead_id && (
+                            <span className="inline-block text-[10px] font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
+                              {lead_id}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {items.length} Category Items
                           </span>
-                        )}
-                        {o.order_id && (
-                          <div className="text-[10px] text-slate-400 font-semibold mt-0.5">{o.order_id}</div>
+                        </div>
+                        {first.order_id && (
+                          <div className="text-[10px] text-slate-400 font-semibold mt-0.5">Ref: {first.order_id}</div>
                         )}
                       </td>
 
                       {/* Schedule */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-bold border border-slate-200">
-                          {o.collectionEvent?.event_name || o.variation?.variation_name || 'Daily'}
+                      <td className="py-3 px-3 whitespace-nowrap align-top">
+                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-[11px] font-bold border border-slate-200">
+                          {first.collectionEvent?.event_name || first.variation?.variation_name || 'Daily'}
                         </span>
                       </td>
 
                       {/* Corporation */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-700 text-xs">{corpName}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-700 text-xs align-top">{corpName}</td>
 
                       {/* Zone */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-700 text-xs">{zoneName}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-700 text-xs align-top">{zoneName}</td>
 
                       {/* Ward */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-700 text-xs">{wardName}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-700 text-xs align-top">{wardName}</td>
 
-                      {/* Aggregator / Agency Dropdown (Vendors Only) */}
-                      <td className="py-3.5 px-4">
-                        <select
-                          value={currentVendorId}
-                          disabled={updatingId === o.id}
-                          onChange={e => {
-                            const newVendorId = e.target.value;
-                            const driverBelongs = rowDrivers.some(emp => String(emp.id) === currentDriverId && String(emp.user_id) === newVendorId);
-                            handleReassign(o.id, {
-                              vendor_id: newVendorId,
-                              driver_id: driverBelongs ? currentDriverId : ''
-                            });
-                          }}
-                          className="w-full bg-white border border-slate-300 hover:border-emerald-500 rounded-xl py-2 px-3 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
-                        >
-                          <option value="">Select Aggregator...</option>
-                          {vendors.map(v => (
-                            <option key={v.id} value={v.id}>
-                              {v.name || v.email}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      {/* Direct Compact Waste Logistics & Vehicle Assignments Cell */}
+                      <td className="py-2.5 px-3 min-w-[440px] space-y-1.5 align-top">
+                        {items.map((item) => {
+                          const currentVendorId = String(item.vendor_id || item.vendor?.id || '');
+                          const currentVehicleId = String(item.vehicle_id || item.vehicle?.id || '');
 
-                      {/* Agency Contact */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-800 text-xs">{vendorPhone}</div>
-                      </td>
+                          const availableVehicles = vehicles.filter((v) => {
+                            if (!currentVendorId) return true;
+                            return String(v.user_id) === currentVendorId;
+                          });
 
-                      {/* Combined Driver & Vehicle Column */}
-                      <td className="py-3.5 px-4 min-w-[240px]">
-                        <div className="space-y-1.5">
-                          {/* Vehicle Select */}
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                              <Car className="w-3 h-3 text-emerald-600" /> Vehicle
-                            </div>
-                            <select
-                              value={currentVehicleId}
-                              disabled={updatingId === o.id}
-                              onChange={e => {
-                                const selectedVehId = e.target.value;
-                                const veh = vehicles.find(v => String(v.id) === selectedVehId);
-                                const autoDriverId = veh?.driver_id || veh?.driver?.id || currentDriverId;
-                                const autoVendorId = veh?.user_id ? String(veh.user_id) : currentVendorId;
+                          const selectedVehObj = vehicles.find((v) => String(v.id) === currentVehicleId) || item.vehicle;
+                          const assignedDriverName = selectedVehObj?.driver?.name || item.driverEmployee?.name;
+                          const isUpdating = updatingId === item.id;
 
-                                handleReassign(o.id, {
-                                  vendor_id: autoVendorId,
-                                  driver_id: autoDriverId ? String(autoDriverId) : ''
-                                });
-                              }}
-                              className="w-full bg-white border border-slate-300 hover:border-emerald-500 rounded-xl py-1.5 px-2.5 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex flex-wrap items-center gap-2 bg-slate-50/90 border border-slate-200/90 p-1.5 px-2.5 rounded-xl text-xs shadow-2xs hover:bg-white hover:border-emerald-300 transition-all"
                             >
-                              <option value="">Select Vehicle...</option>
-                              {rowVehicles.length === 0 ? (
-                                <option value="" disabled>No vehicles registered for vendor</option>
-                              ) : (
-                                rowVehicles.map(v => (
-                                  <option key={v.id} value={v.id}>
-                                    {v.registration_number} {v.brand || v.vehicle_type ? `(${v.brand || v.vehicle_type})` : ''}
-                                  </option>
-                                ))
-                              )}
-                            </select>
-                          </div>
+                              {/* Category Pill Badge */}
+                              <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black tracking-tight shrink-0 min-w-[90px] text-center shadow-xs">
+                                {item.subCategory?.name || item.sub_category_name || item.category?.name || item.category_name || 'Waste Item'}
+                              </span>
 
-                          {/* Driver Select (DRIVERS ONLY - NO HELPERS) */}
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                              <User className="w-3 h-3 text-emerald-600" /> Driver
+                              {/* Vendor Select */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-400">Vendor:</span>
+                                <div className="relative flex items-center">
+                                  <select
+                                    value={currentVendorId}
+                                    disabled={isUpdating}
+                                    onChange={(e) => {
+                                      const newVendorId = e.target.value;
+                                      handleReassign(item.id, { vendor_id: newVendorId, vehicle_id: '' });
+                                    }}
+                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all ${
+                                      isUpdating ? 'opacity-50 cursor-wait' : ''
+                                    }`}
+                                  >
+                                    <option value="">Select Vendor...</option>
+                                    {vendors.map((v) => (
+                                      <option key={v.id} value={v.id}>
+                                        {v.name || v.email}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {isUpdating && (
+                                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-600 absolute right-1.5 pointer-events-none" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Vehicle Select */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-400">Vehicle:</span>
+                                <div className="relative flex items-center">
+                                  <select
+                                    value={currentVehicleId}
+                                    disabled={isUpdating}
+                                    onChange={(e) => {
+                                      const selectedVehId = e.target.value;
+                                      const vehObj = vehicles.find((v) => String(v.id) === selectedVehId);
+                                      const autoVendorId = vehObj?.user_id ? String(vehObj.user_id) : currentVendorId;
+                                      handleReassign(item.id, {
+                                        vendor_id: autoVendorId,
+                                        vehicle_id: selectedVehId
+                                      });
+                                    }}
+                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all ${
+                                      isUpdating ? 'opacity-50 cursor-wait' : ''
+                                    }`}
+                                  >
+                                    <option value="">Select Vehicle...</option>
+                                    {availableVehicles.length === 0 ? (
+                                      <option value="" disabled>No vehicles for vendor</option>
+                                    ) : (
+                                      availableVehicles.map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                          {v.registration_number} {v.driver?.name ? `(Driver: ${v.driver.name})` : ' (No driver)'}
+                                        </option>
+                                      ))
+                                    )}
+                                  </select>
+                                  {isUpdating && (
+                                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-600 absolute right-1.5 pointer-events-none" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Driver Info Display & Loading Feedback */}
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {isUpdating ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 animate-pulse">
+                                    <RefreshCw className="w-3 h-3 animate-spin text-sky-600" /> Saving...
+                                  </span>
+                                ) : assignedDriverName ? (
+                                  <span className="text-emerald-700 font-extrabold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                                    Driver: {assignedDriverName}
+                                  </span>
+                                ) : selectedVehObj?.registration_number ? (
+                                  <span className="text-amber-700 font-extrabold text-[10px] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                                    No driver assigned
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
-                            <select
-                              value={currentDriverId}
-                              disabled={updatingId === o.id}
-                              onChange={e => {
-                                const selectedDriverId = e.target.value;
-                                const driverObj = employees.find(emp => String(emp.id) === selectedDriverId);
-                                const autoVendorId = driverObj?.user_id ? String(driverObj.user_id) : currentVendorId;
-
-                                handleReassign(o.id, {
-                                  vendor_id: autoVendorId,
-                                  driver_id: selectedDriverId
-                                });
-                              }}
-                              className="w-full bg-white border border-slate-300 hover:border-emerald-500 rounded-xl py-1.5 px-2.5 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
-                            >
-                              <option value="">Select Driver...</option>
-                              {rowDrivers.length === 0 ? (
-                                <option value="" disabled>No drivers registered for vendor</option>
-                              ) : (
-                                rowDrivers.map(e => (
-                                  <option key={e.id} value={e.id}>
-                                    {e.name} {e.mobile_number ? `(${e.mobile_number})` : ''}
-                                  </option>
-                                ))
-                              )}
-                            </select>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                          o.status === 'Booked'
+                      <td className="py-3 px-4 whitespace-nowrap align-top text-right">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${first.status === 'Booked'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : o.status === 'Completed'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-red-50 text-red-700 border-red-200'
-                        }`}>
-                          {o.status}
+                            : first.status === 'Completed'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-red-50 text-red-700 border-red-200'
+                          }`}>
+                          {first.status}
                         </span>
                       </td>
 

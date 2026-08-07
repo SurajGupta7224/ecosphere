@@ -60,8 +60,8 @@ const getCategoryColorTheme = (categoryName = '') => {
   };
 };
 
-export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
-  const firstReq = selectedGroup.first || {};
+export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel }) {
+  const firstReq = selectedGroup?.first || (selectedGroup?.items && selectedGroup.items[0]) || {};
   const [loading, setLoading] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
 
@@ -87,6 +87,7 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
   const [collectionEvents, setCollectionEvents] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [businessRegions, setBusinessRegions] = useState([]);
   const [businessSubRegions, setBusinessSubRegions] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
@@ -113,6 +114,9 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
   const [existingMomFile, setExistingMomFile] = useState(firstReq.mom_agreement_file || null);
   const [existingPoFile, setExistingPoFile] = useState(firstReq.po_copy_file || null);
   const [existingEmailFile, setExistingEmailFile] = useState(firstReq.email_copy_file || null);
+
+  // Document upload error highlights
+  const [docErrors, setDocErrors] = useState({ mom: false, poEmail: false });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -143,17 +147,11 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
     sgst: firstReq.sgst || 0,
     gst_amount: firstReq.gst_amount || 0,
     final_price: firstReq.final_price || 0,
-
-    // Additional Details
-    pickup_date: firstReq.pickup_date ? new Date(firstReq.pickup_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    pickup_time: firstReq.pickup_time || '',
-    time_slot_id: firstReq.time_slot_id || '',
-    pickup_notes: firstReq.pickup_notes || '',
   });
 
-  // Items pricing state (KG or Bulk wise per waste item)
+  // Items pricing state (KG or Bulk wise per waste item) with Category-wise Vendor & Vehicle/Driver
   const [itemsPricing, setItemsPricing] = useState(() => {
-    return (selectedGroup.items || []).map(item => {
+    return ((selectedGroup && selectedGroup.items) || []).map(item => {
       const isBulk = item.pricing_mode === 'Bulk' || item.pricing_mode === 'bulk' ||
         ((parseFloat(item.expected_waste || 0) === 0 || parseFloat(item.agreed_price || 0) === 0) &&
          (parseFloat(item.monthly_price || 0) > 0 || parseFloat(item.yearly_price || 0) > 0 || parseFloat(item.bulk_monthly_price || 0) > 0));
@@ -171,10 +169,53 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
         agreed_price: isBulk ? 0 : (parseFloat(item.agreed_price) || parseFloat(item.variation?.per_kg_price) || 0),
         suggested_price: parseFloat(item.variation?.per_kg_price) || 0,
         pricing_mode: isBulk ? 'Bulk' : 'KG',
-        bulk_monthly_price: isBulk ? (parseFloat(item.monthly_price) || parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0) : (parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0)
+        bulk_monthly_price: isBulk ? (parseFloat(item.monthly_price) || parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0) : (parseFloat(item.bulk_monthly_price) || parseFloat(item.variation?.bulk_price) || 0),
+        vendor_id: item.vendor_id || firstReq.vendor_id || '',
+        vehicle_id: item.vehicle_id || firstReq.vehicle_id || '',
+        driver_id: item.driver_id || firstReq.driver_id || ''
       };
     });
   });
+
+  // Helper to filter active vehicles for a specific vendor
+  const getVehiclesForVendor = (vendorId) => {
+    if (!vendorId) return vehicles;
+    const vendorVehs = vehicles.filter(v => String(v.user_id) === String(vendorId));
+    return vendorVehs.length > 0 ? vendorVehs : vehicles;
+  };
+
+  // Helper to handle vendor change for a specific category item
+  const handleCategoryVendorChange = (itemId, newVendorId) => {
+    setItemsPricing(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const validVehicles = getVehiclesForVendor(newVendorId);
+        const vehStillValid = validVehicles.some(v => String(v.id) === String(item.vehicle_id));
+        const selectedVeh = vehStillValid ? validVehicles.find(v => String(v.id) === String(item.vehicle_id)) : null;
+        return {
+          ...item,
+          vendor_id: newVendorId,
+          vehicle_id: vehStillValid ? item.vehicle_id : '',
+          driver_id: selectedVeh ? selectedVeh.driver_id : ''
+        };
+      }
+      return item;
+    }));
+  };
+
+  // Helper to handle vehicle selection for a specific category item
+  const handleCategoryVehicleChange = (itemId, newVehicleId) => {
+    setItemsPricing(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const selectedVeh = vehicles.find(v => String(v.id) === String(newVehicleId));
+        return {
+          ...item,
+          vehicle_id: newVehicleId,
+          driver_id: selectedVeh ? selectedVeh.driver_id : ''
+        };
+      }
+      return item;
+    }));
+  };
 
   // Fetch initial registries on mount
   useEffect(() => {
@@ -182,20 +223,23 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
       setLoadingLocations(true);
       setLoadingResources(true);
       try {
-        const [corpRes, regionRes, slotRes, usersRes, empRes, subCatRes] = await Promise.all([
-          api.get('/corporations'),
-          api.get('/business-regions', { params: { status: 'Active', limit: 1000 } }),
-          api.get('/time-slots/active').catch(() => api.get('/time-slots')),
-          api.get('/users'),
-          api.get('/aggregator-employees'),
-          api.get('/sub-categories', { params: { limit: 1000 } }).catch(() => null)
+        const [corpRes, regionRes, slotRes, usersRes, empRes, subCatRes, vehRes] = await Promise.all([
+          api.get('/corporations').catch(() => null),
+          api.get('/business-regions', { params: { status: 'Active', limit: 1000 } }).catch(() => null),
+          api.get('/time-slots/active').catch(() => api.get('/time-slots')).catch(() => null),
+          api.get('/users').catch(() => null),
+          api.get('/aggregator-employees').catch(() => null),
+          api.get('/sub-categories', { params: { limit: 1000 } }).catch(() => null),
+          api.get('/aggregator-vehicles').catch(() => null)
         ]);
 
-        setCorporations(corpRes.data.corporations || []);
-        const regList = regionRes.data.businessRegions || [];
+        if (corpRes?.data?.corporations) {
+          setCorporations(corpRes.data.corporations || []);
+        }
+        const regList = regionRes?.data?.businessRegions || [];
         setBusinessRegions(regList);
 
-        let loadedSlots = slotRes.data.timeSlots || slotRes.data.slots || [];
+        let loadedSlots = slotRes?.data?.timeSlots || slotRes?.data?.slots || [];
         if (!loadedSlots.length) {
           loadedSlots = DEFAULT_TIME_SLOTS;
         }
@@ -203,6 +247,10 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
 
         const subCats = subCatRes?.data?.subCategories || subCatRes?.data?.rows || subCatRes?.data?.data || [];
         setAllSubCategories(subCats);
+
+        if (vehRes && vehRes.data && vehRes.data.vehicles) {
+          setVehicles(vehRes.data.vehicles);
+        }
 
         // Pre-select first time slot automatically if not set
         if (loadedSlots.length > 0 && !formData.pickup_time) {
@@ -215,13 +263,24 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
           }));
         }
 
-        const activeVendors = (usersRes.data.users || []).filter(u => {
-          const nameMatch = u.role?.role_name?.toLowerCase() || '';
-          return (nameMatch.includes('vendor') || nameMatch.includes('seller')) && u.status === 'active';
+        const userList = usersRes?.data?.users || usersRes?.data || [];
+        const activeVendors = userList.filter(u => {
+          const roleName = u.role?.role_name?.toLowerCase() || '';
+          const isVendorRole = roleName.includes('vendor') || roleName.includes('seller') || String(u.role_id) === '3';
+          const isActive = u.status === 'active' || u.status === 'Active' || !u.status;
+          return isVendorRole && isActive;
         });
+
+        // Ensure any vendor assigned to requests in this group is included
+        (selectedGroup?.items || []).forEach(item => {
+          if (item.vendor && !activeVendors.some(v => String(v.id) === String(item.vendor.id))) {
+            activeVendors.push(item.vendor);
+          }
+        });
+
         setVendors(activeVendors);
 
-        const activeEmployees = (empRes.data.employees || []).filter(e => e.employee_status === 'active');
+        const activeEmployees = (empRes?.data?.employees || []).filter(e => e.employee_status === 'active' || !e.employee_status);
         setDrivers(activeEmployees.filter(e => e.staff_type === 'driver'));
 
       } catch (err) {
@@ -433,7 +492,9 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
         agreed_price: defaultVar?.per_kg_price || 10,
         suggested_price: defaultVar?.per_kg_price || 10,
         pricing_mode: 'KG',
-        bulk_monthly_price: defaultVar?.bulk_price || 15000
+        bulk_monthly_price: defaultVar?.bulk_price || 15000,
+        vendor_id: itemsPricing[0]?.vendor_id || firstReq.vendor_id || '',
+        driver_id: itemsPricing[0]?.driver_id || firstReq.driver_id || ''
       };
       setItemsPricing(prev => [...prev, newItem]);
       toast.success(`Added ${subName}`);
@@ -450,12 +511,15 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
     if (fileType === 'mom') {
       setMomFile(file);
       setMomPreview(previewUrl);
+      setDocErrors(prev => ({ ...prev, mom: false }));
     } else if (fileType === 'po') {
       setPoFile(file);
       setPoPreview(previewUrl);
+      setDocErrors(prev => ({ ...prev, poEmail: false }));
     } else if (fileType === 'email') {
       setEmailCopyFile(file);
       setEmailCopyPreview(previewUrl);
+      setDocErrors(prev => ({ ...prev, poEmail: false }));
     }
   };
 
@@ -505,14 +569,19 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
       invalidateField('collection_event_id', 'Please select a Collection Event.');
       return false;
     }
-    if (!formData.vendor_id) {
-      invalidateField('vendor_id', 'Please select a Vendor.');
-      return false;
+
+    // Category-wise Vendor & Vehicle Validation
+    for (const item of itemsPricing) {
+      if (!item.vendor_id) {
+        toast.error(`Please select a Vendor for ${item.subcategory_name} (${item.category_name}).`);
+        return false;
+      }
+      if (!item.vehicle_id) {
+        toast.error(`Please select a Vehicle for ${item.subcategory_name} (${item.category_name}).`);
+        return false;
+      }
     }
-    if (!formData.driver_id) {
-      invalidateField('driver_id', 'Please assign a Driver.');
-      return false;
-    }
+
     if (!formData.business_region) {
       invalidateField('business_region', 'Please select a Business Region.');
       return false;
@@ -533,6 +602,36 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
       toast.error('Please select at least one pickup day.');
       return false;
     }
+
+    // Document Validation: MOM is required, and either PO or Email Copy is required
+    const hasMom = Boolean(momFile || existingMomFile);
+    const hasPo = Boolean(poFile || existingPoFile);
+    const hasEmail = Boolean(emailCopyFile || existingEmailFile);
+
+    if (!hasMom) {
+      setDocErrors(prev => ({ ...prev, mom: true }));
+      toast.error('MOM Copy (Minutes of Meeting) document is required.');
+      const momBox = document.getElementById('mom_upload_box');
+      if (momBox) {
+        momBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    } else {
+      setDocErrors(prev => ({ ...prev, mom: false }));
+    }
+
+    if (!hasPo && !hasEmail) {
+      setDocErrors(prev => ({ ...prev, poEmail: true }));
+      toast.error('Either PO Copy or Email Confirmation Copy document is required.');
+      const poBox = document.getElementById('po_upload_box') || document.getElementById('email_upload_box');
+      if (poBox) {
+        poBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    } else {
+      setDocErrors(prev => ({ ...prev, poEmail: false }));
+    }
+
     return true;
   };
 
@@ -548,6 +647,13 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
           payload.append(key, formData[key]);
         }
       });
+
+      // Pass top item vendor & vehicle as fallback
+      if (itemsPricing.length > 0) {
+        if (itemsPricing[0].vendor_id) payload.append('vendor_id', itemsPricing[0].vendor_id);
+        if (itemsPricing[0].vehicle_id) payload.append('vehicle_id', itemsPricing[0].vehicle_id);
+      }
+
       payload.append('items_pricing', JSON.stringify(itemsPricing));
       payload.append('pickup_days', JSON.stringify(pickupDays));
 
@@ -638,16 +744,30 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
               </div>
             </div>
 
-            {/* Vendor & Driver */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3">
-              <div className="flex items-center gap-3 text-slate-500 font-medium">
+            {/* Vendor & Driver assigned per Category */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 pt-3">
+              <div className="flex items-center gap-3 text-slate-500 font-medium shrink-0">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4 h-4" />
                 </div>
-                <span>Vendor & Driver</span>
+                <span>Assigned Logistics & Service Partners</span>
               </div>
-              <div className="font-bold text-slate-900">
-                {selectedVendor ? `${selectedVendor} — ${selectedDriver || 'Assigned Driver'} (${selectedDriverVeh?.registration_number || 'N/A'})` : 'Default Vendor & Driver'}
+              <div className="space-y-1.5 text-right font-semibold text-slate-800 text-xs sm:text-sm">
+                {itemsPricing.map(item => {
+                  const vObj = vendors.find(v => String(v.id) === String(item.vendor_id));
+                  const dObj = drivers.find(d => String(d.id) === String(item.driver_id));
+                  const vehObj = dObj?.driverVehicles?.[0];
+                  return (
+                    <div key={item.id} className="flex items-center gap-2 justify-end flex-wrap">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 border text-slate-700">
+                        {item.subcategory_name} ({item.category_name})
+                      </span>
+                      <span className="text-slate-900 font-bold">
+                        {vObj?.name || 'Vendor'} — {dObj?.name || 'Driver'} ({vehObj?.registration_number || 'Vehicle Assigned'})
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -761,8 +881,7 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
             <MapPin className="w-4.5 h-4.5 text-emerald-600" /> Location Boundaries & Logistics Mapping *
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {/* Row 1: Corp, Zone, Ward */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-[12px] font-medium text-slate-600 uppercase mb-1">Corporation *</label>
               <select
@@ -813,7 +932,6 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
               </select>
             </div>
 
-            {/* Row 2: Event, Vendor, Driver */}
             <div>
               <label className="block text-[12px] font-medium text-slate-600 uppercase mb-1">Collection Event *</label>
               <select
@@ -828,43 +946,6 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                 {collectionEvents.map(ev => (
                   <option key={ev.id} value={ev.id}>{ev.event_name}</option>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 uppercase mb-1">Vendor *</label>
-              <select
-                name="vendor_id"
-                value={formData.vendor_id}
-                onChange={handleChange}
-                required
-                className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-[14px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-              >
-                <option value="">Select Vendor</option>
-                {vendors.map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 uppercase mb-1">Driver & Vehicle *</label>
-              <select
-                name="driver_id"
-                value={formData.driver_id}
-                onChange={handleChange}
-                disabled={!formData.vendor_id}
-                required
-                className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-[14px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer disabled:bg-slate-100 disabled:opacity-60"
-              >
-                <option value="">Select Driver</option>
-                {filteredDrivers.map(d => {
-                  const veh = d.driverVehicles && d.driverVehicles[0];
-                  const vehText = veh ? ` (${veh.registration_number})` : '';
-                  return (
-                    <option key={d.id} value={d.id}>{d.name}{vehText}</option>
-                  );
-                })}
               </select>
             </div>
           </div>
@@ -1169,6 +1250,59 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                     </span>
                   </div>
                 </div>
+
+                {/* Logistics & Partner Mapping (Category-Wise Vendor & Driver Selection placed at bottom of details) */}
+                <div className="bg-white/80 border border-slate-200/90 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                    <UserCheck className={`w-3.5 h-3.5 ${theme.accentText}`} />
+                    Assigned Vendor & Driver / Vehicle ({item.category_name} - {item.subcategory_name}) *
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
+                        Vendor *
+                      </label>
+                      <select
+                        value={item.vendor_id || ''}
+                        onChange={(e) => handleCategoryVendorChange(item.id, e.target.value)}
+                        required
+                        className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                      >
+                        <option value="">Select Vendor for {item.category_name}</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
+                        Vehicle & Assigned Driver *
+                      </label>
+                      <select
+                        value={item.vehicle_id || ''}
+                        onChange={(e) => handleCategoryVehicleChange(item.id, e.target.value)}
+                        disabled={!item.vendor_id}
+                        required
+                        className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer disabled:bg-slate-100 disabled:opacity-60"
+                      >
+                        <option value="">
+                          {item.vendor_id ? 'Select Vehicle for ' + item.category_name : 'Select Vendor First'}
+                        </option>
+                        {getVehiclesForVendor(item.vendor_id).map((v) => {
+                          const driverLabel = v.driver?.name ? ` (Driver: ${v.driver.name})` : ' (No driver assigned)';
+                          return (
+                            <option key={v.id} value={v.id}>
+                              {v.registration_number} - {v.brand} {v.model}{driverLabel}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -1339,8 +1473,17 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
 
               {/* MOM Copy */}
               <div className="space-y-2">
-                <label className="block text-[12px] font-medium text-slate-700">MOM Copy (Minutes of Meeting)</label>
-                <div className="relative border-2 border-dashed border-slate-300 hover:border-emerald-600 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-colors min-h-[160px]">
+                <label className="block text-[12px] font-semibold text-slate-700">
+                  MOM Copy (Minutes of Meeting) <span className="text-rose-500 font-bold">*</span>
+                </label>
+                <div
+                  id="mom_upload_box"
+                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
+                    docErrors.mom
+                      ? 'border-rose-500 bg-rose-50/80 ring-4 ring-rose-200/80 animate-pulse shadow-md'
+                      : 'border-slate-300 hover:border-emerald-600 bg-white'
+                  }`}
+                >
                   {momPreview ? (
                     <div className="w-full flex flex-col items-center gap-2 p-1">
                       <img src={momPreview} alt="MOM Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
@@ -1369,8 +1512,8 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className="w-8 h-8 text-emerald-600 mb-1.5 opacity-80" />
-                      <span className="text-[12px] font-semibold text-slate-700">Click to Upload MOM Copy</span>
+                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.mom ? 'text-rose-600' : 'text-emerald-600 opacity-80'}`} />
+                      <span className={`text-[12px] font-semibold ${docErrors.mom ? 'text-rose-700 font-extrabold' : 'text-slate-700'}`}>Click to Upload MOM Copy *</span>
                       <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
                       <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'mom')} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
@@ -1380,8 +1523,17 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
 
               {/* PO Copy */}
               <div className="space-y-2">
-                <label className="block text-[12px] font-medium text-slate-700">PO Copy (Purchase Order)</label>
-                <div className="relative border-2 border-dashed border-slate-300 hover:border-emerald-600 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-colors min-h-[160px]">
+                <label className="block text-[12px] font-semibold text-slate-700">
+                  PO Copy (Purchase Order) <span className="text-amber-600 font-bold text-[11px]">(Either PO or Email Required *)</span>
+                </label>
+                <div
+                  id="po_upload_box"
+                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
+                    docErrors.poEmail
+                      ? 'border-amber-500 bg-amber-50/80 ring-4 ring-amber-200/80 animate-pulse shadow-md'
+                      : 'border-slate-300 hover:border-emerald-600 bg-white'
+                  }`}
+                >
                   {poPreview ? (
                     <div className="w-full flex flex-col items-center gap-2 p-1">
                       <img src={poPreview} alt="PO Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
@@ -1410,8 +1562,8 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className="w-8 h-8 text-emerald-600 mb-1.5 opacity-80" />
-                      <span className="text-[12px] font-semibold text-slate-700">Click to Upload PO Copy</span>
+                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.poEmail ? 'text-amber-600' : 'text-emerald-600 opacity-80'}`} />
+                      <span className={`text-[12px] font-semibold ${docErrors.poEmail ? 'text-amber-800 font-extrabold' : 'text-slate-700'}`}>Click to Upload PO Copy</span>
                       <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
                       <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'po')} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
@@ -1421,8 +1573,17 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
 
               {/* Email Copy */}
               <div className="space-y-2">
-                <label className="block text-[12px] font-medium text-slate-700">Email Confirmation Copy</label>
-                <div className="relative border-2 border-dashed border-slate-300 hover:border-emerald-600 bg-white rounded-xl p-3 flex flex-col items-center justify-center text-center transition-colors min-h-[160px]">
+                <label className="block text-[12px] font-semibold text-slate-700">
+                  Email Confirmation Copy <span className="text-amber-600 font-bold text-[11px]">(Either PO or Email Required *)</span>
+                </label>
+                <div
+                  id="email_upload_box"
+                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
+                    docErrors.poEmail
+                      ? 'border-amber-500 bg-amber-50/80 ring-4 ring-amber-200/80 animate-pulse shadow-md'
+                      : 'border-slate-300 hover:border-emerald-600 bg-white'
+                  }`}
+                >
                   {emailCopyPreview ? (
                     <div className="w-full flex flex-col items-center gap-2 p-1">
                       <img src={emailCopyPreview} alt="Email Copy Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
@@ -1451,8 +1612,8 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className="w-8 h-8 text-emerald-600 mb-1.5 opacity-80" />
-                      <span className="text-[12px] font-semibold text-slate-700">Click to Upload Email Copy</span>
+                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.poEmail ? 'text-amber-600' : 'text-emerald-600 opacity-80'}`} />
+                      <span className={`text-[12px] font-semibold ${docErrors.poEmail ? 'text-amber-800 font-extrabold' : 'text-slate-700'}`}>Click to Upload Email Copy</span>
                       <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
                       <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'email')} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
@@ -1473,12 +1634,6 @@ export default function BookOrderForm({ selectedGroup, onSuccess, onCancel }) {
                 ₹{parseFloat(formData.final_price || 0).toLocaleString('en-IN')}
               </span>
             </div>
-            {selectedVendor && (
-              <div className="hidden sm:block border-l border-slate-700/80 pl-5">
-                <span className="text-[12px] font-bold text-black-400 uppercase tracking-wider block">Logistics Partner & Driver</span>
-                <span className="text-sm font-semibold text-slate-400">{selectedVendor} {selectedDriver ? `(${selectedDriver})` : ''}</span>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">

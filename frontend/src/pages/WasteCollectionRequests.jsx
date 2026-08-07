@@ -868,9 +868,23 @@ export default function WasteCollectionRequests() {
         gst_amount: reqData.gst_amount != null ? parseFloat(reqData.gst_amount) : 0,
         final_price: reqData.final_price != null ? parseFloat(reqData.final_price) : 0,
 
-        // Section 7: Additional Details
-        pickup_date: reqData.pickup_date || '',
-        pickup_time: reqData.pickup_time || '',
+        // Section 7: Additional Details (Reset past pickup dates when generating new request for existing customer)
+        pickup_date: (() => {
+          if (!reqData.pickup_date) return '';
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const pDate = new Date(reqData.pickup_date);
+          pDate.setHours(0, 0, 0, 0);
+          return pDate >= today ? reqData.pickup_date : '';
+        })(),
+        pickup_time: (() => {
+          if (!reqData.pickup_date) return '';
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const pDate = new Date(reqData.pickup_date);
+          pDate.setHours(0, 0, 0, 0);
+          return pDate >= today ? (reqData.pickup_time || '') : '';
+        })(),
         pickup_notes: reqData.pickup_notes || '',
         audit_requirement: reqData.audit_requirement || 'Required',
         technician_assign: reqData.technician_assign || 'Required',

@@ -30,9 +30,8 @@ import VehiclesList from './pages/VehiclesList';
 import AddVehicle from './pages/AddVehicle';
 import WasteOrdersList from './pages/WasteOrdersList';
 import TripPlanner from './pages/TripPlanner';
-
-
-
+import VehicleHistory from './pages/VehicleHistory';
+import LiveMovement from './pages/LiveMovement';
 
 function App() {
   const PrivateRoute = ({ children }) => {
@@ -67,6 +66,7 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="live-movement" element={<LiveMovement />} />
           <Route
             path="users"
             element={
@@ -269,6 +269,15 @@ function App() {
               </RequirePermission>
             }
           />
+          <Route
+            path="vehicle-history"
+            element={
+              <RequirePermission requiredPermission="aggregator_vehicle">
+                <VehicleHistory />
+              </RequirePermission>
+            }
+          />
+
 
           </Route>
 

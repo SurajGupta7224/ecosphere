@@ -442,11 +442,11 @@ const WasteOrder = sequelize.define("WasteOrder", {
       key: 'id'
     }
   },
-  driver_id: {
+  vehicle_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
-      model: 'aggregator_employees',
+      model: 'aggregator_vehicles',
       key: 'id'
     }
   },

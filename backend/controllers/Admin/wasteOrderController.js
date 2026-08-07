@@ -53,16 +53,12 @@ const getWasteOrders = async (req, res) => {
         { model: Ward, as: "ward", attributes: ["id", "ward_name"] },
         { model: CollectionEvent, as: "collectionEvent", attributes: ["id", "event_name"] },
         { model: User, as: "vendor", attributes: ["id", "name", "email"] },
-        { 
-          model: Employee, 
-          as: "driverEmployee", 
-          attributes: ["id", "name", "mobile_number"],
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "registration_number", "brand", "model", "driver_id"],
           include: [
-            {
-              model: Vehicle,
-              as: "driverVehicles",
-              attributes: ["id", "registration_number", "brand", "model"]
-            }
+            { model: Employee, as: "driver", attributes: ["id", "name", "mobile_number"] }
           ]
         },
         { model: User, as: "canceller", attributes: ["id", "name", "email"] }
@@ -192,15 +188,11 @@ const getWasteOrderQR = async (req, res) => {
         { model: Ward, as: "ward", attributes: ["id", "ward_name"] },
         { model: User, as: "vendor", attributes: ["id", "name", "email"] },
         { 
-          model: Employee, 
-          as: "driverEmployee", 
-          attributes: ["id", "name", "mobile_number"],
+          model: Vehicle, 
+          as: "vehicle", 
+          attributes: ["id", "registration_number", "brand", "model", "driver_id"],
           include: [
-            {
-              model: Vehicle,
-              as: "driverVehicles",
-              attributes: ["id", "registration_number", "brand", "model"]
-            }
+            { model: Employee, as: "driver", attributes: ["id", "name", "mobile_number"] }
           ]
         }
       ]
@@ -219,7 +211,8 @@ const getWasteOrderQR = async (req, res) => {
       zone: order.zone?.zone_name,
       ward: order.ward?.ward_name,
       vendor: order.vendor?.name,
-      driver: order.driverEmployee?.name
+      vehicle: order.vehicle?.registration_number,
+      driver: order.vehicle?.driver?.name
     };
 
     const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
@@ -235,13 +228,13 @@ const getWasteOrderQR = async (req, res) => {
   }
 };
 
-// PATCH /api/admin/waste-orders/:id/reassign - Reassign vendor/driver for Trip Planner
+// PATCH /api/admin/waste-orders/:id/reassign - Reassign vendor/vehicle for Trip Planner
 const reassignWasteOrder = async (req, res) => {
   const { id } = req.params;
-  const { vendor_id, driver_id } = req.body;
+  const { vendor_id, vehicle_id } = req.body;
 
-  if (!vendor_id && !driver_id) {
-    return res.status(400).json({ message: "At least one of vendor_id or driver_id is required." });
+  if (!vendor_id && !vehicle_id) {
+    return res.status(400).json({ message: "At least one of vendor_id or vehicle_id is required." });
   }
 
   try {
@@ -252,7 +245,7 @@ const reassignWasteOrder = async (req, res) => {
 
     const updates = {};
     if (vendor_id) updates.vendor_id = vendor_id;
-    if (driver_id) updates.driver_id = driver_id;
+    if (vehicle_id) updates.vehicle_id = vehicle_id;
 
     await order.update(updates);
 

@@ -407,6 +407,22 @@ const WasteCollectionRequest = sequelize.define("WasteCollectionRequest", {
   rejected_reason: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  vendor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  vehicle_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'aggregator_vehicles',
+      key: 'id'
+    }
   }
 }, {
   tableName: "waste_collection_requests",
