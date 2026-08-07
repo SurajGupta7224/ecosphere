@@ -7,7 +7,7 @@ import {
   Bell, LogOut, Menu,
   LayoutDashboard, UserCircle, Settings, ChevronDown, ChevronRight,
   Image as ImageIcon, Layers, ShoppingBag, SlidersHorizontal,
-  Clock, ClipboardList, Calendar, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck
+  Clock, ClipboardList, Calendar, Code2, Globe, Truck, Check, X, CheckCircle, XCircle, UserCheck, Radio
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -203,6 +203,7 @@ const DashboardLayout = () => {
   // Redefined menu to match Airowin style structure
   const sidebarItems = [
     { name: t('dashboard'), path: '/', icon: LayoutDashboard, isSubMenu: false },
+    { name: 'Live Movement', path: '/live-movement', icon: Radio, isSubMenu: false },
     { name: t('profile'), path: '/profile', icon: UserCircle, isSubMenu: false, req: 'profile' },
     {
       id: 'catalog',
@@ -275,8 +276,10 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: 'Register Vehicle', path: '/aggregator-vehicles/add', req: 'aggregator_vehicle' },
-        { name: 'Vehicles List', path: '/aggregator-vehicles', req: 'aggregator_vehicle' }
+        { name: 'Vehicles List', path: '/aggregator-vehicles', req: 'aggregator_vehicle' },
+        { name: 'Tracking History & Replay', path: '/vehicle-history', req: 'aggregator_vehicle' }
       ]
+
     },
 
     { name: t('time_slot_management'), path: '/time-slots', icon: Clock, isSubMenu: false, req: 'time_slot_management' },

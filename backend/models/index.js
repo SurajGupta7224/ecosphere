@@ -139,10 +139,12 @@ WasteOrder.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
 WasteOrder.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 WasteOrder.belongsTo(CollectionEvent, { foreignKey: "collection_event_id", as: "collectionEvent" });
 WasteOrder.belongsTo(User, { foreignKey: "vendor_id", as: "vendor" });
-WasteOrder.belongsTo(Employee, { foreignKey: "driver_id", as: "driverEmployee" });
+WasteOrder.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 WasteOrder.belongsTo(User, { foreignKey: "cancelled_by", as: "canceller" });
 
-// Waste Collection Request ↔ TimeSlot
+// Waste Collection Request ↔ Vehicle & Logistics
+WasteCollectionRequest.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "vendor_id", as: "vendor" });
 WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
 TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wasteRequests" });
 

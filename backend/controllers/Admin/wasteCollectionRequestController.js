@@ -1290,6 +1290,15 @@ const bookWasteCollectionRequest = async (req, res) => {
       return res.status(404).json({ message: "Waste collection request not found." });
     }
 
+    // Prevent re-booking if lead is already booked
+    const existingOrder = await WasteOrder.findOne({ where: { lead_id: leadId } });
+    if (existingOrder) {
+      await t.rollback();
+      return res.status(400).json({
+        message: `Order for Lead ID ${leadId} has already been booked (Order ID: ${existingOrder.order_id}).`
+      });
+    }
+
     // Handle files if uploaded during booking
     let mom_agreement_file = null;
     let po_copy_file = null;
@@ -1305,6 +1314,21 @@ const bookWasteCollectionRequest = async (req, res) => {
       if (req.files.email_copy_file && req.files.email_copy_file[0]) {
         email_copy_file = req.files.email_copy_file[0].path;
       }
+    }
+
+    // Validate Document Requirements: MOM is required, and either PO or Email Copy is required
+    const hasMom = Boolean(mom_agreement_file || requests[0]?.mom_agreement_file);
+    const hasPo = Boolean(po_copy_file || requests[0]?.po_copy_file);
+    const hasEmail = Boolean(email_copy_file || requests[0]?.email_copy_file);
+
+    if (!hasMom) {
+      await t.rollback();
+      return res.status(400).json({ message: "MOM Copy (Minutes of Meeting) document is required." });
+    }
+
+    if (!hasPo && !hasEmail) {
+      await t.rollback();
+      return res.status(400).json({ message: "Either PO Copy or Email Confirmation Copy document is required." });
     }
 
     // Prepare update object for admin fields if provided
@@ -1347,6 +1371,16 @@ const bookWasteCollectionRequest = async (req, res) => {
       transaction: t
     });
 
+    // Parse items_pricing payload if provided
+    let itemsPricing = [];
+    if (req.body.items_pricing) {
+      try {
+        itemsPricing = typeof req.body.items_pricing === 'string' ? JSON.parse(req.body.items_pricing) : req.body.items_pricing;
+      } catch (e) {
+        console.error("Error parsing items_pricing in bookWasteCollectionRequest:", e);
+      }
+    }
+
     // Generate unique order ID
     const orderId = 'ORD-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900);
 
@@ -1358,19 +1392,51 @@ const bookWasteCollectionRequest = async (req, res) => {
     const contract_end_date = end.toISOString().split('T')[0];
 
     // Create a WasteOrder row for each request row in the group
-    for (const reqRow of updatedRequests) {
+    for (let i = 0; i < updatedRequests.length; i++) {
+      const reqRow = updatedRequests[i];
+
+      // Find matching item pricing info by id or subcategory_id
+      const matchedItem = itemsPricing.find(ip =>
+        (ip.id && String(ip.id) === String(reqRow.id)) ||
+        (ip.subcategory_id && String(ip.subcategory_id) === String(reqRow.subcategory_id))
+      ) || itemsPricing[i] || itemsPricing[0] || {};
+
+      const itemVendorId = matchedItem.vendor_id ? parseInt(matchedItem.vendor_id) : (vendor_id ? parseInt(vendor_id) : reqRow.vendor_id);
+      const itemVehicleId = matchedItem.vehicle_id ? parseInt(matchedItem.vehicle_id) : (reqRow.vehicle_id || null);
+
+      // Update original request row with specific vendor, vehicle & pricing
+      const itemUpdates = {};
+      if (itemVendorId) itemUpdates.vendor_id = itemVendorId;
+      if (itemVehicleId) itemUpdates.vehicle_id = itemVehicleId;
+      if (matchedItem.expected_waste !== undefined && matchedItem.expected_waste !== null) {
+        itemUpdates.expected_waste = parseFloat(matchedItem.expected_waste) || 0;
+      }
+      if (matchedItem.agreed_price !== undefined && matchedItem.agreed_price !== null) {
+        itemUpdates.agreed_price = parseFloat(matchedItem.agreed_price) || 0;
+      }
+      if (matchedItem.pricing_mode) {
+        itemUpdates.pricing_mode = matchedItem.pricing_mode;
+      }
+      if (matchedItem.bulk_monthly_price !== undefined && matchedItem.bulk_monthly_price !== null) {
+        itemUpdates.monthly_price = parseFloat(matchedItem.bulk_monthly_price) || 0;
+      }
+
+      if (Object.keys(itemUpdates).length > 0) {
+        await reqRow.update(itemUpdates, { transaction: t });
+      }
+
       const plainReq = reqRow.get({ plain: true });
       delete plainReq.id;
 
       await WasteOrder.create({
         ...plainReq,
         order_id: orderId,
+        vehicle_id: itemVehicleId || null,
+        vendor_id: itemVendorId || null,
         corporation_id: parseInt(corporation_id),
         zone_id: parseInt(zone_id),
         ward_id: parseInt(ward_id),
         collection_event_id: parseInt(collection_event_id),
-        vendor_id: parseInt(vendor_id),
-        driver_id: parseInt(driver_id),
         status: 'Booked',
         contract_start_date,
         contract_end_date
@@ -1464,7 +1530,7 @@ const bookWasteCollectionRequest = async (req, res) => {
 const reassignVendorVehicle = async (req, res) => {
   try {
     const { id } = req.params;
-    const { vendor_id, driver_id, vehicle_id } = req.body;
+    const { vendor_id, vehicle_id } = req.body;
 
     const request = await WasteCollectionRequest.findByPk(id);
     if (!request) {
@@ -1473,7 +1539,6 @@ const reassignVendorVehicle = async (req, res) => {
 
     const updates = {};
     if (vendor_id !== undefined) updates.vendor_id = vendor_id;
-    if (driver_id !== undefined) updates.driver_id = driver_id;
     if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
 
     await request.update(updates);
