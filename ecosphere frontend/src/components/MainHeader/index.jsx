@@ -18,7 +18,8 @@ import HelpModal from "../../Pages/HelpModal";
 const MainHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isDashboard = location.pathname === "/dashboard";
+  const solidHeaderPaths = ["/dashboard", "/waste-collection-requests", "/waste-collection-request"];
+  const isDashboard = solidHeaderPaths.includes(location.pathname);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);

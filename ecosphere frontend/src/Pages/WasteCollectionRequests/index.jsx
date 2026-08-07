@@ -30,7 +30,6 @@ export default function WasteCollectionRequests() {
 
   const [formData, setFormData] = useState({
     // Section 1: Customer Details
-    customer_type: 'New Customer',
     mobile_number: '',
     email: '',
 
@@ -70,7 +69,6 @@ export default function WasteCollectionRequests() {
     designation: '',
     phone_number_2: '',
     email_2: '',
-    others_note: '',
     google_map_link: '',
     landmark: '',
     city: '',
@@ -753,7 +751,7 @@ export default function WasteCollectionRequests() {
   const groupedCategories = Object.values(groupedCategoriesMap);
 
     return (
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-800 py-10 px-4 sm:px-6 lg:px-12">
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
         <div className="max-w-6xl mx-auto">
           
           {/* Toast Banner */}
@@ -885,10 +883,10 @@ export default function WasteCollectionRequests() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/")}
                 className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-all cursor-pointer"
               >
-                Go to Login
+                Home Page
               </button>
             </div>
           ) : (
@@ -912,22 +910,6 @@ export default function WasteCollectionRequests() {
                 </h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Type *</label>
-                    <select
-                      name="customer_type"
-                      value={formData.customer_type}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                    >
-                      <option value="New Customer">New Customer</option>
-                      <option value="Individual">Individual</option>
-                      <option value="Commercial">Commercial</option>
-                      <option value="RWA">RWA</option>
-                      <option value="Residential">Residential</option>
-                    </select>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Lead *</label>
@@ -1054,18 +1036,6 @@ export default function WasteCollectionRequests() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Others</label>
-                    <input
-                      type="text"
-                      name="others_note"
-                      value={formData.others_note}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Additional note"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
                   </div>
                 </div>
               </div>
