@@ -468,6 +468,7 @@ const createWasteCollectionRequest = async (req, res) => {
           yearly_waste,
           monthly_price,
           yearly_price,
+          pricing_mode: subItem.pricing_mode || 'KG',
 
           pickup_notes: pickup_notes || null,
           pickup_time: pickup_time || null,
@@ -869,6 +870,7 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
             yearly_waste,
             monthly_price,
             yearly_price,
+            pricing_mode: subItem.pricing_mode || 'KG',
 
             pickup_notes: pickup_notes || null,
             pickup_time: pickup_time || null,

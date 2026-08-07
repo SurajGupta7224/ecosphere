@@ -473,7 +473,8 @@ export default function WasteOrdersList() {
                       const yearly_waste = parseFloat(item.yearly_waste || 0);
                       const monthly_price = parseFloat(item.monthly_price || 0);
                       const yearly_price = parseFloat(item.yearly_price || 0);
-                      const isBulk = parseFloat(item.expected_waste || 0) === 0 && monthly_price > 0;
+                      const isBulk = item.pricing_mode === 'Bulk' || item.pricing_mode === 'bulk' ||
+                        (!item.pricing_mode && parseFloat(item.expected_waste || 0) === 0);
                       
                       const cells = isBulk ? [
                         { label: 'Pricing Mode', value: 'Bulk', color: 'text-slate-700 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded font-bold' },
