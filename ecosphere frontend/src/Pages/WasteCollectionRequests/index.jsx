@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, X, Image as ImageIcon, CheckCircle,CheckCircle2, Trash2, Calendar, Clock,
+  Search, X, Image as ImageIcon, CheckCircle, CheckCircle2, Trash2, Calendar, Clock,
   User, Phone, Mail, MapPin, Building, ShieldCheck, ClipboardCheck, FileText, ArrowLeft,
   Info, ExternalLink, Copy
 } from 'lucide-react';
@@ -779,320 +779,320 @@ export default function WasteCollectionRequests() {
   }, {});
   const groupedCategories = Object.values(groupedCategoriesMap);
 
-    return (
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
-        <div className="max-w-6xl mx-auto">
-          
-          {/* Toast Banner */}
-          {toastMsg.message && (
-            <div className={`mb-6 p-4 rounded-xl text-sm font-bold flex items-center justify-between shadow-md ${toastMsg.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-              <span>{toastMsg.message}</span>
-              <button onClick={() => setToastMsg({ type: '', message: '' })} className="text-white hover:opacity-80 font-bold">×</button>
-            </div>
-          )}
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
+      <div className="max-w-6xl mx-auto">
 
-          {/* ================= SCREEN 1: TERMS & CONDITIONS ================= */}
-          {!tncAccepted ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden opacity-100">
-              {/* Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+        {/* Toast Banner */}
+        {toastMsg.message && (
+          <div className={`mb-6 p-4 rounded-xl text-sm font-bold flex items-center justify-between shadow-md ${toastMsg.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+            <span>{toastMsg.message}</span>
+            <button onClick={() => setToastMsg({ type: '', message: '' })} className="text-white hover:opacity-80 font-bold">×</button>
+          </div>
+        )}
+
+        {/* ================= SCREEN 1: TERMS & CONDITIONS ================= */}
+        {!tncAccepted ? (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden opacity-100">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-emerald-700" /> Waste Collection Requests
+                </h1>
+                <p className="text-xs text-slate-400 mt-0.5">Please review and accept the Terms & Conditions to continue.</p>
+              </div>
+            </div>
+
+            {/* Terms Box */}
+            <div className="p-6 sm:p-8">
+              <div className="bg-[#f6f2ff] border border-[#e8dcfc] rounded-2xl p-6 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-700 shadow-sm">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">TERMS & CONDITIONS</h2>
+                    <p className="text-xs text-slate-500">Read each point carefully and check the boxes to agree</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={tncBoxes.tnc_agree}
+                      onChange={(e) => setTncBoxes(prev => ({ ...prev, tnc_agree: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                      By using our waste management services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, as well as the terms and conditions outlined in the MoU, which are hereby incorporated by reference.
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={tncBoxes.accuracy_agree}
+                      onChange={(e) => setTncBoxes(prev => ({ ...prev, accuracy_agree: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                      We warrant that the information provided by us is to the best of our knowledge and belief, accurate and current at the time of provisioning.
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={tncBoxes.copyright_agree}
+                      onChange={(e) => setTncBoxes(prev => ({ ...prev, copyright_agree: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                      Copyrights reserved with Ecosphere Waste Solutions and Mukka Protiens Limited.
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={tncBoxes.promo_agree}
+                      onChange={(e) => setTncBoxes(prev => ({ ...prev, promo_agree: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                      I agree to receive promotional emails
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all"
+                  className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  Decline
                 </button>
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <ClipboardCheck className="w-5 h-5 text-emerald-700" /> Waste Collection Requests
-                  </h1>
-                  <p className="text-xs text-slate-400 mt-0.5">Please review and accept the Terms & Conditions to continue.</p>
-                </div>
-              </div>
 
-              {/* Terms Box */}
-              <div className="p-6 sm:p-8">
-                <div className="bg-[#f6f2ff] border border-[#e8dcfc] rounded-2xl p-6 mb-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-700 shadow-sm">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-900">TERMS & CONDITIONS</h2>
-                      <p className="text-xs text-slate-500">Read each point carefully and check the boxes to agree</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                      <input
-                        type="checkbox"
-                        checked={tncBoxes.tnc_agree}
-                        onChange={(e) => setTncBoxes(prev => ({ ...prev, tnc_agree: e.target.checked }))}
-                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                      />
-                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                        By using our waste management services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, as well as the terms and conditions outlined in the MoU, which are hereby incorporated by reference.
-                      </span>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                      <input
-                        type="checkbox"
-                        checked={tncBoxes.accuracy_agree}
-                        onChange={(e) => setTncBoxes(prev => ({ ...prev, accuracy_agree: e.target.checked }))}
-                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                      />
-                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                        We warrant that the information provided by us is to the best of our knowledge and belief, accurate and current at the time of provisioning.
-                      </span>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                      <input
-                        type="checkbox"
-                        checked={tncBoxes.copyright_agree}
-                        onChange={(e) => setTncBoxes(prev => ({ ...prev, copyright_agree: e.target.checked }))}
-                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                      />
-                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                        Copyrights reserved with Ecosphere Waste Solutions and Mukka Protiens Limited.
-                      </span>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                      <input
-                        type="checkbox"
-                        checked={tncBoxes.promo_agree}
-                        onChange={(e) => setTncBoxes(prev => ({ ...prev, promo_agree: e.target.checked }))}
-                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                      />
-                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                        I agree to receive promotional emails
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
-                  >
-                    Decline
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleTncAccept}
-                    className="px-8 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
-                  >
-                    Accept &amp; Continue →
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleTncAccept}
+                  className="px-8 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  Accept &amp; Continue →
+                </button>
               </div>
             </div>
-          ) : submitSuccess ? (
-            /* ================= SUCCESS SCREEN - Lead ID Only ================= */
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 sm:p-14 text-center max-w-lg mx-auto">
-              {/* Minimal check icon */}
-              <div className="w-14 h-14 bg-emerald-50 border-2 border-emerald-200 rounded-full flex items-center justify-center mx-auto mb-8">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Generated Successfully!</h2>
-              <p className="text-slate-500 text-sm mb-6">
-                Your waste collection request has been submitted to the team for verification.
-                You'll be notified once your account is approved.
+          </div>
+        ) : submitSuccess ? (
+          /* ================= SUCCESS SCREEN ================= */
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 sm:p-14 text-center max-w-lg mx-auto">
+            {/* Minimal check icon */}
+            <div className="w-14 h-14 bg-emerald-50 border-2 border-emerald-200 rounded-full flex items-center justify-center mx-auto mb-8">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Generated Successfully!</h2>
+            <p className="text-slate-500 text-sm mb-6">
+              Your waste collection request has been submitted to the team for verification.
+              You'll be notified once your account is approved.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              Home Page
+            </button>
+          </div>
+        ) : (
+    /* ================= SCREEN 2: MAIN REQUEST FORM ================= */
+    <form onSubmit={handleFormSubmit} noValidate className="space-y-6 opacity-100">
+
+      {/* Header Banner */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <ClipboardCheck className="w-6 h-6 text-emerald-600" /> Add Waste Collection Request
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Phase 1 — Enter request details manually.</p>
+        </div>
+      </div>
+
+      {/* SECTION 1: Customer Details */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+          <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Lead *</label>
+            <select
+              name="business_lead"
+              value={formData.business_lead}
+              onChange={handleInputChange}
+              required
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+            >
+              <option value="Web Lead">Web Lead</option>
+              <option value="Exhibition">Exhibition</option>
+              <option value="Service Lead">Service Lead</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Legal Name *</label>
+            <input
+              type="text"
+              name="customer_legal_name"
+              value={formData.customer_legal_name}
+              onChange={handleInputChange}
+              required
+              placeholder="e.g. Acme Corporation"
+              className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.customer_legal_name ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+            />
+            {fieldErrors.customer_legal_name && (
+              <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                {fieldErrors.customer_legal_name}
               </p>
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-              >
-                Home Page
-              </button>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Trade Name</label>
+            <input
+              type="text"
+              name="customer_trade_name"
+              value={formData.customer_trade_name}
+              onChange={handleInputChange}
+              placeholder="e.g. Acme Trading"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Person *</label>
+            <input
+              type="text"
+              name="contact_person"
+              value={formData.contact_person}
+              onChange={handleInputChange}
+              required
+              placeholder="e.g. John Doe"
+              className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.contact_person ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+            />
+            {fieldErrors.contact_person && (
+              <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                {fieldErrors.contact_person}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Designation</label>
+            <input
+              type="text"
+              name="designation"
+              value={formData.designation}
+              onChange={handleInputChange}
+              placeholder="e.g. Sales Manager"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 1 *</label>
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="tel"
+                name="mobile_number"
+                value={formData.mobile_number}
+                onChange={handleInputChange}
+                required
+                placeholder="e.g. 9876543210"
+                maxLength={10}
+                className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.mobile_number ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+              />
             </div>
-          ) : (
-            /* ================= SCREEN 2: MAIN REQUEST FORM ================= */
-            <form onSubmit={handleFormSubmit} noValidate className="space-y-6 opacity-100">
-              
-              {/* Header Banner */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <ClipboardCheck className="w-6 h-6 text-emerald-600" /> Add Waste Collection Request
-                  </h1>
-                  <p className="text-xs text-slate-400 mt-1">Phase 1 — Enter request details manually.</p>
-                </div>
-              </div>
+            {fieldErrors.mobile_number && (
+              <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                {fieldErrors.mobile_number}
+              </p>
+            )}
+        </div>
 
-              {/* SECTION 1: Customer Details */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
-                </h2>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 2</label>
+          <div className="relative">
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="tel"
+              name="phone_number_2"
+              value={formData.phone_number_2}
+              onChange={handleInputChange}
+              placeholder="e.g. +91 9123456780"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+            />
+          </div>
+        </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail *</label>
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              placeholder="e.g. john@example.com"
+              className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.email ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+            />
+          </div>
+          {fieldErrors.email && (
+            <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+              <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+              {fieldErrors.email}
+            </p>
+          )}
+      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Lead *</label>
-                    <select
-                      name="business_lead"
-                      value={formData.business_lead}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                    >
-                      <option value="Web Lead">Web Lead</option>
-                      <option value="Exhibition">Exhibition</option>
-                      <option value="Service Lead">Service Lead</option>
-                    </select>
-                  </div>
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail 2</label>
+        <div className="relative">
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="email"
+            name="email_2"
+            value={formData.email_2}
+            onChange={handleInputChange}
+            placeholder="e.g. contact@acme.com"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+          />
+        </div>
+      </div>
+    </div>
+              </div >
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Legal Name *</label>
-                    <input
-                      type="text"
-                      name="customer_legal_name"
-                      value={formData.customer_legal_name}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. Acme Corporation"
-                      className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.customer_legal_name ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
-                    />
-                    {fieldErrors.customer_legal_name && (
-                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
-                        {fieldErrors.customer_legal_name}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Trade Name</label>
-                    <input
-                      type="text"
-                      name="customer_trade_name"
-                      value={formData.customer_trade_name}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Acme Trading"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Person *</label>
-                    <input
-                      type="text"
-                      name="contact_person"
-                      value={formData.contact_person}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. John Doe"
-                      className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.contact_person ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
-                    />
-                    {fieldErrors.contact_person && (
-                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
-                        {fieldErrors.contact_person}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Designation</label>
-                    <input
-                      type="text"
-                      name="designation"
-                      value={formData.designation}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Sales Manager"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 1 *</label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="tel"
-                        name="mobile_number"
-                        value={formData.mobile_number}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g. 9876543210"
-                        maxLength={10}
-                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.mobile_number ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
-                      />
-                    </div>
-                    {fieldErrors.mobile_number && (
-                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
-                        {fieldErrors.mobile_number}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 2</label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="tel"
-                        name="phone_number_2"
-                        value={formData.phone_number_2}
-                        onChange={handleInputChange}
-                        placeholder="e.g. +91 9123456780"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail *</label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g. john@example.com"
-                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.email ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
-                      />
-                    </div>
-                    {fieldErrors.email && (
-                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
-                        {fieldErrors.email}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail 2</label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="email"
-                        name="email_2"
-                        value={formData.email_2}
-                        onChange={handleInputChange}
-                        placeholder="e.g. contact@acme.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: License Details */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    {/* SECTION 2: License Details */ }
+    < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
                   <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details (Optional)
                 </h2>
@@ -1171,10 +1171,10 @@ export default function WasteCollectionRequests() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div >
 
-              {/* SECTION 3: Location Details */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    {/* SECTION 3: Location Details */ }
+    < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
                   <Building className="w-5 h-5 text-violet-500" /> Section 3: Location Details
                 </h2>
@@ -1202,38 +1202,38 @@ export default function WasteCollectionRequests() {
                         {fieldErrors.address_search}
                       </p>
                     )}
-                  </div>
+      </div>
 
-                  {/* Lat/Lng */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Latitude *</label>
-                      <input
-                        type="text"
-                        name="latitude"
-                        value={formData.latitude}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g. 28.7041"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
+  {/* Lat/Lng */ }
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Latitude *</label>
+      <input
+        type="text"
+        name="latitude"
+        value={formData.latitude}
+        onChange={handleInputChange}
+        required
+        placeholder="e.g. 28.7041"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Longitude *</label>
-                      <input
-                        type="text"
-                        name="longitude"
-                        value={formData.longitude}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g. 77.1025"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
-                  </div>
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Longitude *</label>
+      <input
+        type="text"
+        name="longitude"
+        value={formData.longitude}
+        onChange={handleInputChange}
+        required
+        placeholder="e.g. 77.1025"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
+  </div>
 
-                  {/* Google Map Div Container */}
+  {/* Google Map Div Container */ }
                   <div>
                     <div ref={mapDivRef} className="w-full h-64 rounded-2xl border border-slate-200 overflow-hidden shadow-inner" />
                   </div>
@@ -1287,167 +1287,169 @@ export default function WasteCollectionRequests() {
                     </div>
                   </div>
 
-                  {/* Row 5: Flats/Area based on sector */}
-                  {formData.sector && (
-                    <div className="w-full">
-                      {formData.sector === "Apartment" ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+  {/* Row 5: Flats/Area based on sector */ }
+  {
+    formData.sector && (
+      <div className="w-full">
+        {formData.sector === "Apartment" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-                          {/* Flats */}
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                              Flats *
-                            </label>
+            {/* Flats */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Flats *
+              </label>
 
-                            <input
-                              type="number"
-                              name="no_of_dwelling_units"
-                              value={formData.no_of_dwelling_units}
-                              onChange={handleInputChange}
-                              required
-                              min="0"
-                              placeholder="e.g. 150"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                            />
-                          </div>
+              <input
+                type="number"
+                name="no_of_dwelling_units"
+                value={formData.no_of_dwelling_units}
+                onChange={handleInputChange}
+                required
+                min="0"
+                placeholder="e.g. 150"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              />
+            </div>
 
-                          {/* Occupied Flats */}
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                              Occupied Flats *
-                            </label>
+            {/* Occupied Flats */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Occupied Flats *
+              </label>
 
-                            <input
-                              type="number"
-                              name="occupied_flats"
-                              value={formData.occupied_flats}
-                              onChange={handleInputChange}
-                              required
-                              min="0"
-                              placeholder="e.g. 120"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                            />
-                          </div>
+              <input
+                type="number"
+                name="occupied_flats"
+                value={formData.occupied_flats}
+                onChange={handleInputChange}
+                required
+                min="0"
+                placeholder="e.g. 120"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              />
+            </div>
 
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            Area (SqM) *
-                          </label>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Area (SqM) *
+            </label>
 
-                          <input
-                            type="number"
-                            name="area_sqm"
-                            value={formData.area_sqm}
-                            onChange={handleInputChange}
-                            required
-                            min="0"
-                            placeholder="e.g. 500"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Complete Address */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Complete Address *</label>
-                    <textarea
-                      name="complete_address"
-                      value={formData.complete_address}
-                      onChange={handleInputChange}
-                      required
-                      rows="3"
-                      placeholder="e.g. 456 Industrial Area, Bangalore"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
-                    />
-                  </div>
+            <input
+              type="number"
+              name="area_sqm"
+              value={formData.area_sqm}
+              onChange={handleInputChange}
+              required
+              min="0"
+              placeholder="e.g. 500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
+  {/* Complete Address */ }
+  <div>
+    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Complete Address *</label>
+    <textarea
+      name="complete_address"
+      value={formData.complete_address}
+      onChange={handleInputChange}
+      required
+      rows="3"
+      placeholder="e.g. 456 Industrial Area, Bangalore"
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
+    />
+  </div>
 
 
 
-                  {/* Landmark, City, State */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Landmark</label>
-                      <input
-                        type="text"
-                        name="landmark"
-                        value={formData.landmark}
-                        onChange={handleInputChange}
-                        placeholder="e.g. Near Central Park"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
+  {/* Landmark, City, State */ }
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Landmark</label>
+      <input
+        type="text"
+        name="landmark"
+        value={formData.landmark}
+        onChange={handleInputChange}
+        placeholder="e.g. Near Central Park"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">City</label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        placeholder="e.g. Bangalore"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">City</label>
+      <input
+        type="text"
+        name="city"
+        value={formData.city}
+        onChange={handleInputChange}
+        placeholder="e.g. Bangalore"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">State</label>
-                      <input
-                        type="text"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        placeholder="e.g. Karnataka"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
-                  </div>
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">State</label>
+      <input
+        type="text"
+        name="state"
+        value={formData.state}
+        onChange={handleInputChange}
+        placeholder="e.g. Karnataka"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
+  </div>
 
-                  {/* Pincode, Country, Google Map Link */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pincode</label>
-                      <input
-                        type="text"
-                        name="pincode"
-                        value={formData.pincode}
-                        onChange={handleInputChange}
-                        placeholder="e.g. 560001"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
+  {/* Pincode, Country, Google Map Link */ }
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pincode</label>
+      <input
+        type="text"
+        name="pincode"
+        value={formData.pincode}
+        onChange={handleInputChange}
+        placeholder="e.g. 560001"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Country</label>
-                      <input
-                        type="text"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleInputChange}
-                        placeholder="e.g. India"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Country</label>
+      <input
+        type="text"
+        name="country"
+        value={formData.country}
+        onChange={handleInputChange}
+        placeholder="e.g. India"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Google Map Link</label>
-                      <input
-                        type="text"
-                        name="google_map_link"
-                        value={formData.google_map_link}
-                        onChange={handleInputChange}
-                        placeholder="e.g. https://www.google.com/maps/place/..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Google Map Link</label>
+      <input
+        type="text"
+        name="google_map_link"
+        value={formData.google_map_link}
+        onChange={handleInputChange}
+        placeholder="e.g. https://www.google.com/maps/place/..."
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+      />
+    </div>
+  </div>
+                </div >
+              </div >
 
-              {/* SECTION 4: Service Details / Expected Waste (KG) */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    {/* SECTION 4: Service Details / Expected Waste (KG) */ }
+    < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
                   <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 4: Service Details / Expected Waste (KG)
                 </h2>
@@ -1668,10 +1670,10 @@ export default function WasteCollectionRequests() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div >
 
-              {/* Bottom Action Bar */}
-              <div className="flex items-center justify-end gap-4 pt-4">
+    {/* Bottom Action Bar */ }
+    < div className = "flex items-center justify-end gap-4 pt-4" >
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
@@ -1694,11 +1696,12 @@ export default function WasteCollectionRequests() {
                     "Generate Request"
                   )}
                 </button>
-              </div>
+              </div >
 
-            </form>
-          )}
-        </div>
-      </div>
+            </form >
+          )
+}
+        </div >
+      </div >
     );
 }
