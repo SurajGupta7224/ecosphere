@@ -195,6 +195,11 @@ const WasteOrder = sequelize.define("WasteOrder", {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  pricing_mode: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    defaultValue: 'KG',
+  },
   business_region: {
     type: DataTypes.STRING(100),
     allowNull: true,

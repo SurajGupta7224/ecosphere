@@ -263,8 +263,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
           const isBulk = existingItem && (
             existingItem.pricing_mode === 'Bulk' ||
             existingItem.pricing_mode === 'bulk' ||
-            ((parseFloat(existingItem.expected_waste || 0) === 0 || parseFloat(existingItem.agreed_price || 0) === 0) &&
-             (parseFloat(existingItem.monthly_price || 0) > 0 || parseFloat(existingItem.yearly_price || 0) > 0 || parseFloat(existingItem.bulk_monthly_price || 0) > 0))
+            (!existingItem.pricing_mode && parseFloat(existingItem.expected_waste || 0) === 0)
           );
           return {
             category_id: sub.category_id,

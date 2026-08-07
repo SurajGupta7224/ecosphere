@@ -315,7 +315,8 @@ const submitRegistration = async (req, res) => {
           monthly_waste,
           yearly_waste,
           monthly_price,
-          yearly_price
+          yearly_price,
+          pricing_mode: subItem.pricing_mode || 'KG'
         });
         createdRequests.push(reqRow);
       }

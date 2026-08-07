@@ -936,8 +936,8 @@ export default function WasteCollectionRequests() {
         if (matchedItem) {
           const monthlyPrice = parseFloat(matchedItem.monthly_price || 0);
           const expectedWaste = parseFloat(matchedItem.expected_waste || 0);
-          // Infer Bulk mode: if monthly_price is set and expected_waste is 0
-          const isBulk = monthlyPrice > 0 && expectedWaste === 0;
+          const isBulk = matchedItem.pricing_mode === 'Bulk' || matchedItem.pricing_mode === 'bulk' ||
+            (!matchedItem.pricing_mode && expectedWaste === 0);
           const pricingMode = isBulk ? 'Bulk' : 'KG';
 
           return {

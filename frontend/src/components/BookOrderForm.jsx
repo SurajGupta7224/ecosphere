@@ -153,8 +153,7 @@ export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel 
   const [itemsPricing, setItemsPricing] = useState(() => {
     return ((selectedGroup && selectedGroup.items) || []).map(item => {
       const isBulk = item.pricing_mode === 'Bulk' || item.pricing_mode === 'bulk' ||
-        ((parseFloat(item.expected_waste || 0) === 0 || parseFloat(item.agreed_price || 0) === 0) &&
-         (parseFloat(item.monthly_price || 0) > 0 || parseFloat(item.yearly_price || 0) > 0 || parseFloat(item.bulk_monthly_price || 0) > 0));
+        (!item.pricing_mode && parseFloat(item.expected_waste || 0) === 0);
 
       return {
         id: item.id,
