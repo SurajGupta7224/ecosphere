@@ -57,16 +57,21 @@ const TripSummary = sequelize.define(
       allowNull: true,
     },
 
-
-/// Waste Sub Category
-subcategory_id: {
+    vehicle_id: {
   type: DataTypes.INTEGER,
   allowNull: false,
-  references: {
-    model: "sub_categories",
-    key: "id",
-  },
 },
+
+
+/// Waste Sub Category
+// subcategory_id: {
+//   type: DataTypes.INTEGER,
+//   allowNull: false,
+//   references: {
+//     model: "sub_categories",
+//     key: "id",
+//   },
+// },
 
     // Waste Collected
     wet_waste: {

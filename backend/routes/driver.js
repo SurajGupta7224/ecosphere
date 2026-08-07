@@ -11,10 +11,23 @@ const { verifyDriverToken } = require("../middleware/authMiddleware");
 
 
 const {
+  fetchOrderDetails,
   submitTripSummary,
 } = require("../controllers/Driver/tripSummaryController");
 
 // Driver Authentication Routes
+
+console.log("loginDriver:", typeof loginDriver);
+console.log("forgotPassword:", typeof forgotPassword);
+console.log("verifyOtp:", typeof verifyOtp);
+console.log("resetPassword:", typeof resetPassword);
+console.log("getDriverProfile:", typeof getDriverProfile);
+console.log("verifyDriverToken:", typeof verifyDriverToken);
+console.log("fetchOrderDetails:", typeof fetchOrderDetails);
+console.log("submitTripSummary:", typeof submitTripSummary);
+
+
+
 
 // POST /api/v1/driver/login - Driver Login API
 router.post("/login", loginDriver);
@@ -32,6 +45,15 @@ router.post("/reset-password", resetPassword);
 router.get("/me", verifyDriverToken, getDriverProfile);
 router.get("/profile", verifyDriverToken, getDriverProfile);
 
+
+
+
+// Trip Summary Routes
+router.post(
+  "/fetch-order-details",
+  verifyDriverToken,
+  fetchOrderDetails
+);
 
 // Driver Trip Summary Route
 router.post(

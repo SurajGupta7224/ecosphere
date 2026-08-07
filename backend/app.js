@@ -51,6 +51,10 @@ app.use("/api/admin", adminRoutes);
 const clientRoutes = require("./routes/client");
 app.use("/api", clientRoutes);
 
+// Driver routes
+const driverRoutes = require("./routes/driver");
+app.use("/api/v1/driver", driverRoutes);
+
 // Root route
 app.get("/", (req, res) => {
   res.send("Ecosphere API Server is running");

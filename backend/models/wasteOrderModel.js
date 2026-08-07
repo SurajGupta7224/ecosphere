@@ -446,6 +446,17 @@ const WasteOrder = sequelize.define("WasteOrder", {
       key: 'id'
     }
   },
+
+  vehicle_id: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  references: {
+    model: "aggregator_vehicles",
+    key: "id",
+  },
+},
+
+
   contract_start_date: {
     type: DataTypes.DATEONLY,
     allowNull: true,
