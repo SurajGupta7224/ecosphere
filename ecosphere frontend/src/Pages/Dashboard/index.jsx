@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import BookPickup from "./BookPickup";
 import { useNavigate } from "react-router-dom";
 import { QrCode } from "lucide-react";
 

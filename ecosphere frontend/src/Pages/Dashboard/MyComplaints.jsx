@@ -13,9 +13,17 @@ import {
   FiPaperclip,
   FiChevronDown,
   FiChevronUp,
+  FiHash,
 } from "react-icons/fi";
 
 import { customerFetch } from "../../api";
+
+// ---------------------------------------------------------
+// If your backend serves uploaded files from a static path,
+// set the base URL here so attachments resolve correctly.
+// e.g. "http://localhost:5000/uploads/complaints/"
+// ---------------------------------------------------------
+const ATTACHMENT_BASE_URL = "/uploads/complaints/";
 
 export default function MyComplaints({ customer, onRaiseComplaint }) {
   const [complaints, setComplaints] = useState([]);
@@ -32,9 +40,9 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
     setLoading(true);
     setError("");
 
-    customerFetch("/complaints")
+    customerFetch("/customer/complaints")
       .then((data) => {
-        setComplaints(data.complaints || data.orders || []);
+        setComplaints(data.data || []);
       })
       .catch((err) => {
         console.error("Complaints fetch error:", err);
@@ -53,26 +61,33 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
   const statusStyles = (status) => {
     const s = String(status || "").toLowerCase();
 
-    if (s === "resolved" || s === "closed") {
-      return "bg-green-50 text-green-700 border-green-100";
+    if (s === "resolved") {
+      return "bg-green-50 text-green-700 border-green-200";
     }
-    if (s === "in progress" || s === "in-progress" || s === "reviewing") {
-      return "bg-blue-50 text-blue-700 border-blue-100";
+    if (s === "in progress") {
+      return "bg-blue-50 text-blue-700 border-blue-200";
     }
-    if (s === "rejected") {
-      return "bg-red-50 text-red-700 border-red-100";
+    if (s === "closed") {
+      return "bg-gray-100 text-gray-600 border-gray-200";
     }
-    // default: open / pending / submitted
-    return "bg-amber-50 text-amber-700 border-amber-100";
+    return "bg-amber-50 text-amber-700 border-amber-200";
+  };
+
+  const statusDot = (status) => {
+    const s = String(status || "").toLowerCase();
+
+    if (s === "resolved") return "bg-green-500";
+    if (s === "in progress") return "bg-blue-500";
+    if (s === "closed") return "bg-gray-400";
+    return "bg-amber-500";
   };
 
   const statusIcon = (status) => {
     const s = String(status || "").toLowerCase();
 
-    if (s === "resolved" || s === "closed") return <FiCheckCircle size={12} />;
-    if (s === "rejected") return <FiXCircle size={12} />;
-    if (s === "in progress" || s === "in-progress" || s === "reviewing")
-      return <FiRefreshCw size={12} />;
+    if (s === "resolved") return <FiCheckCircle size={12} />;
+    if (s === "closed") return <FiXCircle size={12} />;
+    if (s === "in progress") return <FiRefreshCw size={12} />;
     return <FiClock size={12} />;
   };
 
@@ -87,11 +102,15 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
     });
   };
 
-  const getFileIcon = (file) => {
-    const name = typeof file === "string" ? file : file?.name || "";
-    const ext = name.split(".").pop()?.toLowerCase();
+  const isImageAttachment = (path) => {
+    const ext = path?.split(".").pop()?.toLowerCase();
+    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+  };
 
-    if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+  const getFileIcon = (path) => {
+    const ext = path?.split(".").pop()?.toLowerCase();
+
+    if (isImageAttachment(path)) {
       return <FiImage size={13} className="text-green-600" />;
     }
     if (ext === "pdf") {
@@ -100,20 +119,19 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
     return <FiFile size={13} className="text-gray-400" />;
   };
 
-  const getFileName = (file) => {
-    if (typeof file === "string") {
-      return file.split("/").pop();
-    }
-    return file?.name || file?.filename || "Attachment";
+  const getFileName = (path) => {
+    if (!path) return "Attachment";
+    return path.split("/").pop();
   };
 
-  const getFileUrl = (file) => {
-    if (typeof file === "string") return file;
-    return file?.url || file?.path || "#";
+  const getFileUrl = (path) => {
+    if (!path) return "#";
+    if (path.startsWith("http")) return path;
+    return `${ATTACHMENT_BASE_URL}${path}`;
   };
 
   // ---------------------------------------------------------
-  // FILTERED LIST
+  // FILTERED + SORTED LIST
   // ---------------------------------------------------------
   const filteredComplaints = useMemo(() => {
     if (statusFilter === "all") return complaints;
@@ -125,19 +143,31 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
 
   const sortedComplaints = useMemo(() => {
     return [...filteredComplaints].sort((a, b) => {
-      const dateA = new Date(a.date || a.createdAt || 0).getTime();
-      const dateB = new Date(b.date || b.createdAt || 0).getTime();
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
       return dateB - dateA;
     });
   }, [filteredComplaints]);
 
   const statusCounts = useMemo(() => {
     return complaints.reduce((acc, c) => {
-      const s = String(c.status || "open").toLowerCase();
+      const s = String(c.status || "pending").toLowerCase();
       acc[s] = (acc[s] || 0) + 1;
       return acc;
     }, {});
   }, [complaints]);
+
+  const filterTabs = [
+    { id: "all", label: "All", count: complaints.length },
+    { id: "pending", label: "Pending", count: statusCounts.pending || 0 },
+    {
+      id: "in progress",
+      label: "In Progress",
+      count: statusCounts["in progress"] || 0,
+    },
+    { id: "resolved", label: "Resolved", count: statusCounts.resolved || 0 },
+    { id: "closed", label: "Closed", count: statusCounts.closed || 0 },
+  ];
 
   // ---------------------------------------------------------
   // UI
@@ -154,9 +184,27 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
             <h2 className="text-xl font-bold text-gray-800 mt-1">
               My Complaints
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              Track the status of complaints you've raised.
-            </p>
+
+            {complaints.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  {statusCounts.pending || 0} Pending
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  {statusCounts["in progress"] || 0} In Progress
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  {statusCounts.resolved || 0} Resolved
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  {statusCounts.closed || 0} Closed
+                </span>
+              </div>
+            )}
           </div>
 
           {onRaiseComplaint && (
@@ -173,32 +221,14 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
 
       {/* STATUS FILTER TABS */}
       {complaints.length > 0 && (
-        <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-2">
-          {[
-            { id: "all", label: "All", count: complaints.length },
-            { id: "open", label: "Open", count: statusCounts.open || 0 },
-            {
-              id: "in progress",
-              label: "In Progress",
-              count: statusCounts["in progress"] || 0,
-            },
-            {
-              id: "resolved",
-              label: "Resolved",
-              count: statusCounts.resolved || 0,
-            },
-            {
-              id: "rejected",
-              label: "Rejected",
-              count: statusCounts.rejected || 0,
-            },
-          ].map((tab) => (
+        <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 flex flex-wrap gap-1.5">
+          {filterTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                 statusFilter === tab.id
-                  ? "bg-green-50 text-green-700"
+                  ? "bg-green-700 text-white"
                   : "text-gray-500 hover:bg-gray-50"
               }`}
             >
@@ -206,7 +236,7 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                   statusFilter === tab.id
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-white/20 text-white"
                     : "bg-gray-100 text-gray-500"
                 }`}
               >
@@ -217,8 +247,8 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
         </div>
       )}
 
-      {/* LIST */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+      {/* TABLE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="py-16 text-center text-gray-400">
             <p className="text-sm">Loading your complaints...</p>
@@ -244,125 +274,166 @@ export default function MyComplaints({ customer, onRaiseComplaint }) {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
-            {sortedComplaints.map((complaint, index) => {
-              const id =
-                complaint._id ||
-                complaint.id ||
-                complaint.complaintId ||
-                index;
-              const isExpanded = expandedId === id;
-              const files = complaint.files || complaint.attachments || [];
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    Subject
+                  </th>
+                  <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    Pickup Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    Raised On
+                  </th>
+                  <th className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                    {/* expand chevron column */}
+                  </th>
+                </tr>
+              </thead>
 
-              return (
-                <div key={id} className="p-5">
-                  <button
-                    onClick={() =>
-                      setExpandedId(isExpanded ? null : id)
-                    }
-                    className="w-full flex items-start justify-between gap-4 text-left"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <p className="font-bold text-gray-800 text-sm">
-                          {complaint.subject || "Complaint"}
-                        </p>
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusStyles(
-                            complaint.status
-                          )}`}
-                        >
-                          {statusIcon(complaint.status)}
-                          {complaint.status || "Open"}
-                        </span>
-                      </div>
+              <tbody>
+                {sortedComplaints.map((complaint, index) => {
+                  const id = complaint.id || complaint.complaint_id || index;
+                  const isExpanded = expandedId === id;
+                  const attachment = complaint.attachment;
 
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <FiCalendar size={11} />
-                          {formatDate(complaint.date || complaint.createdAt)}
-                        </span>
-
-                        {complaint.complaintId && (
-                          <span>#{complaint.complaintId}</span>
-                        )}
-
-                        {files.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <FiPaperclip size={11} />
-                            {files.length}
+                  return (
+                    <React.Fragment key={id}>
+                      <tr
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : id)
+                        }
+                        className={`cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                          isExpanded ? "bg-gray-50" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-4 text-gray-500 whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-xs font-medium">
+                            <FiHash size={11} className="text-gray-300" />
+                            {complaint.complaint_id || "—"}
                           </span>
-                        )}
-                      </div>
+                        </td>
 
-                      {!isExpanded && complaint.description && (
-                        <p className="text-xs text-gray-400 mt-2 truncate">
-                          {complaint.description}
-                        </p>
-                      )}
-                    </div>
+                        <td className="px-4 py-4 font-semibold text-gray-800 max-w-[220px] truncate">
+                          {complaint.subject || "Complaint"}
+                        </td>
 
-                    <div className="flex-shrink-0 text-gray-300 mt-1">
-                      {isExpanded ? (
-                        <FiChevronUp size={16} />
-                      ) : (
-                        <FiChevronDown size={16} />
-                      )}
-                    </div>
-                  </button>
+                        <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
+                          {formatDate(complaint.pickup_date)}
+                        </td>
 
-                  {isExpanded && (
-                    <div className="mt-4 pl-0 sm:pl-1">
-                      {complaint.description && (
-                        <div className="bg-gray-50 rounded-xl p-4 mb-3">
-                          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1.5">
-                            Description
-                          </p>
-                          <p className="text-sm text-gray-700 leading-6 whitespace-pre-wrap">
-                            {complaint.description}
-                          </p>
-                        </div>
-                      )}
+                        <td className="px-4 py-4 text-gray-400 text-xs whitespace-nowrap">
+                          {formatDate(complaint.created_at)}
+                        </td>
 
-                      {complaint.resolutionNote && (
-                        <div className="bg-green-50 rounded-xl p-4 mb-3">
-                          <p className="text-[10px] uppercase tracking-widest text-green-700 font-semibold mb-1.5">
-                            Resolution
-                          </p>
-                          <p className="text-sm text-green-800 leading-6 whitespace-pre-wrap">
-                            {complaint.resolutionNote}
-                          </p>
-                        </div>
-                      )}
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${statusStyles(
+                              complaint.status
+                            )}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${statusDot(
+                                complaint.status
+                              )}`}
+                            />
+                            {complaint.status || "Pending"}
+                          </span>
+                        </td>
 
-                      {files.length > 0 && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-2">
-                            Attachments
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {files.map((file, fIndex) => (
-                              <a
-                                key={fIndex}
-                                href={getFileUrl(file)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs text-gray-600"
-                              >
-                                {getFileIcon(file)}
-                                <span className="truncate max-w-[140px]">
-                                  {getFileName(file)}
-                                </span>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
+                        <td className="px-4 py-4 text-right text-gray-300">
+                          {isExpanded ? (
+                            <FiChevronUp size={16} className="inline" />
+                          ) : (
+                            <FiChevronDown size={16} className="inline" />
+                          )}
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr className="border-b border-gray-50 bg-gray-50/50">
+                          <td colSpan={6} className="px-4 py-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* DESCRIPTION */}
+                              <div className="md:col-span-2">
+                                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1.5">
+                                  Description
+                                </p>
+                                <p className="text-sm text-gray-700 leading-6 whitespace-pre-wrap bg-white rounded-xl border border-gray-100 p-4">
+                                  {complaint.description ||
+                                    "No description provided."}
+                                </p>
+
+                                {complaint.admin_reply && (
+                                  <div className="mt-3">
+                                    <p className="text-[10px] uppercase tracking-widest text-green-700 font-semibold mb-1.5">
+                                      Resolution
+                                    </p>
+                                    <p className="text-sm text-green-800 leading-6 whitespace-pre-wrap bg-green-50 rounded-xl border border-green-100 p-4">
+                                      {complaint.admin_reply}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* ATTACHMENT */}
+                              <div>
+                                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1.5">
+                                  Attachment
+                                </p>
+
+                                {attachment ? (
+                                 <a 
+                                    href={getFileUrl(attachment)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block rounded-xl border border-gray-200 bg-white overflow-hidden hover:border-green-300 transition"
+                                  >
+                                    {isImageAttachment(attachment) ? (
+                                      <img
+                                        src={getFileUrl(attachment)}
+                                        alt="Attachment"
+                                        className="w-full h-32 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex flex-col items-center justify-center h-32 px-3">
+                                        {getFileIcon(attachment)}
+                                        <p className="mt-2 text-xs text-gray-500 truncate max-w-full">
+                                          {getFileName(attachment)}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 text-[11px] text-gray-500">
+                                      <FiPaperclip size={11} />
+                                      <span className="truncate">
+                                        {getFileName(attachment)}
+                                      </span>
+                                    </div>
+                                  </a>
+                                ) : (
+                                  <p className="text-xs text-gray-400 bg-white rounded-xl border border-gray-100 p-4 text-center">
+                                    No attachment
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
