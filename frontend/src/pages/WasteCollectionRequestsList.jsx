@@ -609,11 +609,15 @@ export default function WasteCollectionRequestsList() {
                             </p>
                           )}
                           <p className="text-[10px] text-slate-400 font-medium mt-0.5">{group.first.mobile_number}</p>
-                          {group.first.customer_type && (
+                          {group.first.request_source === 'Customer' ? (
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md uppercase tracking-wider mt-1 inline-block">
+                              Customer Portal
+                            </span>
+                          ) : group.first.customer_type ? (
                             <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider mt-1 inline-block">
                               {group.first.customer_type}
                             </span>
-                          )}
+                          ) : null}
                         </td>
 
                         <td className="px-5 py-4 align-top text-xs font-semibold text-slate-700">

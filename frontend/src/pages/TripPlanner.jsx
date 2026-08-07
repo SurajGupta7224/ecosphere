@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Search, Truck, RefreshCw, Filter, Car, User
+  Search, Truck, RefreshCw, Filter, Car, User, Calendar
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -304,7 +304,7 @@ export default function TripPlanner() {
                   <th className="py-3 px-3 min-w-[110px]">Corporation</th>
                   <th className="py-3 px-3 min-w-[100px]">Zone</th>
                   <th className="py-3 px-3 min-w-[120px]">Ward</th>
-                  <th className="py-3 px-4 min-w-[420px]">Waste Logistics & Vehicle Assignments</th>
+                  <th className="py-3 px-4 min-w-[640px]">Waste Logistics & Vehicle Assignments</th>
                   <th className="py-3 px-4 whitespace-nowrap text-right">Status</th>
                 </tr>
               </thead>
@@ -313,38 +313,36 @@ export default function TripPlanner() {
                   const bwgName = first.waste_generator_name || first.customer_legal_name || first.contact_person || first.customer?.name || '—';
                   const corpName = first.corporation?.corporation_name || '—';
                   const zoneName = first.zone?.zone_name || '—';
-                  const wardName = first.ward?.ward_number
-                    ? `${first.ward.ward_number} - ${first.ward.ward_name}`
-                    : (first.ward?.ward_name || '—');
-
-                  const isExpanded = Boolean(expandedLeads[lead_id]);
+                  const wardName = first.ward?.ward_name || '—';
+                  const refCode = first.order_id ? `Ref: ${first.order_id}` : '';
 
                   return (
-                    <tr key={lead_id} className="hover:bg-slate-50/80 transition-colors">
-
-                      {/* Waste Generator & Lead ID */}
+                    <tr key={lead_id} className="hover:bg-slate-50/80 transition-colors group">
+                      {/* Waste Generator */}
                       <td className="py-3 px-4 align-top">
-                        <div className="font-extrabold text-slate-900 text-xs sm:text-sm">{bwgName}</div>
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          {lead_id && (
-                            <span className="inline-block text-[10px] font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
-                              {lead_id}
-                            </span>
-                          )}
-                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {items.length} Category Items
-                          </span>
-                        </div>
-                        {first.order_id && (
-                          <div className="text-[10px] text-slate-400 font-semibold mt-0.5">Ref: {first.order_id}</div>
+                        <p className="font-bold text-slate-900 text-xs tracking-tight">{bwgName}</p>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-mono font-bold text-[10px] rounded-md border border-emerald-200">
+                          {lead_id}
+                        </span>
+                        {refCode && (
+                          <p className="text-[10px] text-slate-400 font-semibold mt-1">{refCode}</p>
                         )}
+                        <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                          {items.length} {items.length === 1 ? 'Category Item' : 'Category Items'}
+                        </p>
                       </td>
 
                       {/* Schedule */}
                       <td className="py-3 px-3 whitespace-nowrap align-top">
-                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-[11px] font-bold border border-slate-200">
-                          {first.collectionEvent?.event_name || first.variation?.variation_name || 'Daily'}
+                        <span className="font-bold text-slate-700 text-xs flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-emerald-600 inline" />
+                          {first.pickup_date || '—'}
                         </span>
+                        {first.pickup_time && (
+                          <span className="block text-[10px] text-slate-500 font-medium mt-0.5">
+                            {first.pickup_time}
+                          </span>
+                        )}
                       </td>
 
                       {/* Corporation */}
@@ -356,8 +354,8 @@ export default function TripPlanner() {
                       {/* Ward */}
                       <td className="py-3 px-3 font-semibold text-slate-700 text-xs align-top">{wardName}</td>
 
-                      {/* Direct Compact Waste Logistics & Vehicle Assignments Cell */}
-                      <td className="py-2.5 px-3 min-w-[440px] space-y-1.5 align-top">
+                      {/* Direct Compact Waste Logistics & Vehicle Assignments Cell - Single Horizontal Line */}
+                      <td className="py-2.5 px-3 min-w-[640px] space-y-1.5 align-top">
                         {items.map((item) => {
                           const currentVendorId = String(item.vendor_id || item.vendor?.id || '');
                           const currentVehicleId = String(item.vehicle_id || item.vehicle?.id || '');
@@ -374,15 +372,15 @@ export default function TripPlanner() {
                           return (
                             <div
                               key={item.id}
-                              className="flex flex-wrap items-center gap-2 bg-slate-50/90 border border-slate-200/90 p-1.5 px-2.5 rounded-xl text-xs shadow-2xs hover:bg-white hover:border-emerald-300 transition-all"
+                              className="flex flex-nowrap items-center gap-2 bg-slate-50/90 border border-slate-200/90 p-1.5 px-2.5 rounded-xl text-xs shadow-2xs hover:bg-white hover:border-emerald-300 transition-all whitespace-nowrap overflow-x-auto"
                             >
                               {/* Category Pill Badge */}
-                              <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black tracking-tight shrink-0 min-w-[90px] text-center shadow-xs">
+                              <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black tracking-tight shrink-0 min-w-[85px] text-center shadow-xs truncate max-w-[120px]" title={item.subCategory?.name || item.sub_category_name || item.category?.name || item.category_name || 'Waste Item'}>
                                 {item.subCategory?.name || item.sub_category_name || item.category?.name || item.category_name || 'Waste Item'}
                               </span>
 
                               {/* Vendor Select */}
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <span className="text-[10px] font-bold text-slate-400">Vendor:</span>
                                 <div className="relative flex items-center">
                                   <select
@@ -392,7 +390,7 @@ export default function TripPlanner() {
                                       const newVendorId = e.target.value;
                                       handleReassign(item.id, { vendor_id: newVendorId, vehicle_id: '' });
                                     }}
-                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all ${
+                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all max-w-[150px] truncate ${
                                       isUpdating ? 'opacity-50 cursor-wait' : ''
                                     }`}
                                   >
@@ -410,7 +408,7 @@ export default function TripPlanner() {
                               </div>
 
                               {/* Vehicle Select */}
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <span className="text-[10px] font-bold text-slate-400">Vehicle:</span>
                                 <div className="relative flex items-center">
                                   <select
@@ -425,7 +423,7 @@ export default function TripPlanner() {
                                         vehicle_id: selectedVehId
                                       });
                                     }}
-                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all ${
+                                    className={`bg-white border border-slate-300 hover:border-emerald-500 rounded-lg py-1 pl-2 pr-6 text-[11px] font-bold text-slate-800 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-all max-w-[210px] truncate ${
                                       isUpdating ? 'opacity-50 cursor-wait' : ''
                                     }`}
                                   >
@@ -447,7 +445,7 @@ export default function TripPlanner() {
                               </div>
 
                               {/* Driver Info Display & Loading Feedback */}
-                              <div className="ml-auto flex items-center gap-1.5">
+                              <div className="ml-auto flex items-center gap-1.5 shrink-0">
                                 {isUpdating ? (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 animate-pulse">
                                     <RefreshCw className="w-3 h-3 animate-spin text-sky-600" /> Saving...

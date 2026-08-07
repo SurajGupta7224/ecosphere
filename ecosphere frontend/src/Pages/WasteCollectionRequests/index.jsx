@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, X, Image as ImageIcon, CheckCircle, Trash2, Calendar, Clock,
+  Search, X, Image as ImageIcon, CheckCircle,CheckCircle2, Trash2, Calendar, Clock,
   User, Phone, Mail, MapPin, Building, ShieldCheck, ClipboardCheck, FileText, ArrowLeft,
   Info, ExternalLink, Copy
 } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const IMAGE_BASE_URL = 'http://localhost:5000/uploads';
 
 const api = axios.create({
   baseURL: API_BASE_URL
@@ -30,7 +29,6 @@ export default function WasteCollectionRequests() {
 
   const [formData, setFormData] = useState({
     // Section 1: Customer Details
-    customer_type: 'New Customer',
     mobile_number: '',
     email: '',
 
@@ -70,7 +68,6 @@ export default function WasteCollectionRequests() {
     designation: '',
     phone_number_2: '',
     email_2: '',
-    others_note: '',
     google_map_link: '',
     landmark: '',
     city: '',
@@ -172,6 +169,7 @@ export default function WasteCollectionRequests() {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [generatedLeadId, setGeneratedLeadId] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // T&C state — shown first before the form
   const [tncAccepted, setTncAccepted] = useState(false);
@@ -665,6 +663,38 @@ export default function WasteCollectionRequests() {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
     setFormData(prev => ({ ...prev, [name]: val }));
+    // Clear per-field error when user starts correcting
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  // Per-field validation — returns an errors object
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.customer_legal_name?.trim()) {
+      errors.customer_legal_name = 'Customer Legal Name is required.';
+    }
+    if (!formData.contact_person?.trim()) {
+      errors.contact_person = 'Contact Person is required.';
+    }
+    if (!formData.mobile_number?.trim()) {
+      errors.mobile_number = 'Mobile Number is required.';
+    } else if (!/^[6-9]\d{9}$/.test(formData.mobile_number.trim())) {
+      errors.mobile_number = 'Enter a valid 10-digit Indian mobile number.';
+    }
+    if (!formData.email?.trim()) {
+      errors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (!formData.address_search?.trim() && !formData.complete_address?.trim()) {
+      errors.address_search = 'Address / Location is required.';
+      errors.complete_address = 'Address / Location is required.';
+    }
+
+    return errors;
   };
 
   // Submit Request
@@ -672,24 +702,16 @@ export default function WasteCollectionRequests() {
     e.preventDefault();
     setToastMsg({ type: '', message: '' });
 
-    if (!formData.customer_legal_name) {
-      showToast("Customer Legal Name is required.", "error");
-      return;
-    }
-    if (!formData.contact_person) {
-      showToast("Contact Person is required.", "error");
-      return;
-    }
-    if (!formData.mobile_number) {
-      showToast("Mobile Number is required.", "error");
-      return;
-    }
-    if (!formData.email) {
-      showToast("Email is required.", "error");
-      return;
-    }
-    if (!formData.address_search && !formData.complete_address) {
-      showToast("Address & Location details are required.", "error");
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // Also show the first error as a toast for accessibility
+      const firstMsg = Object.values(errors)[0];
+      showToast(firstMsg, 'error');
+      // Scroll to first errored field
+      const firstKey = Object.keys(errors)[0];
+      const el = document.querySelector(`[name="${firstKey}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -701,15 +723,21 @@ export default function WasteCollectionRequests() {
         payload.append(key, formData[key]);
       });
 
+      payload.append("customer_type", activeTab || "B2B");
+
       // Selected Subcategories
       const selectedSubcats = subcategoryCards.filter(c => c.included).map(c => ({
+        category_id: c.category_id,
         subcategory_id: c.subcategory_id,
         variation_id: c.selected_variation_id,
         expected_waste: c.expected_waste,
         agreed_price: c.custom_price,
+        custom_price: c.custom_price,
         pricing_mode: c.pricing_mode,
         monthly_price: c.bulk_monthly_price,
-        yearly_price: c.bulk_yearly_price
+        yearly_price: c.bulk_yearly_price,
+        bulk_monthly_price: c.bulk_monthly_price,
+        bulk_yearly_price: c.bulk_yearly_price
       }));
       payload.append("subcategories", JSON.stringify(selectedSubcats));
 
@@ -725,7 +753,6 @@ export default function WasteCollectionRequests() {
       if (res.data.success) {
         setSubmitSuccess(true);
         setGeneratedLeadId(res.data.data?.lead_id || "LD-SUCCESS");
-        showToast("Request submitted successfully!", "success");
       } else {
         showToast(res.data.message || "Failed to submit request.", "error");
       }
@@ -752,760 +779,926 @@ export default function WasteCollectionRequests() {
   }, {});
   const groupedCategories = Object.values(groupedCategoriesMap);
 
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 py-10 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Toast Banner */}
-        {toastMsg.message && (
-          <div className={`mb-6 p-4 rounded-xl text-sm font-bold flex items-center justify-between shadow-md ${toastMsg.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-            <span>{toastMsg.message}</span>
-            <button onClick={() => setToastMsg({ type: '', message: '' })} className="text-white hover:opacity-80 font-bold">×</button>
-          </div>
-        )}
-
-        {/* ================= SCREEN 1: TERMS & CONDITIONS ================= */}
-        {!tncAccepted ? (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden opacity-100">
-            {/* Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5 text-emerald-700" /> Waste Collection Requests
-                </h1>
-                <p className="text-xs text-slate-400 mt-0.5">Please review and accept the Terms & Conditions to continue.</p>
-              </div>
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
+        <div className="max-w-6xl mx-auto">
+          
+          {/* Toast Banner */}
+          {toastMsg.message && (
+            <div className={`mb-6 p-4 rounded-xl text-sm font-bold flex items-center justify-between shadow-md ${toastMsg.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+              <span>{toastMsg.message}</span>
+              <button onClick={() => setToastMsg({ type: '', message: '' })} className="text-white hover:opacity-80 font-bold">×</button>
             </div>
+          )}
 
-            {/* Terms Box */}
-            <div className="p-6 sm:p-8">
-              <div className="bg-[#f6f2ff] border border-[#e8dcfc] rounded-2xl p-6 mb-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-700 shadow-sm">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">TERMS & CONDITIONS</h2>
-                    <p className="text-xs text-slate-500">Read each point carefully and check the boxes to agree</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={tncBoxes.tnc_agree}
-                      onChange={(e) => setTncBoxes(prev => ({ ...prev, tnc_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                      By using our waste management services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, as well as the terms and conditions outlined in the MoU, which are hereby incorporated by reference.
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={tncBoxes.accuracy_agree}
-                      onChange={(e) => setTncBoxes(prev => ({ ...prev, accuracy_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                      We warrant that the information provided by us is to the best of our knowledge and belief, accurate and current at the time of provisioning.
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={tncBoxes.copyright_agree}
-                      onChange={(e) => setTncBoxes(prev => ({ ...prev, copyright_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                      Copyrights reserved with Ecosphere Waste Solutions and Mukka Protiens Limited.
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={tncBoxes.promo_agree}
-                      onChange={(e) => setTncBoxes(prev => ({ ...prev, promo_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
-                      I agree to receive promotional emails
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center justify-between pt-2">
+          {/* ================= SCREEN 1: TERMS & CONDITIONS ================= */}
+          {!tncAccepted ? (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden opacity-100">
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
+                  className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all"
                 >
-                  Decline
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-emerald-700" /> Waste Collection Requests
+                  </h1>
+                  <p className="text-xs text-slate-400 mt-0.5">Please review and accept the Terms & Conditions to continue.</p>
+                </div>
+              </div>
+
+              {/* Terms Box */}
+              <div className="p-6 sm:p-8">
+                <div className="bg-[#f6f2ff] border border-[#e8dcfc] rounded-2xl p-6 mb-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-700 shadow-sm">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">TERMS & CONDITIONS</h2>
+                      <p className="text-xs text-slate-500">Read each point carefully and check the boxes to agree</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={tncBoxes.tnc_agree}
+                        onChange={(e) => setTncBoxes(prev => ({ ...prev, tnc_agree: e.target.checked }))}
+                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                        By using our waste management services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, as well as the terms and conditions outlined in the MoU, which are hereby incorporated by reference.
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={tncBoxes.accuracy_agree}
+                        onChange={(e) => setTncBoxes(prev => ({ ...prev, accuracy_agree: e.target.checked }))}
+                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                        We warrant that the information provided by us is to the best of our knowledge and belief, accurate and current at the time of provisioning.
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={tncBoxes.copyright_agree}
+                        onChange={(e) => setTncBoxes(prev => ({ ...prev, copyright_agree: e.target.checked }))}
+                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                        Copyrights reserved with Ecosphere Waste Solutions and Mukka Protiens Limited.
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={tncBoxes.promo_agree}
+                        onChange={(e) => setTncBoxes(prev => ({ ...prev, promo_agree: e.target.checked }))}
+                        className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                        I agree to receive promotional emails
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
+                  >
+                    Decline
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTncAccept}
+                    className="px-8 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                  >
+                    Accept &amp; Continue →
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : submitSuccess ? (
+            /* ================= SUCCESS SCREEN - Lead ID Only ================= */
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 sm:p-14 text-center max-w-lg mx-auto">
+              {/* Minimal check icon */}
+              <div className="w-14 h-14 bg-emerald-50 border-2 border-emerald-200 rounded-full flex items-center justify-center mx-auto mb-8">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Generated Successfully!</h2>
+              <p className="text-slate-500 text-sm mb-6">
+                Your waste collection request has been submitted to the team for verification.
+                You'll be notified once your account is approved.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                Home Page
+              </button>
+            </div>
+          ) : (
+            /* ================= SCREEN 2: MAIN REQUEST FORM ================= */
+            <form onSubmit={handleFormSubmit} noValidate className="space-y-6 opacity-100">
+              
+              {/* Header Banner */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <ClipboardCheck className="w-6 h-6 text-emerald-600" /> Add Waste Collection Request
+                  </h1>
+                  <p className="text-xs text-slate-400 mt-1">Phase 1 — Enter request details manually.</p>
+                </div>
+              </div>
+
+              {/* SECTION 1: Customer Details */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Lead *</label>
+                    <select
+                      name="business_lead"
+                      value={formData.business_lead}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                    >
+                      <option value="Web Lead">Web Lead</option>
+                      <option value="Exhibition">Exhibition</option>
+                      <option value="Service Lead">Service Lead</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Legal Name *</label>
+                    <input
+                      type="text"
+                      name="customer_legal_name"
+                      value={formData.customer_legal_name}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g. Acme Corporation"
+                      className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.customer_legal_name ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                    />
+                    {fieldErrors.customer_legal_name && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                        {fieldErrors.customer_legal_name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Trade Name</label>
+                    <input
+                      type="text"
+                      name="customer_trade_name"
+                      value={formData.customer_trade_name}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Acme Trading"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Person *</label>
+                    <input
+                      type="text"
+                      name="contact_person"
+                      value={formData.contact_person}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g. John Doe"
+                      className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.contact_person ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                    />
+                    {fieldErrors.contact_person && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                        {fieldErrors.contact_person}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Designation</label>
+                    <input
+                      type="text"
+                      name="designation"
+                      value={formData.designation}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Sales Manager"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 1 *</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="tel"
+                        name="mobile_number"
+                        value={formData.mobile_number}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g. 9876543210"
+                        maxLength={10}
+                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.mobile_number ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                      />
+                    </div>
+                    {fieldErrors.mobile_number && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                        {fieldErrors.mobile_number}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 2</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="tel"
+                        name="phone_number_2"
+                        value={formData.phone_number_2}
+                        onChange={handleInputChange}
+                        placeholder="e.g. +91 9123456780"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail *</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g. john@example.com"
+                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.email ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                      />
+                    </div>
+                    {fieldErrors.email && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                        {fieldErrors.email}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail 2</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        name="email_2"
+                        value={formData.email_2}
+                        onChange={handleInputChange}
+                        placeholder="e.g. contact@acme.com"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: License Details */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details (Optional)
+                </h2>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Registered RWA</label>
+                      <input
+                        type="text"
+                        name="registered_rwa"
+                        value={formData.registered_rwa}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Green Valley RWA"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GST Number</label>
+                      <input
+                        type="text"
+                        name="gst"
+                        value={formData.gst}
+                        onChange={handleInputChange}
+                        placeholder="e.g. 29ABCDE1234F1Z5"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">PAN Number</label>
+                      <input
+                        type="text"
+                        name="pan"
+                        value={formData.pan}
+                        onChange={handleInputChange}
+                        placeholder="e.g. ABCDE1234F"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Trade License</label>
+                      <input
+                        type="text"
+                        name="trade_license"
+                        value={formData.trade_license}
+                        onChange={handleInputChange}
+                        placeholder="e.g. TL-987654"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Upload Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload RWA Proof</label>
+                      {renderDocumentUploadField(rwaFile, setRwaFile, "Upload RWA Proof", ".pdf,image/*")}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload GST Certificate</label>
+                      {renderDocumentUploadField(gstFile, setGstFile, "Upload GST Certificate", ".pdf,image/*")}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload PAN Copy</label>
+                      {renderDocumentUploadField(panFile, setPanFile, "Upload PAN Copy", ".pdf,image/*")}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload Trade License Copy</label>
+                      {renderDocumentUploadField(tradeLicenseFile, setTradeLicenseFile, "Upload Trade License Copy", ".pdf,image/*")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: Location Details */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <Building className="w-5 h-5 text-violet-500" /> Section 3: Location Details
+                </h2>
+                <div className="space-y-6">
+
+                  {/* Address Search */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address Search *</label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        id="mapSearchInput"
+                        type="text"
+                        name="address_search"
+                        value={formData.address_search}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Search locations using Google..."
+                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.address_search ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                      />
+                    </div>
+                    {fieldErrors.address_search && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                        <span className="w-3.5 h-3.5 rounded-full bg-rose-100 inline-flex items-center justify-center text-rose-600 font-black text-[9px] flex-shrink-0">!</span>
+                        {fieldErrors.address_search}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Lat/Lng */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Latitude *</label>
+                      <input
+                        type="text"
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g. 28.7041"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Longitude *</label>
+                      <input
+                        type="text"
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g. 77.1025"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Google Map Div Container */}
+                  <div>
+                    <div ref={mapDivRef} className="w-full h-64 rounded-2xl border border-slate-200 overflow-hidden shadow-inner" />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">BWG Name *</label>
+                      <input
+                        type="text"
+                        name="waste_generator_name"
+                        value={formData.waste_generator_name}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g. Smart Bazar"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sector *</label>
+                      <select
+                        name="sector"
+                        value={formData.sector}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                      >
+                        <option value="">Select Sector</option>
+                        <option value="Apartment">Apartment</option>
+                        <option value="Food Processing">Food Processing</option>
+                        <option value="Hospital and Health care">Hospital and Health care</option>
+                        <option value="Ware House and Logistics">Ware House and Logistics</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Hospitality Sector">Hospitality Sector</option>
+                        <option value="Pharma">Pharma</option>
+                        <option value="Retail Industry">Retail Industry</option>
+                        <option value="Education Institutions">Education Institutions</option>
+                        <option value="Banking and Finance">Banking and Finance</option>
+                        <option value="Airport Transportation">Airport Transportation</option>
+                        <option value="IT / ITES / BPO">IT / ITES / BPO</option>
+                        <option value="Housing and Society">Housing and Society</option>
+                        <option value="Shopping Malls">Shopping Malls</option>
+                        <option value="Hotel and Resort">Hotel and Resort</option>
+                        <option value="Government Sector">Government Sector</option>
+                        <option value="Agricultural Sector">Agricultural Sector</option>
+                        <option value="Cinema Halls / Multiplex">Cinema Halls / Multiplex</option>
+                        <option value="Airport, Railways & Expressway">Airport, Railways &amp; Expressway</option>
+                        <option value="Office Space">Office Space</option>
+                        <option value="Others">Others</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 5: Flats/Area based on sector */}
+                  {formData.sector && (
+                    <div className="w-full">
+                      {formData.sector === "Apartment" ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                          {/* Flats */}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Flats *
+                            </label>
+
+                            <input
+                              type="number"
+                              name="no_of_dwelling_units"
+                              value={formData.no_of_dwelling_units}
+                              onChange={handleInputChange}
+                              required
+                              min="0"
+                              placeholder="e.g. 150"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                            />
+                          </div>
+
+                          {/* Occupied Flats */}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Occupied Flats *
+                            </label>
+
+                            <input
+                              type="number"
+                              name="occupied_flats"
+                              value={formData.occupied_flats}
+                              onChange={handleInputChange}
+                              required
+                              min="0"
+                              placeholder="e.g. 120"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                            />
+                          </div>
+
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Area (SqM) *
+                          </label>
+
+                          <input
+                            type="number"
+                            name="area_sqm"
+                            value={formData.area_sqm}
+                            onChange={handleInputChange}
+                            required
+                            min="0"
+                            placeholder="e.g. 500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Complete Address */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Complete Address *</label>
+                    <textarea
+                      name="complete_address"
+                      value={formData.complete_address}
+                      onChange={handleInputChange}
+                      required
+                      rows="3"
+                      placeholder="e.g. 456 Industrial Area, Bangalore"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
+                    />
+                  </div>
+
+
+
+                  {/* Landmark, City, State */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Landmark</label>
+                      <input
+                        type="text"
+                        name="landmark"
+                        value={formData.landmark}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Near Central Park"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">City</label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Bangalore"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">State</label>
+                      <input
+                        type="text"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Karnataka"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pincode, Country, Google Map Link */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pincode</label>
+                      <input
+                        type="text"
+                        name="pincode"
+                        value={formData.pincode}
+                        onChange={handleInputChange}
+                        placeholder="e.g. 560001"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Country</label>
+                      <input
+                        type="text"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                        placeholder="e.g. India"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Google Map Link</label>
+                      <input
+                        type="text"
+                        name="google_map_link"
+                        value={formData.google_map_link}
+                        onChange={handleInputChange}
+                        placeholder="e.g. https://www.google.com/maps/place/..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Service Details / Expected Waste (KG) */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 4: Service Details / Expected Waste (KG)
+                </h2>
+
+                <div className="space-y-6">
+                  {subcategoryCards.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 text-sm">
+                      <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      Loading waste categories...
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Category Selection Groups */}
+                      <div className="space-y-6 pb-6 border-b border-slate-100">
+                        {groupedCategories.map((cat) => {
+                          const selectedSubcats = cat.subcategories.filter(s => s.included);
+                          const isOpen = openDropdownCategoryId === cat.category_id;
+
+                          return (
+                            <div key={cat.category_id} className="space-y-2 relative">
+                              <h3 className="text-lg font-black text-emerald-800 tracking-tight">
+                                {cat.category_name}
+                              </h3>
+
+                              <label className="block text-xs font-bold text-slate-700 mt-2 mb-1">
+                                Sub-Category
+                              </label>
+
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownCategoryId(isOpen ? null : cat.category_id);
+                                }}
+                                className="min-h-[50px] bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-2 flex flex-wrap gap-2 items-center cursor-pointer select-none transition-all"
+                              >
+                                {selectedSubcats.length === 0 ? (
+                                  <span className="text-sm text-slate-400 pl-2">Select subcategories...</span>
+                                ) : (
+                                  selectedSubcats.map((sub) => (
+                                    <span
+                                      key={sub.subcategory_id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleInclude(sub.subcategory_id);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                                    >
+                                      <span className="font-bold">×</span>
+                                      {sub.subcategory_name}
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+
+                              {/* Dropdown Options */}
+                              {isOpen && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1.5">
+                                  {cat.subcategories.map((sub) => (
+                                    <div
+                                      key={sub.subcategory_id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleInclude(sub.subcategory_id);
+                                      }}
+                                      className={`px-4 py-2 text-sm font-medium cursor-pointer flex items-center justify-between transition-colors ${sub.included ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
+                                    >
+                                      <span>{sub.subcategory_name}</span>
+                                      {sub.included && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Subcategory Detail Cards for Included Items */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {subcategoryCards.filter(c => c.included).map((card) => {
+                          const selectedVar = (card.variations || []).find(v => v.id == card.selected_variation_id) || null;
+                          const expectedDaily = parseFloat(card.expected_waste) || 0;
+
+                          const defaultVarPrice = selectedVar ? parseFloat(selectedVar.per_kg_price || 0) : 0;
+                          const customPriceVal = parseFloat(card.custom_price);
+                          const finalPrice = (!isNaN(customPriceVal) && customPriceVal >= 0 && card.custom_price !== '')
+                            ? customPriceVal
+                            : defaultVarPrice;
+
+                          const estMonthlyWaste = expectedDaily * 30;
+                          const estYearlyWaste = expectedDaily * 365;
+
+                          const estMonthlyPrice = estMonthlyWaste * finalPrice;
+                          const estYearlyPrice = estYearlyWaste * finalPrice;
+
+                          return (
+                            <div
+                              key={card.subcategory_id}
+                              className="bg-white border border-slate-200 hover:border-slate-300 rounded-[16px] p-6 space-y-6 transition-all duration-300 hover:shadow-md "
+                            >
+                              {/* Card Header */}
+                              <div className="border-b border-slate-100 pb-3">
+                                <h3 className="text-lg font-extrabold text-emerald-800 tracking-tight">
+                                  {card.subcategory_name}
+                                </h3>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                {/* 1. Billing Type Dropdown */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Billing Type</label>
+                                  <select
+                                    value={card.pricing_mode || 'KG'}
+                                    onChange={(e) => handleCardPricingModeChange(card.subcategory_id, e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                  >
+                                    <option value="KG">KG</option>
+                                    <option value="Bulk">Bulk</option>
+                                  </select>
+                                </div>
+
+                                {/* 2. Variation Dropdown */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Variation</label>
+                                  <select
+                                    name={`variation_${card.subcategory_id}`}
+                                    id={`variation_${card.subcategory_id}`}
+                                    value={card.selected_variation_id}
+                                    onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                  >
+                                    <option value="">-Select Type-</option>
+                                    {(card.variations || []).map((v) => (
+                                      <option key={v.id} value={v.id}>{v.variation_name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* 3. No. of Services */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">No. of Services</label>
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={selectedVar ? selectedVar.number_of_sr || '0' : ''}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                                  />
+                                </div>
+
+                                {/* 4. Scheduled Every */}
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-700">Scheduled Every</label>
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={selectedVar ? `Every ${selectedVar.schedule_after_days || '1'} Days` : ''}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-semibold text-slate-500 cursor-not-allowed"
+                                  />
+                                </div>
+
+                                {/* 5. Expected Waste Per Day (Only shown for Per KG pricing, hidden for Bulk) */}
+                                {card.pricing_mode !== 'Bulk' && (
+                                  <div className="space-y-1.5 sm:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-700">Expected Waste (KG Per Day) *</label>
+                                    <input
+                                      name={`expected_waste_${card.subcategory_id}`}
+                                      id={`expected_waste_${card.subcategory_id}`}
+                                      type="number"
+                                      min="1"
+                                      step="any"
+                                      required
+                                      disabled={!selectedVar}
+                                      value={card.expected_waste}
+                                      onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
+                                      placeholder="Enter waste in KG per day"
+                                      className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
+                                          ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
+                                          : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pickup Schedule */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-slate-100">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date</label>
+                      <input
+                        type="date"
+                        name="pickup_date"
+                        value={formData.pickup_date}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Time Slot</label>
+                      <select
+                        name="time_slot_id"
+                        value={formData.time_slot_id}
+                        onChange={handleInputChange}
+                        disabled={loadingSlots || timeSlots.length === 0}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="">{loadingSlots ? "Loading slots..." : timeSlots.length === 0 ? "Select Date First" : "Select Time Slot"}</option>
+                        {timeSlots.map(slot => (
+                          <option key={slot.id} value={slot.id}>{slot.slot_name} ({slot.start_time} - {slot.end_time})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Action Bar */}
+              <div className="flex items-center justify-end gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  Reset Form
                 </button>
 
                 <button
-                  type="button"
-                  onClick={handleTncAccept}
-                  className="px-8 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                  type="submit"
+                  disabled={submitting}
+                  className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
-                  Accept &amp; Continue →
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generating Request...
+                    </>
+                  ) : (
+                    "Generate Request"
+                  )}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : submitSuccess ? (
-          /* ================= SUCCESS SCREEN ================= */
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 sm:p-12 text-center max-w-xl mx-auto opacity-100">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Generated Successfully!</h2>
-            <p className="text-slate-500 text-sm mb-6">Your waste collection request has been submitted to the team for verification.</p>
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-8">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Generated Lead ID</span>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-wide">{generatedLeadId}</span>
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-all cursor-pointer"
-            >
-              Submit Another Request
-            </button>
-          </div>
-        ) : (
-          /* ================= SCREEN 2: MAIN REQUEST FORM ================= */
-          <form onSubmit={handleFormSubmit} noValidate className="space-y-6 opacity-100">
-            
-            {/* Header Banner */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                  <ClipboardCheck className="w-6 h-6 text-emerald-600" /> Add Waste Collection Request
-                </h1>
-                <p className="text-xs text-slate-400 mt-1">Phase 1 — Enter request details manually.</p>
-              </div>
-            </div>
 
-            {/* SECTION 1: Customer Details */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Type *</label>
-                  <select
-                    name="customer_type"
-                    value={formData.customer_type}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                  >
-                    <option value="New Customer">New Customer</option>
-                    <option value="Individual">Individual</option>
-                    <option value="Commercial">Commercial</option>
-                    <option value="RWA">RWA</option>
-                    <option value="Residential">Residential</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Business Lead *</label>
-                  <select
-                    name="business_lead"
-                    value={formData.business_lead}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                  >
-                    <option value="Web Lead">Web Lead</option>
-                    <option value="Exhibition">Exhibition</option>
-                    <option value="Service Lead">Service Lead</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Legal Name *</label>
-                  <input
-                    type="text"
-                    name="customer_legal_name"
-                    value={formData.customer_legal_name}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g. Acme Corporation"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Trade Name</label>
-                  <input
-                    type="text"
-                    name="customer_trade_name"
-                    value={formData.customer_trade_name}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Acme Trading"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Person *</label>
-                  <input
-                    type="text"
-                    name="contact_person"
-                    value={formData.contact_person}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g. John Doe"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Designation</label>
-                  <input
-                    type="text"
-                    name="designation"
-                    value={formData.designation}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Sales Manager"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 1 *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="tel"
-                      name="mobile_number"
-                      value={formData.mobile_number}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. +91 9876543210"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number 2</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="tel"
-                      name="phone_number_2"
-                      value={formData.phone_number_2}
-                      onChange={handleInputChange}
-                      placeholder="e.g. +91 9123456780"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail *</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. john@example.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-Mail 2</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="email"
-                      name="email_2"
-                      value={formData.email_2}
-                      onChange={handleInputChange}
-                      placeholder="e.g. contact@acme.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Others</label>
-                  <input
-                    type="text"
-                    name="others_note"
-                    value={formData.others_note}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Additional note"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 3: License Details */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 3: License Details
-              </h2>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Registered RWA</label>
-                    <input
-                      type="text"
-                      name="registered_rwa"
-                      value={formData.registered_rwa}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Green Valley RWA"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GST Number</label>
-                    <input
-                      type="text"
-                      name="gst"
-                      value={formData.gst}
-                      onChange={handleInputChange}
-                      placeholder="e.g. 29ABCDE1234F1Z5"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">PAN Number</label>
-                    <input
-                      type="text"
-                      name="pan"
-                      value={formData.pan}
-                      onChange={handleInputChange}
-                      placeholder="e.g. ABCDE1234F"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Trade License</label>
-                    <input
-                      type="text"
-                      name="trade_license"
-                      value={formData.trade_license}
-                      onChange={handleInputChange}
-                      placeholder="e.g. TL-987654"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Upload Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload RWA Proof</label>
-                    {renderDocumentUploadField(rwaFile, setRwaFile, "Upload RWA Proof", ".pdf,image/*")}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload GST Certificate</label>
-                    {renderDocumentUploadField(gstFile, setGstFile, "Upload GST Certificate", ".pdf,image/*")}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload PAN Copy</label>
-                    {renderDocumentUploadField(panFile, setPanFile, "Upload PAN Copy", ".pdf,image/*")}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload Trade License Copy</label>
-                    {renderDocumentUploadField(tradeLicenseFile, setTradeLicenseFile, "Upload Trade License Copy", ".pdf,image/*")}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 4: Location Details */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <Building className="w-5 h-5 text-violet-500" /> Section 4: Location Details
-              </h2>
-              <div className="space-y-6">
-
-                {/* Address Search */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address Search *</label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      id="mapSearchInput"
-                      type="text"
-                      name="address_search"
-                      value={formData.address_search}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Search locations using Google..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Lat/Lng */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Latitude *</label>
-                    <input
-                      type="text"
-                      name="latitude"
-                      value={formData.latitude}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. 28.7041"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Longitude *</label>
-                    <input
-                      type="text"
-                      name="longitude"
-                      value={formData.longitude}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. 77.1025"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Google Map Div Container */}
-                <div>
-                  <div ref={mapDivRef} className="w-full h-64 rounded-2xl border border-slate-200 overflow-hidden shadow-inner" />
-                </div>
-
-                {/* Complete Address */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Complete Address *</label>
-                  <textarea
-                    name="complete_address"
-                    value={formData.complete_address}
-                    onChange={handleInputChange}
-                    required
-                    rows="3"
-                    placeholder="e.g. 456 Industrial Area, Bangalore"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
-                  />
-                </div>
-
-                {/* Landmark, City, State */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Landmark</label>
-                    <input
-                      type="text"
-                      name="landmark"
-                      value={formData.landmark}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Near Central Park"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">City</label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Bangalore"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">State</label>
-                    <input
-                      type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Karnataka"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Pincode, Country, Google Map Link */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pincode</label>
-                    <input
-                      type="text"
-                      name="pincode"
-                      value={formData.pincode}
-                      onChange={handleInputChange}
-                      placeholder="e.g. 560001"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Country</label>
-                    <input
-                      type="text"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      placeholder="e.g. India"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Google Map Link</label>
-                    <input
-                      type="text"
-                      name="google_map_link"
-                      value={formData.google_map_link}
-                      onChange={handleInputChange}
-                      placeholder="e.g. https://www.google.com/maps/place/..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 5: Service Details / Expected Waste (KG) */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 5: Service Details / Expected Waste (KG)
-              </h2>
-
-              <div className="space-y-6">
-                {subcategoryCards.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 text-sm">
-                    <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    Loading waste categories...
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Category Selection Groups */}
-                    <div className="space-y-6 pb-6 border-b border-slate-100">
-                      {groupedCategories.map((cat) => {
-                        const selectedSubcats = cat.subcategories.filter(s => s.included);
-                        const isOpen = openDropdownCategoryId === cat.category_id;
-
-                        return (
-                          <div key={cat.category_id} className="space-y-2 relative">
-                            <h3 className="text-lg font-black text-emerald-800 tracking-tight">
-                              {cat.category_name}
-                            </h3>
-
-                            <label className="block text-xs font-bold text-slate-700 mt-2 mb-1">
-                              Sub-Category
-                            </label>
-
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownCategoryId(isOpen ? null : cat.category_id);
-                              }}
-                              className="min-h-[50px] bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-2 flex flex-wrap gap-2 items-center cursor-pointer select-none transition-all"
-                            >
-                              {selectedSubcats.length === 0 ? (
-                                <span className="text-sm text-slate-400 pl-2">Select subcategories...</span>
-                              ) : (
-                                selectedSubcats.map((sub) => (
-                                  <span
-                                    key={sub.subcategory_id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleInclude(sub.subcategory_id);
-                                    }}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
-                                  >
-                                    <span className="font-bold">×</span>
-                                    {sub.subcategory_name}
-                                  </span>
-                                ))
-                              )}
-                            </div>
-
-                            {/* Dropdown Options */}
-                            {isOpen && (
-                              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1.5">
-                                {cat.subcategories.map((sub) => (
-                                  <div
-                                    key={sub.subcategory_id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleInclude(sub.subcategory_id);
-                                    }}
-                                    className={`px-4 py-2 text-sm font-medium cursor-pointer flex items-center justify-between transition-colors ${sub.included ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
-                                  >
-                                    <span>{sub.subcategory_name}</span>
-                                    {sub.included && <CheckCircle className="w-4 h-4 text-blue-600" />}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Subcategory Detail Cards for Included Items */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {subcategoryCards.filter(c => c.included).map((card) => (
-                        <div key={card.subcategory_id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm relative">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.category_name}</span>
-                              <h4 className="text-base font-bold text-slate-800">{card.subcategory_name}</h4>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleInclude(card.subcategory_id)}
-                              className="text-slate-400 hover:text-rose-600 p-1"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-
-                          {/* Variation Selection */}
-                          {card.variations && card.variations.length > 0 && (
-                            <div>
-                              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Subcategory Variation</label>
-                              <select
-                                value={card.selected_variation_id}
-                                onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                              >
-                                <option value="">Select Variation</option>
-                                {card.variations.map(v => (
-                                  <option key={v.id} value={v.id}>{v.name} (Suggested: ₹{v.per_kg_price}/kg)</option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-
-                          {/* Mode & Inputs */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expected Waste (KG)</label>
-                              <input
-                                type="number"
-                                value={card.expected_waste}
-                                onChange={(e) => handleCardWasteChange(card.subcategory_id, e.target.value)}
-                                placeholder="e.g. 50"
-                                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Agreed Price (₹/KG)</label>
-                              <input
-                                type="number"
-                                value={card.custom_price}
-                                onChange={(e) => handleCardPriceChange(card.subcategory_id, e.target.value)}
-                                placeholder="₹ / KG"
-                                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-700"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pickup Schedule */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date</label>
-                    <input
-                      type="date"
-                      name="pickup_date"
-                      value={formData.pickup_date}
-                      onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Time Slot</label>
-                    <select
-                      name="time_slot_id"
-                      value={formData.time_slot_id}
-                      onChange={handleInputChange}
-                      disabled={loadingSlots || timeSlots.length === 0}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer disabled:opacity-50"
-                    >
-                      <option value="">{loadingSlots ? "Loading slots..." : timeSlots.length === 0 ? "Select Date First" : "Select Time Slot"}</option>
-                      {timeSlots.map(slot => (
-                        <option key={slot.id} value={slot.id}>{slot.slot_name} ({slot.start_time} - {slot.end_time})</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Action Bar */}
-            <div className="flex items-center justify-end gap-4 pt-4">
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                Reset Form
-              </button>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating Request...
-                  </>
-                ) : (
-                  "Generate Request"
-                )}
-              </button>
-            </div>
-
-          </form>
-        )}
+            </form>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
 }

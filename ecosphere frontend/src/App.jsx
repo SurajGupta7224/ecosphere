@@ -42,7 +42,7 @@ function AppContent() {
   const location = useLocation();
 
   // Pages where we hide the header + footer + mobile navbar
-  const noHeaderRoutes = ["/partnerwithus", "/waste-collection-requests", "/waste-collection-request"];
+  const noHeaderRoutes = ["/partnerwithus"];
 
   const hideHeader = noHeaderRoutes.includes(location.pathname);
 

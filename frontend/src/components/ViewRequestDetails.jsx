@@ -199,15 +199,14 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
                 <InfoItem icon={Building} label="BWG Name" value={firstReq.waste_generator_name} forceShow />
                 <InfoItem icon={Tag} label="Sector" value={firstReq.sector} forceShow />
                 
-                {/* Render Flats & Occupied Flats or Area */}
-                {firstReq.sector === 'Apartment' ? (
-                  <>
-                    <InfoItem icon={Hash} label="Flats" value={flatsVal != null ? String(flatsVal) : null} forceShow />
-                    <InfoItem icon={Home} label="Occupied Flats" value={occupiedFlatsVal != null ? String(occupiedFlatsVal) : null} forceShow />
-                  </>
-                ) : (
-                  <InfoItem icon={Home} label="Area (SqM)" value={firstReq.area_sqm ? `${firstReq.area_sqm} SqM` : null} forceShow />
+                {/* Render Flats, Occupied Flats, and Area */}
+                {(firstReq.sector === 'Apartment' || flatsVal != null) && (
+                  <InfoItem icon={Hash} label="Flats" value={flatsVal != null ? String(flatsVal) : null} forceShow />
                 )}
+                {(firstReq.sector === 'Apartment' || occupiedFlatsVal != null) && (
+                  <InfoItem icon={Home} label="Occupied Flats" value={occupiedFlatsVal != null ? String(occupiedFlatsVal) : null} forceShow />
+                )}
+                <InfoItem icon={Home} label="Area (SqM)" value={firstReq.area_sqm ? `${firstReq.area_sqm} SqM` : null} forceShow={firstReq.sector !== 'Apartment' && flatsVal == null} />
 
                 <InfoItem icon={MapPin} label="City" value={firstReq.city} forceShow />
                 <InfoItem icon={MapPin} label="State" value={firstReq.state} forceShow />
@@ -287,6 +286,29 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
           {/* Service Details & Waste Items Breakdown */}
           <SectionCard title="Service Details & Expected Waste Breakdown" icon={Layers} iconColor="text-emerald-600">
             <div className="space-y-3">
+              {/* Pickup Schedule Summary */}
+              {(firstReq.pickup_date || firstReq.pickup_time || firstReq.pickup_notes) && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2 pb-3 border-b border-slate-100">
+                  {firstReq.pickup_date && (
+                    <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl px-3 py-2.5">
+                      <span className="text-[11px] font-medium text-slate-400 uppercase block">Pickup Date</span>
+                      <span className="text-[13px] font-bold text-slate-800">{firstReq.pickup_date}</span>
+                    </div>
+                  )}
+                  {firstReq.pickup_time && (
+                    <div className="bg-violet-50/60 border border-violet-100 rounded-xl px-3 py-2.5">
+                      <span className="text-[11px] font-medium text-slate-400 uppercase block">Pickup Time</span>
+                      <span className="text-[13px] font-bold text-slate-800">{firstReq.pickup_time}</span>
+                    </div>
+                  )}
+                  {firstReq.pickup_notes && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 sm:col-span-3">
+                      <span className="text-[11px] font-medium text-slate-400 uppercase block">Pickup Notes</span>
+                      <span className="text-[13px] font-medium text-slate-700">{firstReq.pickup_notes}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {selectedGroup.items.filter(item => item.subcategory_id).length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-[12px] italic font-medium bg-slate-50 rounded-xl border border-slate-200">
                   No waste subcategories selected for this request.
@@ -412,7 +434,20 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
           {/* Customer & Contact Details (Shown on RIGHT SIDE as requested) */}
           <SectionCard title="Customer & Contact Details" icon={UserCheck} iconColor="text-emerald-600">
             <div className="space-y-2.5">
-              <InfoItem icon={User} label="Customer Type" value={firstReq.customer_type} forceShow />
+              {/* Source badge */}
+              {firstReq.request_source && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${firstReq.request_source === 'Customer' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                    {firstReq.request_source === 'Customer' ? '🌐 Customer Portal' : firstReq.request_source}
+                  </span>
+                  {firstReq.business_lead && (
+                    <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      {firstReq.business_lead}
+                    </span>
+                  )}
+                </div>
+              )}
+              <InfoItem icon={User} label="Customer Type" value={firstReq.customer_type || 'B2B'} forceShow />
               <InfoItem icon={Building} label="Customer Legal Name" value={firstReq.customer_legal_name} forceShow />
               <InfoItem icon={Building} label="Customer Trade Name" value={firstReq.customer_trade_name} forceShow />
               <InfoItem icon={User} label="Contact Person" value={firstReq.contact_person} forceShow />
@@ -421,7 +456,12 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
               <InfoItem icon={Phone} label="Phone Number 2" value={firstReq.phone_number_2} forceShow />
               <InfoItem icon={Mail} label="Email" value={firstReq.email} forceShow />
               <InfoItem icon={Mail} label="Email 2" value={firstReq.email_2} forceShow />
-              <InfoItem icon={Info} label="Others Note" value={firstReq.others_note} forceShow />
+              {firstReq.branch_code && (
+                <InfoItem icon={Hash} label="Branch Code" value={firstReq.branch_code} forceShow />
+              )}
+              {firstReq.others_note && (
+                <InfoItem icon={Info} label="Others Note" value={firstReq.others_note} forceShow />
+              )}
             </div>
           </SectionCard>
 

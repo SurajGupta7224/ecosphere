@@ -19,6 +19,14 @@ const {
 
 const complaintUpload = upload.single("attachment");
 
+// Multer middleware for customer registration (handles optional file uploads)
+const registrationUpload = upload.fields([
+  { name: "rwa_file", maxCount: 1 },
+  { name: "gst_file", maxCount: 1 },
+  { name: "pan_file", maxCount: 1 },
+  { name: "trade_license_file", maxCount: 1 },
+]);
+
 const customerRegistrationController = require("../controllers/Client/customerRegistrationController");
 
 const customerComplaintController = require("../controllers/Client/customerComplaintController");
@@ -77,7 +85,7 @@ router.get("/public/time-slots/active", timeSlotController.getActiveTimeSlots);
 router.get("/public/waste-collection-requests/resolve-map-link", wasteCollectionRequestController.resolveMapLink);
 
 // POST /api/customer-registration (Customer Registration Submission)
-router.post("/customer-registration",customerRegistrationController.submitRegistration);
+router.post("/customer-registration", registrationUpload, customerRegistrationController.submitRegistration);
 
 
 // POST /api/customer/complaints
