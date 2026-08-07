@@ -14,14 +14,20 @@ const getSubCategories = async (params, userId, isAdmin, hasProductAccess, hasSu
     where.name = { [Op.like]: `%${search}%` };
   }
   if (status !== '') {
-    where.status = status;
+    if (status === 'Active' || status === '1' || status === 1) {
+      where.status = 1;
+    } else if (status === 'Inactive' || status === '0' || status === 0) {
+      where.status = 0;
+    } else {
+      where.status = status;
+    }
   }
   if (category_id !== '') {
     where.category_id = category_id;
   }
 
   // Ownership security check
-  if (!isAdmin && !hasProductAccess && !hasSubCategoryAccess && !hasRequestAccess) {
+  if (userId && !isAdmin && !hasProductAccess && !hasSubCategoryAccess && !hasRequestAccess) {
     where.user_id = userId;
   }
 

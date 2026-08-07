@@ -60,6 +60,10 @@ const WasteOrder = sequelize.define("WasteOrder", {
     allowNull: true,
     field: 'flats'
   },
+  occupied_flats: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   complete_address: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -438,11 +442,11 @@ const WasteOrder = sequelize.define("WasteOrder", {
       key: 'id'
     }
   },
-  driver_id: {
+  vehicle_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
-      model: 'aggregator_employees',
+      model: 'aggregator_vehicles',
       key: 'id'
     }
   },

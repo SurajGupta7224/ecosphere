@@ -13,6 +13,38 @@ const STATUS_STYLES = {
   Cancelled: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' }
 };
 
+const getCategoryColorTheme = (categoryName = '') => {
+  const name = String(categoryName).toLowerCase();
+  if (name.includes('wet') || name.includes('organic')) {
+    return {
+      badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      accentText: 'text-emerald-800'
+    };
+  }
+  if (name.includes('dry') || name.includes('recycle')) {
+    return {
+      badgeBg: 'bg-blue-100 text-blue-900 border-blue-300',
+      accentText: 'text-blue-800'
+    };
+  }
+  if (name.includes('sanitary') || name.includes('medical') || name.includes('hazard') || name.includes('bio')) {
+    return {
+      badgeBg: 'bg-rose-100 text-rose-900 border-rose-300',
+      accentText: 'text-rose-800'
+    };
+  }
+  if (name.includes('e-waste') || name.includes('electronic') || name.includes('metal') || name.includes('c&d')) {
+    return {
+      badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
+      accentText: 'text-amber-800'
+    };
+  }
+  return {
+    badgeBg: 'bg-teal-100 text-teal-900 border-teal-300',
+    accentText: 'text-teal-800'
+  };
+};
+
 function StatusBadge({ status }) {
   const s = STATUS_STYLES[status] || STATUS_STYLES.Booked;
   return (
@@ -56,6 +88,14 @@ export default function WasteOrdersList() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [expandedOrders, setExpandedOrders] = useState({});
+
+  const toggleExpandOrder = (order_id) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [order_id]: !prev[order_id]
+    }));
+  };
 
   // Sidebar / view state
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -479,6 +519,31 @@ export default function WasteOrdersList() {
                               </div>
                             ))}
                           </div>
+
+                          {/* Category Logistics Mapping */}
+                          <div className="bg-white rounded-xl border border-slate-200/80 p-3 space-y-1.5 shadow-2xs">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Logistics Partner & Driver for {item.category?.name || 'Category'}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold text-slate-800">
+                              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-[10px] text-slate-400 font-bold uppercase">Vendor:</span>
+                                <span>{item.vendor?.name || 'Unassigned'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-[10px] text-slate-400 font-bold uppercase">Driver:</span>
+                                <span>
+                                  {item.vehicle?.driver?.name ? (
+                                    `${item.vehicle.driver.name}${item.vehicle.registration_number ? ` (${item.vehicle.registration_number})` : ''}`
+                                  ) : item.driverEmployee?.name ? (
+                                    `${item.driverEmployee.name}${item.driverEmployee.driverVehicles?.[0]?.registration_number ? ` (${item.driverEmployee.driverVehicles[0].registration_number})` : ''}`
+                                  ) : item.vehicle?.registration_number ? (
+                                    `Vehicle: ${item.vehicle.registration_number}`
+                                  ) : 'Unassigned'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       );
                     })
@@ -782,53 +847,177 @@ export default function WasteOrdersList() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/70 border-b border-slate-150 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                      <th className="py-4 px-6">Order ID</th>
-                      <th className="py-4 px-6">Client / Waste Generator</th>
-                      <th className="py-4 px-6">Location</th>
-                      <th className="py-4 px-6">Assigned Vendor</th>
-                      <th className="py-4 px-6">Assigned Driver</th>
-                      <th className="py-4 px-6 text-center">Status</th>
-                      <th className="py-4 px-6 text-right">Actions</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-5">Order & Lead ID</th>
+                      <th className="py-3.5 px-5">Client / Generator</th>
+                      <th className="py-3.5 px-5">Location</th>
+                      <th className="py-3.5 px-5 min-w-[340px]">Category Services & Assigned Logistics</th>
+                      <th className="py-3.5 px-5 text-center">Status</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs text-slate-600">
+                  <tbody className="divide-y divide-slate-200/80 text-xs text-slate-600">
                     {filteredList.map(group => (
                       <tr key={group.order_id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4.5 px-6 font-mono font-bold text-violet-650">
-                          {group.order_id}
-                        </td>
-                        <td className="py-4.5 px-6">
-                          <div className="font-extrabold text-slate-800 leading-tight">
-                            {group.first.customer_legal_name || group.first.contact_person}
+                        {/* 1. Order ID & Lead ID */}
+                        <td className="py-4 px-5 font-mono align-top">
+                          <div className="font-extrabold text-violet-700 text-[13px]">
+                            {group.order_id}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
+                          <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                            Lead: {group.lead_id}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-semibold mt-1">
+                            {group.itemCount} {group.itemCount === 1 ? 'Category Item' : 'Category Items'}
+                          </div>
+                        </td>
+
+                        {/* 2. Client / Generator */}
+                        <td className="py-4 px-5 align-top">
+                          <div className="font-extrabold text-slate-900 leading-snug">
+                            {group.first.customer_legal_name || group.first.contact_person || '—'}
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
                             {group.first.waste_generator_name}
                           </div>
+                          {group.first.mobile_number && (
+                            <div className="text-[10px] text-slate-400 font-medium mt-1">
+                              📞 {group.first.mobile_number}
+                            </div>
+                          )}
                         </td>
-                        <td className="py-4.5 px-6">
-                          <div className="font-bold text-slate-700 leading-tight">
-                            {group.first.corporation?.corporation_name || '—'}
+
+                        {/* 3. Location (Customer's Real Selected Address) */}
+                        <td className="py-4 px-5 align-top max-w-[260px]">
+                          {group.first.complete_address ? (
+                            <div className="text-xs font-bold text-slate-800 leading-snug line-clamp-2" title={group.first.complete_address}>
+                              📍 {group.first.complete_address}
+                            </div>
+                          ) : group.first.apartment_name ? (
+                            <div className="text-xs font-bold text-slate-800 leading-snug">
+                              🏢 {group.first.apartment_name}
+                            </div>
+                          ) : (
+                            <div className="text-xs font-bold text-slate-800 leading-snug">
+                              {group.first.city ? `${group.first.city}, ${group.first.state || ''}` : 'Customer Location Set'}
+                            </div>
+                          )}
+
+                          {/* Corporation, Zone, Ward Badges */}
+                          <div className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center gap-1 flex-wrap">
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-bold text-slate-700">
+                              {group.first.corporation?.corporation_name || 'Corp'}
+                            </span>
+                            <span>•</span>
+                            <span>{group.first.zone?.zone_name || 'Zone'}</span>
+                            <span>•</span>
+                            <span>{group.first.ward?.ward_name || 'Ward'}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 font-bold mt-0.5">
-                            {group.first.zone?.zone_name || '—'} • {group.first.ward?.ward_name || '—'}
-                          </div>
+
+                          {group.first.collectionEvent?.event_name && (
+                            <div className="text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                              Event: {group.first.collectionEvent.event_name}
+                            </div>
+                          )}
                         </td>
-                        <td className="py-4.5 px-6 font-bold text-slate-700">
-                          {group.first.vendor?.name || '—'}
+
+                        {/* 4. Category Services & Assigned Logistics (Compact Expandable View) */}
+                        <td className="py-4 px-5 align-top min-w-[340px] max-w-[400px]">
+                          {(() => {
+                            const isExpanded = expandedOrders[group.order_id];
+                            const displayItems = isExpanded ? group.items : group.items.slice(0, 1);
+                            const hasMore = group.items.length > 1;
+
+                            return (
+                              <div className="space-y-1.5">
+                                {displayItems.map((item, idx) => {
+                                  const catTheme = getCategoryColorTheme(item.category?.name);
+                                  const vehReg = item.vehicle?.registration_number || item.driverEmployee?.driverVehicles?.[0]?.registration_number;
+                                  const driverName = item.vehicle?.driver?.name || item.driverEmployee?.name;
+
+                                  return (
+                                    <div
+                                      key={item.id || idx}
+                                      className="bg-slate-50/90 hover:bg-white border border-slate-200/90 rounded-xl p-2 space-y-1 transition-all shadow-2xs text-[11px]"
+                                    >
+                                      {/* Category Pill Badge & Subcategory Name */}
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${catTheme.badgeBg}`}>
+                                            {item.category?.name || 'Waste'}
+                                          </span>
+                                          <span className="font-extrabold text-slate-900 text-[11px]">
+                                            {item.subCategory?.name || item.subcategory_name || 'Sub-Category'}
+                                          </span>
+                                        </div>
+                                        {item.pricing_mode === 'Bulk' ? (
+                                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 shrink-0">
+                                            Bulk: ₹{parseFloat(item.monthly_price || 0).toLocaleString('en-IN')}/mo
+                                          </span>
+                                        ) : item.expected_waste > 0 ? (
+                                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                            {parseFloat(item.expected_waste)} KG/day
+                                          </span>
+                                        ) : null}
+                                      </div>
+
+                                      {/* Compact Vendor & Driver Line */}
+                                      <div className="flex items-center gap-2 text-[10px] pt-1 border-t border-slate-200/50 flex-wrap text-slate-600">
+                                        <span className="inline-flex items-center gap-1 font-semibold">
+                                          <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span className="text-slate-400">Vendor:</span>
+                                          <strong className="text-slate-800">{item.vendor?.name || 'Unassigned'}</strong>
+                                        </span>
+
+                                        <span className="text-slate-300">|</span>
+
+                                        <span className="inline-flex items-center gap-1 font-semibold">
+                                          <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                          <span className="text-slate-400">Driver:</span>
+                                          <strong className="text-slate-800">
+                                            {driverName ? (
+                                              `${driverName}${vehReg ? ` (${vehReg})` : ''}`
+                                            ) : (
+                                              'Unassigned'
+                                            )}
+                                          </strong>
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                {/* Toggle Expand / Collapse Button */}
+                                {hasMore && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandOrder(group.order_id)}
+                                    className="w-full text-[10px] font-extrabold text-violet-700 hover:text-violet-900 bg-violet-50/80 hover:bg-violet-100 py-1 px-2.5 rounded-lg border border-violet-200 transition-all cursor-pointer flex items-center justify-center gap-1"
+                                  >
+                                    {isExpanded ? (
+                                      <>▲ Collapse ({group.items.length} Categories)</>
+                                    ) : (
+                                      <>▼ +{group.items.length - 1} More {group.items.length - 1 === 1 ? 'Category' : 'Categories'} (Click to Expand)</>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
-                        <td className="py-4.5 px-6">
-                          <div className="font-bold text-slate-700">{group.first.driverEmployee?.name || '—'}</div>
-                        </td>
-                        <td className="py-4.5 px-6 text-center">
+
+                        {/* 5. Status */}
+                        <td className="py-4 px-5 text-center align-top">
                           <StatusBadge status={group.first.status} />
                         </td>
-                        <td className="py-4.5 px-6 text-right">
+
+                        {/* 6. Actions */}
+                        <td className="py-4 px-5 text-right align-top">
                           <button
                             onClick={() => openPanel(group)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-205 hover:bg-slate-100 text-slate-655 font-bold text-[11px] rounded-lg transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition-all shadow-2xs active:scale-95 cursor-pointer"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-slate-500" />
                             View details
                           </button>
                         </td>

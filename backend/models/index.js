@@ -35,9 +35,7 @@ const Notification = require("./notificationModel");
 
 
 const CustomerComplaint = require("./customerComplaintModel");
-
 const Driver = require("./driverModel");
-
 const TripSummary = require("./tripSummaryModel");
 
 
@@ -125,6 +123,7 @@ WasteCollectionRequest.belongsTo(SubCategoryVariation, { foreignKey: "variation_
 WasteCollectionRequest.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 WasteCollectionRequest.belongsTo(User, { foreignKey: "rejected_by", as: "rejector" });
 
+
 // Waste Order associations
 WasteOrder.belongsTo(User, { foreignKey: "user_id", as: "customer" });
 User.hasMany(WasteOrder, { foreignKey: "user_id", as: "wasteOrders" });
@@ -143,10 +142,12 @@ WasteOrder.belongsTo(Zone, { foreignKey: "zone_id", as: "zone" });
 WasteOrder.belongsTo(Ward, { foreignKey: "ward_id", as: "ward" });
 WasteOrder.belongsTo(CollectionEvent, { foreignKey: "collection_event_id", as: "collectionEvent" });
 WasteOrder.belongsTo(User, { foreignKey: "vendor_id", as: "vendor" });
-WasteOrder.belongsTo(Employee, { foreignKey: "driver_id", as: "driverEmployee" });
+WasteOrder.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 WasteOrder.belongsTo(User, { foreignKey: "cancelled_by", as: "canceller" });
 
-// Waste Collection Request ↔ TimeSlot
+// Waste Collection Request ↔ Vehicle & Logistics
+WasteCollectionRequest.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+WasteCollectionRequest.belongsTo(User, { foreignKey: "vendor_id", as: "vendor" });
 WasteCollectionRequest.belongsTo(TimeSlot, { foreignKey: "time_slot_id", as: "timeSlot" });
 TimeSlot.hasMany(WasteCollectionRequest, { foreignKey: "time_slot_id", as: "wasteRequests" });
 
@@ -177,8 +178,6 @@ Vehicle.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 Notification.belongsTo(User, { foreignKey: "user_id", as: "targetUser" });
 User.hasMany(Notification, { foreignKey: "user_id", as: "notifications" });
 
-
-
 // Driver Associations
 Driver.belongsTo(Vehicle, {
   foreignKey: "vehicle_id",
@@ -199,7 +198,6 @@ Employee.hasOne(Driver, {
   foreignKey: "employee_id",
   as: "driverAccount",
 });
-
 
 // Trip Summary Associations
 TripSummary.belongsTo(WasteOrder, {
@@ -222,18 +220,6 @@ TripSummary.belongsTo(User, {
   as: "vendor",
 });
 
-
-WasteOrder.belongsTo(Vehicle, {
-  foreignKey: "vehicle_id",
-  as: "vehicle",
-});
-
-Vehicle.hasMany(WasteOrder, {
-  foreignKey: "vehicle_id",
-  as: "wasteOrders",
-});
-
-
 module.exports = {
   User, Role, Permission, RolePermission,
   Country, State, City, Pincode, Category, SubCategory, SubCategoryVariation,
@@ -243,7 +229,7 @@ module.exports = {
   TimeSlot, ModuleGeneratorHistory,
   Customer,
   BusinessRegion, BusinessSubRegion,
-  Employee, Vehicle,  Driver,
+  Employee, Vehicle, Driver,
   WasteOrder,
   TripSummary,
   Notification,

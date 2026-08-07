@@ -326,7 +326,6 @@ const verify2FA = async (req, res) => {
         profile_status: user.profile_status,
         profile_photo: user.profile_photo,
         role: user.role,
-        permissions: permissionsInfo
       }
     });
 
@@ -339,4 +338,51 @@ const verify2FA = async (req, res) => {
   }
 };
 
-module.exports = { login, generateCaptcha, verify2FA };
+// GET /api/admin/auth/me
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password_hash', 'two_factor_secret'] },
+      include: [
+        {
+          model: Role,
+          as: "role",
+          attributes: ["id", "role_name"],
+          include: [
+            {
+              model: Permission,
+              as: "permissions",
+              attributes: ["permission_name"],
+              through: { attributes: [] }
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!user || user.status !== 'active') {
+      return res.status(401).json({ message: 'User not found or inactive' });
+    }
+
+    const permissionsInfo = user.role?.permissions?.map(p => p.permission_name) || [];
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role_id: user.role_id,
+        status: user.status,
+        profile_status: user.profile_status,
+        profile_photo: user.profile_photo,
+        role: user.role,
+        permissions: permissionsInfo
+      }
+    });
+  } catch (err) {
+    console.error("getMe error:", err);
+    return res.status(500).json({ message: "Server error fetching user profile" });
+  }
+};
+
+module.exports = { login, generateCaptcha, verify2FA, getMe };

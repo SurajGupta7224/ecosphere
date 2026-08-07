@@ -1,4 +1,4 @@
-const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation, Customer, Corporation, Zone, Ward, CollectionEvent, Employee, WasteOrder } = require("../../models/index");
+const { WasteCollectionRequest, User, Category, SubCategory, SubCategoryVariation, Customer, Corporation, Zone, Ward, CollectionEvent, Employee, Vehicle, WasteOrder } = require("../../models/index");
 const { Op } = require("sequelize");
 const sequelize = require("../../config/db");
 const axios = require("axios");
@@ -27,9 +27,9 @@ const getWasteCollectionRequests = async (req, res) => {
     where.user_id = user_id;
   }
 
-  // Role-based visibility: Non-admins only see requests matching their user ID, customer ID, or email/phone
-  const isAdmin = req.user?.role?.role_name?.toLowerCase() === 'admin';
-  if (!isAdmin && !customer_id && !user_id) {
+  // Role-based visibility
+  const isAdmin = req.userType === 'admin' || (req.user?.role?.role_name && req.user.role.role_name.toLowerCase().includes('admin'));
+  if (!isAdmin && !customer_id && !user_id && req.user) {
     const custRecord = await Customer.findOne({
       where: {
         [Op.or]: [
@@ -48,42 +48,57 @@ const getWasteCollectionRequests = async (req, res) => {
     ].filter(Boolean);
   }
 
+  // Search filter
+  if (search && search.trim() !== '') {
+    const term = `%${search.trim()}%`;
+    where[Op.or] = [
+      { lead_id: { [Op.like]: term } },
+      { waste_generator_name: { [Op.like]: term } },
+      { contact_person: { [Op.like]: term } },
+      { mobile_number: { [Op.like]: term } }
+    ];
+  }
+
   try {
     const { count, rows } = await WasteCollectionRequest.findAndCountAll({
       where,
+      distinct: true,
       include: [
         {
           model: User,
           as: "customer",
           attributes: ["id", "name", "email", "phone", "company_type"],
-          where: (search && isAdmin) ? {
-            name: { [Op.like]: `%${search}%` }
-          } : undefined
+          required: false
         },
         {
           model: Category,
           as: "category",
-          attributes: ["id", "name"]
+          attributes: ["id", "name"],
+          required: false
         },
         {
           model: SubCategory,
           as: "subCategory",
-          attributes: ["id", "name"]
+          attributes: ["id", "name"],
+          required: false
         },
         {
           model: SubCategoryVariation,
           as: "variation",
-          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price", "bulk_price"]
+          attributes: ["id", "variation_name", "number_of_sr", "per_kg_price", "bulk_price"],
+          required: false
         },
         {
           model: User,
           as: "approver",
-          attributes: ["id", "name", "email"]
+          attributes: ["id", "name", "email"],
+          required: false
         },
         {
           model: User,
           as: "rejector",
-          attributes: ["id", "name", "email"]
+          attributes: ["id", "name", "email"],
+          required: false
         },
       ],
       limit: parseInt(limit),
@@ -98,8 +113,8 @@ const getWasteCollectionRequests = async (req, res) => {
       currentPage: parseInt(page)
     });
   } catch (err) {
-    console.error("getWasteCollectionRequests error:", err);
-    return res.status(500).json({ message: "Failed to fetch waste collection requests" });
+    console.error("getWasteCollectionRequests error:", err.message, err.stack);
+    return res.status(500).json({ message: "Failed to fetch waste collection requests", error: err.message });
   }
 };
 
@@ -121,9 +136,12 @@ const createWasteCollectionRequest = async (req, res) => {
     complete_address,
     area_sqm,
     no_of_dwelling_units,
+    occupied_flats,
     registered_rwa,
     gst,
+    gst_number,
     pan,
+    pan_number,
     trade_license,
     subcategories,
 
@@ -254,15 +272,7 @@ const createWasteCollectionRequest = async (req, res) => {
       emailCopyFile = req.body.email_copy_file;
     }
 
-    // MOM is always required
-    if (!momAgreementFile) {
-      return res.status(400).json({ message: "MOM (Agreement) Copy is always required." });
-    }
 
-    // PO Copy or Email Copy is required
-    if (!poCopyFile && !emailCopyFile) {
-      return res.status(400).json({ message: "At least one document is required: PO Copy or Email Copy." });
-    }
 
     let rwaFile = null;
     if (req.files && req.files.rwa_file && req.files.rwa_file[0]) {
@@ -319,20 +329,27 @@ const createWasteCollectionRequest = async (req, res) => {
     let parsedSubcategories = [];
     const sourceData = subcategories || req.body.variations_data;
     if (sourceData) {
-      parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
+      try {
+        parsedSubcategories = typeof sourceData === 'string' ? JSON.parse(sourceData) : sourceData;
+      } catch (parseErr) {
+        console.error("Failed to parse subcategories JSON:", parseErr);
+        parsedSubcategories = [];
+      }
     }
 
     // Create unique Customer record for this lead submission
     let customerId = null;
     let targetUserId = loggedInId;
 
-    const validCustomerType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : 'B2B';
+    const customerModelType = (isAdmin || (customer_type && customer_type.toLowerCase() === 'admin')) ? 'admin' : 'website';
+    const customerCreatedBy = isAdmin ? 'admin' : 'customer';
+
     const newCust = await Customer.create({
       customer_name: contact_person || waste_generator_name || customer_legal_name || 'B2B Customer',
       mobile: mobile_number || null,
       email: email || null,
-      customer_type: validCustomerType,
-      created_by: isAdmin ? 'admin' : (req.user ? req.user.name : 'user'),
+      customer_type: customerModelType,
+      created_by: customerCreatedBy,
       status: 'active'
     });
     customerId = newCust.id;
@@ -392,9 +409,10 @@ const createWasteCollectionRequest = async (req, res) => {
           complete_address: complete_address || null,
           area_sqm: area_sqm ? parseFloat(area_sqm) : null,
           dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+          occupied_flats: occupied_flats ? parseInt(occupied_flats) : null,
           registered_rwa: registered_rwa || null,
-          gst_number: gst || null,
-          pan_number: pan || null,
+          gst_number: gst || gst_number || null,
+          pan_number: pan || pan_number || null,
           trade_license: trade_license || null,
           pickup_date: pickup_date || null,
           time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
@@ -483,9 +501,10 @@ const createWasteCollectionRequest = async (req, res) => {
         complete_address: complete_address || null,
         area_sqm: area_sqm ? parseFloat(area_sqm) : null,
         dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+        occupied_flats: occupied_flats ? parseInt(occupied_flats) : null,
         registered_rwa: registered_rwa || null,
-        gst_number: gst || null,
-        pan_number: pan || null,
+        gst_number: gst || gst_number || null,
+        pan_number: pan || pan_number || null,
         trade_license: trade_license || null,
         pickup_date: pickup_date || null,
         time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
@@ -567,7 +586,11 @@ const createWasteCollectionRequest = async (req, res) => {
     });
   } catch (err) {
     console.error("createWasteCollectionRequest error:", err);
-    return res.status(500).json({ message: "Failed to generate waste collection request." });
+    return res.status(500).json({
+      message: err.message || "Failed to generate waste collection request.",
+      error: err.toString(),
+      details: err.errors ? err.errors.map(e => e.message) : undefined
+    });
   }
 };
 
@@ -825,9 +848,10 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
             complete_address,
             area_sqm: area_sqm ? parseFloat(area_sqm) : null,
             dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+            occupied_flats: occupied_flats ? parseInt(occupied_flats) : null,
             registered_rwa: registered_rwa || null,
-            gst_number: gst || null,
-            pan_number: pan || null,
+            gst_number: gst || gst_number || null,
+            pan_number: pan || pan_number || null,
             trade_license: trade_license || null,
             pickup_date: pickup_date || null,
             time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
@@ -916,9 +940,10 @@ const updateWasteCollectionRequestByLeadId = async (req, res) => {
           complete_address,
           area_sqm: area_sqm ? parseFloat(area_sqm) : null,
           dwelling_units: no_of_dwelling_units ? parseInt(no_of_dwelling_units) : null,
+          occupied_flats: occupied_flats ? parseInt(occupied_flats) : null,
           registered_rwa: registered_rwa || null,
-          gst_number: gst || null,
-          pan_number: pan || null,
+          gst_number: gst || gst_number || null,
+          pan_number: pan || pan_number || null,
           trade_license: trade_license || null,
           pickup_date: pickup_date || null,
           time_slot_id: time_slot_id ? parseInt(time_slot_id) : null,
@@ -1037,6 +1062,40 @@ const updateWasteCollectionRequestStatus = async (req, res) => {
       updates.rejected_by = null;
       updates.rejected_date = null;
       updates.rejected_reason = null;
+
+      // Auto-provision customer user account & send credentials email if email exists
+      const targetReq = requests[0];
+      if (targetReq && targetReq.email) {
+        try {
+          const plainPassword = generateProductionPassword();
+          const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+          let userRec = await User.findOne({ where: { email: targetReq.email } });
+          let isNewAccount = false;
+
+          if (!userRec) {
+            userRec = await User.create({
+              name: targetReq.contact_person || targetReq.waste_generator_name || 'Customer',
+              email: targetReq.email,
+              phone: targetReq.mobile_number || null,
+              password: hashedPassword,
+              role_id: 3,
+              status: 'active'
+            });
+            isNewAccount = true;
+          }
+
+          await sendCustomerCredentialsEmail({
+            toEmail: targetReq.email,
+            plainPassword,
+            orderId: leadId,
+            customerName: targetReq.contact_person || targetReq.waste_generator_name || 'Valued Customer',
+            isNewAccount
+          });
+        } catch (emailErr) {
+          console.error("Failed to auto-send credentials email on approval:", emailErr);
+        }
+      }
     } else if (status === 'Rejected') {
       updates.approved_by = null;
       updates.approved_date = null;
@@ -1195,7 +1254,28 @@ const bookWasteCollectionRequest = async (req, res) => {
     ward_id,
     collection_event_id,
     vendor_id,
-    driver_id
+    driver_id,
+    site_request,
+    service_center_type,
+    employee_name,
+    billing_type,
+    business_region,
+    business_sub_region,
+    branch_code,
+    business_lead,
+    total_order_value,
+    discount,
+    discounted_price,
+    sez,
+    taxibility,
+    cgst,
+    sgst,
+    gst_amount,
+    final_price,
+    pickup_date,
+    pickup_time,
+    time_slot_id,
+    pickup_notes
   } = req.body;
 
   const t = await sequelize.transaction();
@@ -1210,6 +1290,97 @@ const bookWasteCollectionRequest = async (req, res) => {
       return res.status(404).json({ message: "Waste collection request not found." });
     }
 
+    // Prevent re-booking if lead is already booked
+    const existingOrder = await WasteOrder.findOne({ where: { lead_id: leadId } });
+    if (existingOrder) {
+      await t.rollback();
+      return res.status(400).json({
+        message: `Order for Lead ID ${leadId} has already been booked (Order ID: ${existingOrder.order_id}).`
+      });
+    }
+
+    // Handle files if uploaded during booking
+    let mom_agreement_file = null;
+    let po_copy_file = null;
+    let email_copy_file = null;
+
+    if (req.files) {
+      if (req.files.mom_agreement_file && req.files.mom_agreement_file[0]) {
+        mom_agreement_file = req.files.mom_agreement_file[0].path;
+      }
+      if (req.files.po_copy_file && req.files.po_copy_file[0]) {
+        po_copy_file = req.files.po_copy_file[0].path;
+      }
+      if (req.files.email_copy_file && req.files.email_copy_file[0]) {
+        email_copy_file = req.files.email_copy_file[0].path;
+      }
+    }
+
+    // Validate Document Requirements: MOM is required, and either PO or Email Copy is required
+    const hasMom = Boolean(mom_agreement_file || requests[0]?.mom_agreement_file);
+    const hasPo = Boolean(po_copy_file || requests[0]?.po_copy_file);
+    const hasEmail = Boolean(email_copy_file || requests[0]?.email_copy_file);
+
+    if (!hasMom) {
+      await t.rollback();
+      return res.status(400).json({ message: "MOM Copy (Minutes of Meeting) document is required." });
+    }
+
+    if (!hasPo && !hasEmail) {
+      await t.rollback();
+      return res.status(400).json({ message: "Either PO Copy or Email Confirmation Copy document is required." });
+    }
+
+    // Prepare update object for admin fields if provided
+    const adminUpdates = {};
+    if (site_request) adminUpdates.site_request = site_request;
+    if (service_center_type) adminUpdates.service_center_type = service_center_type;
+    if (employee_name) adminUpdates.employee_name = employee_name;
+    if (billing_type) adminUpdates.billing_type = billing_type;
+    if (business_region) adminUpdates.business_region = business_region;
+    if (business_sub_region) adminUpdates.business_sub_region = business_sub_region;
+    if (branch_code) adminUpdates.branch_code = branch_code;
+    if (business_lead) adminUpdates.business_lead = business_lead;
+    if (total_order_value !== undefined) adminUpdates.total_order_value = parseFloat(total_order_value) || 0;
+    if (discount !== undefined) adminUpdates.discount = parseFloat(discount) || 0;
+    if (discounted_price !== undefined) adminUpdates.discounted_price = parseFloat(discounted_price) || 0;
+    if (sez) adminUpdates.sez = sez;
+    if (taxibility) adminUpdates.taxibility = taxibility;
+    if (cgst !== undefined) adminUpdates.cgst = parseFloat(cgst) || 0;
+    if (sgst !== undefined) adminUpdates.sgst = parseFloat(sgst) || 0;
+    if (gst_amount !== undefined) adminUpdates.gst_amount = parseFloat(gst_amount) || 0;
+    if (final_price !== undefined) adminUpdates.final_price = parseFloat(final_price) || 0;
+    if (pickup_date) adminUpdates.pickup_date = pickup_date;
+    if (pickup_time) adminUpdates.pickup_time = pickup_time;
+    if (time_slot_id) adminUpdates.time_slot_id = time_slot_id;
+    if (pickup_notes) adminUpdates.pickup_notes = pickup_notes;
+    if (mom_agreement_file) adminUpdates.mom_agreement_file = mom_agreement_file;
+    if (po_copy_file) adminUpdates.po_copy_file = po_copy_file;
+    if (email_copy_file) adminUpdates.email_copy_file = email_copy_file;
+
+    if (Object.keys(adminUpdates).length > 0) {
+      await WasteCollectionRequest.update(adminUpdates, {
+        where: { lead_id: leadId },
+        transaction: t
+      });
+    }
+
+    // Refetch updated request rows
+    const updatedRequests = await WasteCollectionRequest.findAll({
+      where: { lead_id: leadId },
+      transaction: t
+    });
+
+    // Parse items_pricing payload if provided
+    let itemsPricing = [];
+    if (req.body.items_pricing) {
+      try {
+        itemsPricing = typeof req.body.items_pricing === 'string' ? JSON.parse(req.body.items_pricing) : req.body.items_pricing;
+      } catch (e) {
+        console.error("Error parsing items_pricing in bookWasteCollectionRequest:", e);
+      }
+    }
+
     // Generate unique order ID
     const orderId = 'ORD-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900);
 
@@ -1221,19 +1392,51 @@ const bookWasteCollectionRequest = async (req, res) => {
     const contract_end_date = end.toISOString().split('T')[0];
 
     // Create a WasteOrder row for each request row in the group
-    for (const reqRow of requests) {
+    for (let i = 0; i < updatedRequests.length; i++) {
+      const reqRow = updatedRequests[i];
+
+      // Find matching item pricing info by id or subcategory_id
+      const matchedItem = itemsPricing.find(ip =>
+        (ip.id && String(ip.id) === String(reqRow.id)) ||
+        (ip.subcategory_id && String(ip.subcategory_id) === String(reqRow.subcategory_id))
+      ) || itemsPricing[i] || itemsPricing[0] || {};
+
+      const itemVendorId = matchedItem.vendor_id ? parseInt(matchedItem.vendor_id) : (vendor_id ? parseInt(vendor_id) : reqRow.vendor_id);
+      const itemVehicleId = matchedItem.vehicle_id ? parseInt(matchedItem.vehicle_id) : (reqRow.vehicle_id || null);
+
+      // Update original request row with specific vendor, vehicle & pricing
+      const itemUpdates = {};
+      if (itemVendorId) itemUpdates.vendor_id = itemVendorId;
+      if (itemVehicleId) itemUpdates.vehicle_id = itemVehicleId;
+      if (matchedItem.expected_waste !== undefined && matchedItem.expected_waste !== null) {
+        itemUpdates.expected_waste = parseFloat(matchedItem.expected_waste) || 0;
+      }
+      if (matchedItem.agreed_price !== undefined && matchedItem.agreed_price !== null) {
+        itemUpdates.agreed_price = parseFloat(matchedItem.agreed_price) || 0;
+      }
+      if (matchedItem.pricing_mode) {
+        itemUpdates.pricing_mode = matchedItem.pricing_mode;
+      }
+      if (matchedItem.bulk_monthly_price !== undefined && matchedItem.bulk_monthly_price !== null) {
+        itemUpdates.monthly_price = parseFloat(matchedItem.bulk_monthly_price) || 0;
+      }
+
+      if (Object.keys(itemUpdates).length > 0) {
+        await reqRow.update(itemUpdates, { transaction: t });
+      }
+
       const plainReq = reqRow.get({ plain: true });
       delete plainReq.id;
 
       await WasteOrder.create({
         ...plainReq,
         order_id: orderId,
+        vehicle_id: itemVehicleId || null,
+        vendor_id: itemVendorId || null,
         corporation_id: parseInt(corporation_id),
         zone_id: parseInt(zone_id),
         ward_id: parseInt(ward_id),
         collection_event_id: parseInt(collection_event_id),
-        vendor_id: parseInt(vendor_id),
-        driver_id: parseInt(driver_id),
         status: 'Booked',
         contract_start_date,
         contract_end_date
@@ -1323,6 +1526,33 @@ const bookWasteCollectionRequest = async (req, res) => {
   }
 };
 
+// PATCH /api/admin/waste-collection-requests/:id/reassign-vendor-vehicle
+const reassignVendorVehicle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vendor_id, vehicle_id } = req.body;
+
+    const request = await WasteCollectionRequest.findByPk(id);
+    if (!request) {
+      return res.status(404).json({ message: "Waste collection request not found." });
+    }
+
+    const updates = {};
+    if (vendor_id !== undefined) updates.vendor_id = vendor_id;
+    if (vehicle_id !== undefined) updates.vehicle_id = vehicle_id;
+
+    await request.update(updates);
+
+    return res.status(200).json({
+      message: "Vendor/Vehicle reassigned successfully.",
+      request
+    });
+  } catch (err) {
+    console.error("reassignVendorVehicle error:", err);
+    return res.status(500).json({ message: "Failed to reassign vendor/vehicle." });
+  }
+};
+
 module.exports = {
   getWasteCollectionRequests,
   createWasteCollectionRequest,
@@ -1331,5 +1561,6 @@ module.exports = {
   updateWasteCollectionRequestStatus,
   searchRequestByMobile,
   resolveMapLink,
-  bookWasteCollectionRequest
+  bookWasteCollectionRequest,
+  reassignVendorVehicle
 };

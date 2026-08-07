@@ -13,10 +13,19 @@ const {
 const {
   getProfile,
   updateProfile,
-  getCustomerPickups
+  getCustomerPickups,
+  getCustomerOrderQR
 } = require("../controllers/Client/customerController");
 
 const complaintUpload = upload.single("attachment");
+
+// Multer middleware for customer registration (handles optional file uploads)
+const registrationUpload = upload.fields([
+  { name: "rwa_file", maxCount: 1 },
+  { name: "gst_file", maxCount: 1 },
+  { name: "pan_file", maxCount: 1 },
+  { name: "trade_license_file", maxCount: 1 },
+]);
 
 const customerRegistrationController = require("../controllers/Client/customerRegistrationController");
 
@@ -51,9 +60,32 @@ router.put("/customer/profile", verifyToken, updateProfile);
 // GET /api/customer/pickups (Fetch authenticated customer's pickups)
 router.get("/customer/pickups", verifyToken, getCustomerPickups);
 
+// HEAD
+// GET /api/customer/pickups/:id/qr (Fetch QR code for a specific pickup)
+router.get(
+  "/customer/pickups/:id/qr",
+  verifyToken,
+  getCustomerOrderQR
+);
+
+
+const subCategoryController = require("../controllers/Admin/subCategoryController");
+const categoryController = require("../controllers/Admin/categoryController");
+const businessRegionController = require("../controllers/Admin/businessRegionController");
+const businessSubRegionController = require("../controllers/Admin/businessSubRegionController");
+const timeSlotController = require("../controllers/Admin/timeSlotController");
+const wasteCollectionRequestController = require("../controllers/Admin/wasteCollectionRequestController");
+
+// Public routes for Customer Forms
+router.get("/public/sub-categories", subCategoryController.getAllSubCategories);
+router.get("/public/categories", categoryController.getAllCategories);
+router.get("/public/business-regions", businessRegionController.getAllBusinessRegions);
+router.get("/public/business-regions/:id/sub-regions", businessSubRegionController.getSubRegionsByRegion);
+router.get("/public/time-slots/active", timeSlotController.getActiveTimeSlots);
+router.get("/public/waste-collection-requests/resolve-map-link", wasteCollectionRequestController.resolveMapLink);
 
 // POST /api/customer-registration (Customer Registration Submission)
-router.post("/customer-registration",customerRegistrationController.submitRegistration);
+router.post("/customer-registration", registrationUpload, customerRegistrationController.submitRegistration);
 
 
 // POST /api/customer/complaints

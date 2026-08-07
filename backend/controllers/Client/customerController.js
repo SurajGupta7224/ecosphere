@@ -1,5 +1,21 @@
-const { Customer, AuditLog, WasteCollectionRequest, WasteOrder } = require("../../models/index");
+// const { Customer, AuditLog, WasteCollectionRequest, WasteOrder } = require("../../models/index");
+// const { Op } = require("sequelize");
+
+const {
+  Customer,
+  AuditLog,
+  WasteCollectionRequest,
+  WasteOrder,
+  User,
+  Corporation,
+  Zone,
+  Ward,
+  Employee,
+  Vehicle
+} = require("../../models/index");
+
 const { Op } = require("sequelize");
+const QRCode = require("qrcode");
 
 // Helper to write audit log
 const writeAuditLog = async (req, action, module, oldValue, newValue) => {
@@ -223,6 +239,7 @@ const getCustomerPickups = async (req, res) => {
     const email = req.user.email;
     const mobile = req.user.mobile;
 
+    
     // Fetch un-booked/non-booked waste collection requests for this customer
     const requests = await WasteCollectionRequest.findAll({
       where: {
@@ -303,6 +320,111 @@ const getCustomerPickups = async (req, res) => {
   }
 };
 
+// GET /api/customer/pickups/:id/qr (Fetch QR code for a specific pickup)
+
+    // Fetch waste orders for this customer (Booked, Completed, Cancelled)
+const getCustomerOrderQR = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Client sends: ord-ORD-57934800445
+    // Convert it back to the actual order_id
+    const orderId = id.startsWith("ord-")
+      ? id.substring(4)
+      : id;
+
+    const order = await WasteOrder.findOne({
+      where: {
+        order_id: orderId
+      },
+      include: [
+        {
+          model: User,
+          as: "customer",
+          attributes: ["id", "name", "email", "phone"]
+        },
+        {
+          model: Corporation,
+          as: "corporation",
+          attributes: ["id", "corporation_name"]
+        },
+        {
+          model: Zone,
+          as: "zone",
+          attributes: ["id", "zone_name"]
+        },
+        {
+          model: Ward,
+          as: "ward",
+          attributes: ["id", "ward_name"]
+        },
+        {
+          model: User,
+          as: "vendor",
+          attributes: ["id", "name", "email"]
+        },
+        {
+          model: Employee,
+          as: "driverEmployee",
+          attributes: ["id", "name", "mobile_number"],
+          include: [
+            {
+              model: Vehicle,
+              as: "driverVehicles",
+              attributes: [
+                "id",
+                "registration_number",
+                "brand",
+                "model"
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Waste order not found."
+      });
+    }
+
+    // SAME QR DATA AS ADMIN
+    const qrData = {
+      order_id: order.order_id,
+      customer:
+        order.customer_legal_name ||
+        order.contact_person,
+      generator: order.waste_generator_name,
+      address: order.complete_address,
+      corp: order.corporation?.corporation_name,
+      zone: order.zone?.zone_name,
+      ward: order.ward?.ward_name,
+      vendor: order.vendor?.name,
+      driver: order.driverEmployee?.name
+    };
+
+    const qrCodeDataUrl = await QRCode.toDataURL(
+      JSON.stringify(qrData),
+      {
+        errorCorrectionLevel: "H",
+        width: 300,
+        margin: 2
+      }
+    );
+
+    return res.status(200).json({
+      qr: qrCodeDataUrl
+    });
+
+  } catch (err) {
+    console.error("getCustomerOrderQR error:", err);
+
+    return res.status(500).json({
+      message: "Failed to generate customer QR code."
+    });
+  }
+};
 module.exports = {
   getProfile,
   updateProfile,
@@ -311,5 +433,6 @@ module.exports = {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerPickups
+  getCustomerPickups,
+  getCustomerOrderQR
 };

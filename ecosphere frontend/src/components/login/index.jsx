@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { customerFetch } from "../../api";
 
 export default function LoginPage() {
@@ -21,6 +22,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -156,17 +161,27 @@ export default function LoginPage() {
           {mode === "login" && (
             <div>
               <label className="block text-white mb-1 font-semibold text-sm">Password *</label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                disabled={loading}
-                required
-                className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
-                          placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password" 
+                  value={form.password}
+                  onChange={handleChange}
+                  disabled={loading}
+                  required
+                  className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
+                            placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -190,32 +205,52 @@ export default function LoginPage() {
 
               <div>
                 <label className="block text-white mb-1 font-semibold text-sm">New Password *</label>
-                <input
-                  type="password"
-                  name="new_password"
-                  value={form.new_password}
-                  onChange={handleChange}
-                  disabled={loading}
-                  required
-                  className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
-                            placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
-                  placeholder="Enter new password"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    name="new_password"
+                    value={form.new_password}
+                    onChange={handleChange}
+                    disabled={loading}
+                    required
+                    className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
+                              placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block text-white mb-1 font-semibold text-sm">Confirm New Password *</label>
-                <input
-                  type="password"
-                  name="confirm_password"
-                  value={form.confirm_password}
-                  onChange={handleChange}
-                  disabled={loading}
-                  required
-                  className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
-                            placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
-                  placeholder="Confirm new password"
-                />
+                <div className="relative"> 
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirm_password"
+                    value={form.confirm_password}
+                    onChange={handleChange}
+                    disabled={loading}
+                    required
+                    className="w-full border border-white/40 bg-white/20 text-white px-4 py-2.5 rounded-lg 
+                              placeholder-white/80 focus:ring-2 focus:ring-emerald-400 outline-none disabled:opacity-50 text-sm"
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -237,6 +272,16 @@ export default function LoginPage() {
               className="text-white/90 hover:text-white hover:underline font-semibold transition cursor-pointer text-sm"
             >
               Forgot Password?
+            </button>
+          )}
+
+          {mode === "login" && (
+            <button
+              type="button"
+              onClick={() => window.location.href = "/waste-collection-requests"}
+              className="text-white/90 hover:text-white hover:underline font-semibold transition cursor-pointer text-sm"
+            >
+              New User? Register
             </button>
           )}
 

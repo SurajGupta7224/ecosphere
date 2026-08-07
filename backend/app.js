@@ -51,9 +51,10 @@ app.use("/api/admin", adminRoutes);
 const clientRoutes = require("./routes/client");
 app.use("/api", clientRoutes);
 
-// Driver routes
+// Driver Authentication Routes
 const driverRoutes = require("./routes/driver");
 app.use("/api/v1/driver", driverRoutes);
+app.use("/api/driver", driverRoutes);
 
 // Root route
 app.get("/", (req, res) => {
@@ -102,6 +103,16 @@ sequelize.sync()
     try {
       await sequelize.query("ALTER TABLE aggregator_vehicles ADD COLUMN approved_date DATETIME NULL;");
       console.log("Added approved_date column to aggregator_vehicles table");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE waste_collection_requests ADD COLUMN occupied_flats INT NULL;");
+      console.log("Added occupied_flats column to waste_collection_requests table");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE waste_orders ADD COLUMN occupied_flats INT NULL;");
+      console.log("Added occupied_flats column to waste_orders table");
     } catch (err) {}
 
     // Seed aggregator_employee, aggregator_vehicle, and order_management permissions if not exist

@@ -18,7 +18,8 @@ import HelpModal from "../../Pages/HelpModal";
 const MainHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isDashboard = location.pathname === "/dashboard";
+  const solidHeaderPaths = ["/dashboard", "/waste-collection-requests", "/waste-collection-request"];
+  const isDashboard = solidHeaderPaths.includes(location.pathname);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
@@ -83,7 +84,7 @@ const MainHeader = () => {
     setCustomer(null);
     setIsUserDropdownOpen(false);
     setIsMenuOpen(false);
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   // ---------- COMING SOON CONTENT LOGIC ----------
@@ -199,7 +200,8 @@ const MainHeader = () => {
                     (isScrolled ? "text-[#1f2937]" : "text-white")
                   }
                 >
-                  <FiUser size={15} /> Log In ▾
+                  <FiUser size={15} />
+                  <span>Log In</span>
                 </button>
               )}
             </div>
