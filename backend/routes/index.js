@@ -31,7 +31,7 @@ const wasteOrderController = require("../controllers/Admin/wasteOrderController"
 const notificationController = require("../controllers/Admin/notificationController");
 
 
-
+const tripSummaryController = require("../controllers/Admin/tripSummaryController");
 
 const { verifyToken, requirePermission } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -354,6 +354,35 @@ router.patch(
   customerComplaintController.updateComplaint
 );
 
+
+// GET /api/admin/trip-summaries
+router.get(
+  "/trip-summaries",
+  verifyToken,
+  tripSummaryController.getAllTripSummaries
+);
+
+
+// GET /api/admin/trip-summaries/:id
+router.get(
+  "/trip-summaries/:id",
+  verifyToken,
+  tripSummaryController.getTripSummaryById
+);
+
+// PATCH /api/admin/trip-summaries/:id
+router.patch(
+  "/trip-summaries/:id",
+  verifyToken,
+  tripSummaryController.updateTripSummary
+);
+
+// PATCH /api/admin/trip-summaries/:id/approve
+router.patch(
+  "/trip-summaries/:id/approve",
+  verifyToken,
+  tripSummaryController.approveTripSummary
+);
 
 
 module.exports = router;
