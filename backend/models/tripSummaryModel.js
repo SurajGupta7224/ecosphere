@@ -9,125 +9,76 @@ const TripSummary = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-
-    // Order Details
-    order_id: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-    },
-
-    waste_order_id: {
+    trip_id: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-
-    lead_id: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
+    order_id: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
     },
-
-    // Customer
     customer_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-
-    customer_name: {
-      type: DataTypes.STRING(255),
       allowNull: true,
     },
-
-    // Vendor
-    vendor_id: {
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    vehicle_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-
-    // Driver
-
+    driver_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     driver_name: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(150),
       allowNull: true,
     },
-
-    // Vehicle
-
-    vehicle_number: {
-      type: DataTypes.STRING(50),
+    category_id: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
-
-    vehicle_id: {
-  type: DataTypes.INTEGER,
-  allowNull: false,
-},
-
-
-/// Waste Sub Category
-// subcategory_id: {
-//   type: DataTypes.INTEGER,
-//   allowNull: false,
-//   references: {
-//     model: "sub_categories",
-//     key: "id",
-//   },
-// },
-
-    // Waste Collected
-    wet_waste: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
+    category_name: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
     },
-
-    dry_waste: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
+    subcategory_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
-
-    sanitary_waste: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
+    subcategory_name: {
+      type: DataTypes.STRING(150),
+      allowNull: false,
     },
-
-    special_care_waste: {
+    total_waste_kg: {
       type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
+      allowNull: false,
+      defaultValue: 0.0,
     },
-
-    bulk_waste: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
+    image: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
     },
-
-    total_waste: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0,
-    },
-
     remarks: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-
     status: {
-      type: DataTypes.ENUM(
-        "Pending",
-        "Approved",
-        "Rejected"
-      ),
+      type: DataTypes.ENUM("Pending", "Approved", "Rejected"),
       defaultValue: "Pending",
+      allowNull: false,
     },
-
     submitted_at: {
       type: DataTypes.DATE,
       allowNull: true,
     },
-
     approved_by: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-
     approved_at: {
       type: DataTypes.DATE,
       allowNull: true,

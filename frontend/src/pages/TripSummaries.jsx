@@ -1,0 +1,1548 @@
+import { useEffect, useState, useMemo } from "react";
+import {
+  Search,
+  Truck,
+  RefreshCw,
+  Filter,
+  Eye,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Package,
+  Scale,
+  Trash2,
+  Edit3,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon,
+  ArrowLeft,
+  Calendar,
+  Layers,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import api, { IMAGE_BASE_URL } from "../api";
+
+export default function TripSummaries() {
+  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState([]);
+  const [stats, setStats] = useState({
+    total_trips: 0,
+    total_collections: 0,
+    total_waste_kg: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
+
+  // View Mode: 'list' or 'details' (Full Page View like Order Management)
+  const [viewMode, setViewMode] = useState("list");
+  const [selectedGroup, setSelectedGroup] = useState(null);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+
+  // Master Dropdown Options
+  const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
+  // Search & Filter State
+  const [search, setSearch] = useState("");
+  const [filterTripId, setFilterTripId] = useState("");
+  const [filterOrderId, setFilterOrderId] = useState("");
+  const [filterCustomerId, setFilterCustomerId] = useState("");
+  const [filterVehicleId, setFilterVehicleId] = useState("");
+  const [filterDriverId, setFilterDriverId] = useState("");
+  const [filterCategoryId, setFilterCategoryId] = useState("");
+  const [filterSubcategoryId, setFilterSubcategoryId] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All Status");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  // Action / Form States
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+
+  // Custom Delete Confirmation Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingTripId, setDeletingTripId] = useState(null);
+
+  // Multi-Item Batch Edit Form State
+  const [editTripData, setEditTripData] = useState({
+    trip_id: "",
+    vehicle_id: "",
+    driver_id: "",
+    remarks: "",
+    items: [],
+  });
+
+  // Permissions
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userPermissions = user.permissions || [];
+  const isAdmin = user.role?.role_name?.toLowerCase().includes("admin") || true;
+
+  const canApprove = isAdmin || userPermissions.includes("trip_summaries.approve") || userPermissions.includes("trip_summaries");
+  const canReject = isAdmin || userPermissions.includes("trip_summaries.reject") || userPermissions.includes("trip_summaries");
+  const canEdit = isAdmin || userPermissions.includes("trip_summaries.edit") || userPermissions.includes("trip_summaries");
+  const canDelete = isAdmin || userPermissions.includes("trip_summaries.delete") || userPermissions.includes("trip_summaries");
+
+  useEffect(() => {
+    fetchStats();
+    fetchMasterData();
+  }, []);
+
+  useEffect(() => {
+    fetchTripSummaries();
+  }, [page, limit, filterSubcategoryId, filterStatus, filterCategoryId, filterVehicleId, filterDriverId]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get("/trip-summaries/stats");
+      if (res.data?.stats) setStats(res.data.stats);
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+    }
+  };
+
+  const fetchMasterData = async () => {
+    try {
+      const [catRes, subRes, vehRes, empRes] = await Promise.all([
+        api.get("/categories").catch(() => ({ data: { categories: [] } })),
+        api.get("/sub-categories").catch(() => ({ data: { subCategories: [] } })),
+        api.get("/aggregator-vehicles").catch(() => ({ data: { vehicles: [] } })),
+        api.get("/aggregator-employees").catch(() => ({ data: { employees: [] } })),
+      ]);
+
+      setCategories(catRes.data?.categories || catRes.data?.data || []);
+      setSubCategories(subRes.data?.subCategories || subRes.data?.data || []);
+      setVehicles(vehRes.data?.vehicles || vehRes.data?.data || []);
+      setEmployees(empRes.data?.employees || empRes.data?.data || []);
+    } catch (err) {
+      console.error("Error loading master data:", err);
+    }
+  };
+
+  const fetchTripSummaries = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit: 500, // Fetch rows for grouping
+        search: search.trim() || undefined,
+        trip_id: filterTripId || undefined,
+        order_id: filterOrderId.trim() || undefined,
+        customer_id: filterCustomerId || undefined,
+        vehicle_id: filterVehicleId || undefined,
+        driver_id: filterDriverId || undefined,
+        category_id: filterCategoryId || undefined,
+        subcategory_id: filterSubcategoryId || undefined,
+        status: filterStatus !== "All Status" ? filterStatus : undefined,
+        from_date: fromDate || undefined,
+        to_date: toDate || undefined,
+      };
+
+      const res = await api.get("/trip-summaries", { params });
+      setRecords(res.data?.data || []);
+      setPagination(res.data?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
+    } catch (err) {
+      console.error("Error fetching trip summaries:", err);
+      toast.error(err.response?.data?.message || "Failed to load Trip Summaries");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Group records by `trip_id` so all items for trip 5001 display as ONE single card/row!
+  const groupedTrips = useMemo(() => {
+    const map = {};
+    records.forEach((rec) => {
+      const key = rec.trip_id;
+      const custName = rec.customer_name || rec.customer?.customer_name || rec.customer?.name || null;
+      const vehNum = rec.vehicle_number || rec.vehicle?.registration_number || null;
+      const drvName = rec.driver_name || rec.driver?.name || null;
+
+      if (!map[key]) {
+        map[key] = {
+          trip_id: rec.trip_id,
+          order_id: rec.order_id,
+          customer_id: rec.customer_id,
+          customer: rec.customer,
+          customer_name: custName,
+          user_id: rec.user_id,
+          vehicle_id: rec.vehicle_id,
+          vehicle: rec.vehicle,
+          vehicle_number: vehNum,
+          driver_id: rec.driver_id,
+          driver: rec.driver,
+          driver_name: drvName,
+          submitted_at: rec.submitted_at || rec.created_at,
+          created_at: rec.created_at,
+          items: [],
+        };
+      } else {
+        if (!map[key].customer_name && custName) {
+          map[key].customer_name = custName;
+          map[key].customer = rec.customer;
+        }
+        if (!map[key].vehicle_number && vehNum) {
+          map[key].vehicle_number = vehNum;
+          map[key].vehicle = rec.vehicle;
+        }
+        if (!map[key].driver_name && drvName) {
+          map[key].driver_name = drvName;
+          map[key].driver = rec.driver;
+        }
+      }
+      map[key].items.push(rec);
+    });
+
+    return Object.values(map).map((group) => {
+      const totalWasteSum = group.items.reduce(
+        (sum, item) => sum + Number(item.total_waste_kg || 0),
+        0
+      );
+      // Overall status: if any Pending -> Pending; else if any Rejected -> Rejected; else Approved
+      let overallStatus = "Approved";
+      if (group.items.some((i) => i.status === "Pending")) overallStatus = "Pending";
+      else if (group.items.some((i) => i.status === "Rejected")) overallStatus = "Rejected";
+
+      return {
+        ...group,
+        total_waste_kg: totalWasteSum.toFixed(2),
+        overallStatus,
+        itemCount: group.items.length,
+      };
+    });
+  }, [records]);
+
+  // Calculate Subcategory Wise Breakdown Stats (100% Dynamic from Sub-Category Management Catalog)
+  const subCategoryBreakdown = useMemo(() => {
+    const map = {};
+
+    // 1. Initialize map with ALL master subcategories from Sub-Category Management catalog
+    if (Array.isArray(subCategories) && subCategories.length > 0) {
+      subCategories.forEach((sc) => {
+        map[sc.id] = {
+          subcategory_id: sc.id,
+          subcategory_name: sc.name || sc.sub_category_name || "SubCategory",
+          total_waste_kg: 0,
+          total_count: 0,
+          pending_kg: 0,
+          pending_count: 0,
+          approved_kg: 0,
+          approved_count: 0,
+          rejected_kg: 0,
+          rejected_count: 0,
+        };
+      });
+    }
+
+    // 2. If stats.by_subcategory comes from backend API, merge it
+    if (stats.by_subcategory && Array.isArray(stats.by_subcategory)) {
+      stats.by_subcategory.forEach((sub) => {
+        const subId = sub.subcategory_id;
+        if (!map[subId]) {
+          map[subId] = { ...sub };
+        } else {
+          map[subId] = {
+            ...map[subId],
+            ...sub,
+            subcategory_name: sub.subcategory_name || map[subId].subcategory_name,
+          };
+        }
+      });
+    } else {
+      // 3. Fallback/real-time aggregation from current records
+      records.forEach((rec) => {
+        const subId = rec.subcategory_id;
+        const subName = rec.subcategory_name || rec.subCategory?.name || "General Waste";
+        const status = rec.status || "Pending";
+        const kg = Number(rec.total_waste_kg || 0);
+
+        if (!map[subId]) {
+          map[subId] = {
+            subcategory_id: subId,
+            subcategory_name: subName,
+            total_waste_kg: 0,
+            total_count: 0,
+            pending_kg: 0,
+            pending_count: 0,
+            approved_kg: 0,
+            approved_count: 0,
+            rejected_kg: 0,
+            rejected_count: 0,
+          };
+        }
+
+        map[subId].total_waste_kg += kg;
+        map[subId].total_count += 1;
+
+        if (status === "Pending") {
+          map[subId].pending_kg += kg;
+          map[subId].pending_count += 1;
+        } else if (status === "Approved") {
+          map[subId].approved_kg += kg;
+          map[subId].approved_count += 1;
+        } else if (status === "Rejected") {
+          map[subId].rejected_kg += kg;
+          map[subId].rejected_count += 1;
+        }
+      });
+    }
+
+    return Object.values(map).map((item) => ({
+      ...item,
+      total_waste_kg: Number(item.total_waste_kg.toFixed(2)),
+      pending_kg: Number(item.pending_kg.toFixed(2)),
+      approved_kg: Number(item.approved_kg.toFixed(2)),
+      rejected_kg: Number(item.rejected_kg.toFixed(2)),
+    }));
+  }, [subCategories, stats.by_subcategory, records]);
+
+  const paginatedGroups = useMemo(() => {
+    const startIndex = (page - 1) * limit;
+    return groupedTrips.slice(startIndex, startIndex + limit);
+  }, [groupedTrips, page, limit]);
+
+  const totalPagesCount = Math.ceil(groupedTrips.length / limit) || 1;
+
+  const handleApplyFilters = () => {
+    setPage(1);
+    fetchTripSummaries();
+    fetchStats();
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setFilterTripId("");
+    setFilterOrderId("");
+    setFilterCustomerId("");
+    setFilterVehicleId("");
+    setFilterDriverId("");
+    setFilterCategoryId("");
+    setFilterSubcategoryId("");
+    setFilterStatus("All Status");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+    setTimeout(() => {
+      fetchTripSummaries();
+      fetchStats();
+    }, 50);
+  };
+
+  // Open Full-Size Details Screen for a Trip
+  const openDetailsPage = (group) => {
+    setSelectedGroup(group);
+    setShowRejectInput(false);
+    setShowEditForm(false);
+    setRejectionReason("");
+    setViewMode("details");
+  };
+
+  const closeDetailsPage = () => {
+    setViewMode("list");
+    setSelectedGroup(null);
+  };
+
+  // Batch Action Handlers for Entire Trip
+  const handleApproveTrip = async (tripId) => {
+    setActionLoading(true);
+    try {
+      await api.post(`/trip-summaries/trip/${tripId}/approve`);
+      toast.success(`Trip #${tripId} approved successfully!`);
+      fetchTripSummaries();
+      fetchStats();
+      if (viewMode === "details" && selectedGroup) {
+        // Refresh details group
+        const res = await api.get(`/trip-summaries/${selectedGroup.items[0]?.id}`);
+        if (res.data?.data) {
+          const updatedGroup = {
+            ...selectedGroup,
+            overallStatus: "Approved",
+            items: res.data.data.trip_items || selectedGroup.items,
+          };
+          setSelectedGroup(updatedGroup);
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to approve trip.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectTrip = async (e) => {
+    e.preventDefault();
+    if (!selectedGroup) return;
+    if (!rejectionReason.trim()) {
+      toast.error("Rejection reason is required.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await api.post(`/trip-summaries/trip/${selectedGroup.trip_id}/reject`, {
+        rejection_reason: rejectionReason.trim(),
+      });
+      toast.success(`Trip #${selectedGroup.trip_id} rejected successfully.`);
+      setShowRejectInput(false);
+      setRejectionReason("");
+      fetchTripSummaries();
+      fetchStats();
+      // Refresh details group
+      const res = await api.get(`/trip-summaries/${selectedGroup.items[0]?.id}`);
+      if (res.data?.data) {
+        const updatedGroup = {
+          ...selectedGroup,
+          overallStatus: "Rejected",
+          items: res.data.data.trip_items || selectedGroup.items,
+        };
+        setSelectedGroup(updatedGroup);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to reject trip.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteTrip = (tripId) => {
+    setDeletingTripId(tripId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteTrip = async () => {
+    if (!deletingTripId) return;
+    setActionLoading(true);
+    try {
+      const group = groupedTrips.find((g) => String(g.trip_id) === String(deletingTripId));
+      if (group) {
+        await Promise.all(group.items.map((item) => api.delete(`/trip-summaries/${item.id}`)));
+      }
+      toast.success(`Trip #${deletingTripId} records deleted successfully.`);
+      setShowDeleteModal(false);
+      setDeletingTripId(null);
+      if (viewMode === "details") closeDetailsPage();
+      fetchTripSummaries();
+      fetchStats();
+    } catch (err) {
+      toast.error("Failed to delete trip records.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Open Multi-Item Batch Edit Form for entire trip at once
+  const handleOpenEditTrip = (group) => {
+    setSelectedGroup(group);
+    setEditTripData({
+      trip_id: group.trip_id,
+      vehicle_id: group.vehicle_id || "",
+      driver_id: group.driver_id || "",
+      remarks: group.items[0]?.remarks || "",
+      items: group.items.map((item) => ({
+        id: item.id,
+        subcategory_id: item.subcategory_id,
+        subcategory_name: item.subcategory_name || item.subCategory?.name || "Subcategory Item",
+        total_waste_kg: item.total_waste_kg || 0,
+        remarks: item.remarks || "",
+      })),
+    });
+    setShowEditForm(true);
+  };
+
+  // Save Multi-Item Batch Edit Form in one click!
+  const handleSaveEditTrip = async (e) => {
+    e.preventDefault();
+    if (!selectedGroup) return;
+    setActionLoading(true);
+    try {
+      await api.put(`/trip-summaries/trip/${editTripData.trip_id}`, {
+        vehicle_id: editTripData.vehicle_id,
+        driver_id: editTripData.driver_id,
+        remarks: editTripData.remarks,
+        items: editTripData.items,
+      });
+
+      toast.success(`Updated all subcategories for Trip #${editTripData.trip_id} successfully!`);
+      setShowEditForm(false);
+      fetchTripSummaries();
+      fetchStats();
+      if (viewMode === "details") {
+        // Refresh details group
+        const res = await api.get(`/trip-summaries/${selectedGroup.items[0]?.id}`);
+        if (res.data?.data) {
+          setSelectedGroup({
+            ...selectedGroup,
+            vehicle_id: editTripData.vehicle_id,
+            driver_id: editTripData.driver_id,
+            items: res.data.data.trip_items || selectedGroup.items,
+          });
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update trip collection items.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  /* ========================================================================= */
+  /* FULL-SIZE DETAILS PAGE SCREEN (Order Management Style)                    */
+  /* ========================================================================= */
+  if (viewMode === "details" && selectedGroup) {
+    const customerName = selectedGroup.customer_name || "—";
+    const vehicleReg = selectedGroup.vehicle_number || selectedGroup.vehicle?.registration_number || "—";
+    const driverName = selectedGroup.driver_name || selectedGroup.driver?.name || "—";
+
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        {/* Full-Size Details Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-[1.25rem] border border-slate-200 shadow-sm">
+          <div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg">
+                Trip ID: #{selectedGroup.trip_id}
+              </span>
+              <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg">
+                Order ID: {selectedGroup.order_id}
+              </span>
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border uppercase tracking-wider ${selectedGroup.overallStatus === "Pending"
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : selectedGroup.overallStatus === "Approved"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}
+              >
+                {selectedGroup.overallStatus}
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+              {customerName}
+            </h1>
+            <p className="text-xs text-slate-500 font-bold mt-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Submitted On:{" "}
+              <span className="text-slate-700 font-extrabold">
+                {formatDate(selectedGroup.submitted_at || selectedGroup.created_at)}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={closeDetailsPage}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Trip Summaries
+            </button>
+          </div>
+        </div>
+
+        {/* Top Metric Cards for Trip */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <Scale className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trip Waste Weight</p>
+              <h3 className="text-2xl font-black text-emerald-700 mt-0.5">
+                {selectedGroup.total_waste_kg} KG
+              </h3>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+              <Package className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subcategories Collected</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-0.5">
+                {selectedGroup.items.length} Waste Items
+              </h3>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Vehicle</p>
+              <h3 className="text-xl font-black text-slate-900 mt-0.5">{vehicleReg}</h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Details Grid Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Logistics & Assignment Card */}
+            <div className="bg-white rounded-[1.25rem] border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 border-b border-slate-200">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-indigo-600">
+                  <Truck className="w-4.5 h-4.5" />
+                </div>
+                <h3 className="text-sm font-extrabold text-slate-800">Logistics & Vehicle Information</h3>
+              </div>
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vehicle Reg. Number</span>
+                  <span className="text-sm font-black text-slate-800 block mt-0.5">{vehicleReg}</span>
+                </div>
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Driver Name</span>
+                  <span className="text-sm font-bold text-slate-800 block mt-0.5">{driverName}</span>
+                </div>
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Customer</span>
+                  <span className="text-sm font-bold text-slate-800 block mt-0.5">{customerName}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Collected Subcategories Breakdown Card (Multi-Subcategory Display) */}
+            <div className="bg-white rounded-[1.25rem] border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-emerald-600">
+                    <Package className="w-4.5 h-4.5" />
+                  </div>
+                  <h3 className="text-sm font-extrabold text-slate-800">
+                    All Collected Subcategories for Trip #{selectedGroup.trip_id}
+                  </h3>
+                </div>
+                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                  Total Sum: {selectedGroup.total_waste_kg} KG
+                </span>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  {selectedGroup.items.map((itemRow) => (
+                    <div
+                      key={itemRow.id}
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:bg-slate-50 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
+                        <div>
+                          <p className="text-sm font-black text-slate-800">
+                            {itemRow.subcategory_name || itemRow.subCategory?.name || "Subcategory Item"}
+                          </p>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Category: {itemRow.category_name || itemRow.category?.name || "General Waste"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-right">
+                        <span
+                          className={`px-2.5 py-0.5 rounded text-[11px] font-bold border ${itemRow.status === "Pending"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : itemRow.status === "Approved"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                            }`}
+                        >
+                          {itemRow.status}
+                        </span>
+
+                        <span className="text-base font-black text-slate-900 min-w-[90px]">
+                          {Number(itemRow.total_waste_kg || 0).toFixed(2)} KG
+                        </span>
+
+                        {itemRow.image && (
+                          <button
+                            onClick={() => {
+                              setPreviewImageUrl(`${IMAGE_BASE_URL}/${itemRow.image}`);
+                              setIsImagePreviewOpen(true);
+                            }}
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition"
+                            title="View Photo"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Collection Photo Previews */}
+            {selectedGroup.items.some((i) => i.image) && (
+              <div className="bg-white rounded-[1.25rem] border border-slate-200 shadow-sm overflow-hidden p-6 space-y-3">
+                <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-indigo-600" /> Collection Photos
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {selectedGroup.items.filter((i) => i.image).map((imgItem) => (
+                    <div
+                      key={imgItem.id}
+                      className="relative group h-40 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer"
+                      onClick={() => {
+                        setPreviewImageUrl(`${IMAGE_BASE_URL}/${imgItem.image}`);
+                        setIsImagePreviewOpen(true);
+                      }}
+                    >
+                      <img
+                        src={`${IMAGE_BASE_URL}/${imgItem.image}`}
+                        alt={imgItem.subcategory_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white text-xs font-bold p-2 text-center">
+                        <Eye className="w-5 h-5 mb-1" />
+                        <span>{imgItem.subcategory_name}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Batch Actions & Multi-Item Edit */}
+          <div className="space-y-6">
+            {/* Batch Status Actions Card */}
+            <div className="bg-white rounded-[1.25rem] border border-slate-200 shadow-sm p-6 space-y-4">
+              <h3 className="text-sm font-extrabold text-slate-800 border-b border-slate-100 pb-3">
+                Batch Trip Approval Actions
+              </h3>
+
+              <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase">Trip Status</span>
+                <span
+                  className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${selectedGroup.overallStatus === "Pending"
+                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                    : selectedGroup.overallStatus === "Approved"
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : "bg-rose-100 text-rose-800 border border-rose-300"
+                    }`}
+                >
+                  {selectedGroup.overallStatus}
+                </span>
+              </div>
+
+              {/* Batch Approve / Reject */}
+              {selectedGroup.overallStatus === "Pending" && (
+                <div className="space-y-3 pt-1">
+                  {canApprove && (
+                    <button
+                      onClick={() => handleApproveTrip(selectedGroup.trip_id)}
+                      disabled={actionLoading}
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Approve All Subcategories in Trip
+                    </button>
+                  )}
+
+                  {canReject && !showRejectInput && (
+                    <button
+                      onClick={() => setShowRejectInput(true)}
+                      className="w-full py-3 px-4 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject Entire Trip...
+                    </button>
+                  )}
+
+                  {showRejectInput && (
+                    <form onSubmit={handleRejectTrip} className="space-y-3 pt-2 animate-in fade-in">
+                      <label className="block text-xs font-bold text-rose-700">
+                        Rejection Reason <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Enter reason for rejecting trip collection..."
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-rose-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRejectInput(false);
+                            setRejectionReason("");
+                          }}
+                          className="flex-1 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={actionLoading || !rejectionReason.trim()}
+                          className="flex-1 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-50"
+                        >
+                          Confirm Reject All
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* Edit All Items / Delete Trip */}
+              <div className="pt-2 border-t border-slate-100 flex gap-2">
+                {canEdit && selectedGroup.overallStatus !== "Approved" && (
+                  <button
+                    onClick={() => handleOpenEditTrip(selectedGroup)}
+                    className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" /> Edit All Items in Trip
+                  </button>
+                )}
+
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteTrip(selectedGroup.trip_id)}
+                    className="py-2.5 px-3 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete Trip
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Inline Multi-Item Batch Edit Form Panel */}
+            {showEditForm && (
+              <form onSubmit={handleSaveEditTrip} className="bg-white rounded-[1.25rem] border border-indigo-200 shadow-md p-6 space-y-4 animate-in fade-in">
+                <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider border-b border-indigo-100 pb-2">
+                  Edit All Subcategories for Trip #{editTripData.trip_id}
+                </h4>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Vehicle</label>
+                  <select
+                    value={editTripData.vehicle_id}
+                    onChange={(e) => setEditTripData({ ...editTripData, vehicle_id: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Select Vehicle...</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.registration_number}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Driver</label>
+                  <select
+                    value={editTripData.driver_id}
+                    onChange={(e) => setEditTripData({ ...editTripData, driver_id: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Select Driver...</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Weights input for each subcategory */}
+                <div className="space-y-3 pt-1">
+                  <label className="block text-xs font-bold text-slate-800">Collected Subcategory Weights (KG):</label>
+                  {editTripData.items.map((item, i) => (
+                    <div key={item.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                      <span className="text-xs font-black text-slate-800 block">{item.subcategory_name}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.total_waste_kg}
+                          onChange={(e) => {
+                            const newItems = [...editTripData.items];
+                            newItems[i].total_waste_kg = e.target.value;
+                            setEditTripData({ ...editTripData, items: newItems });
+                          }}
+                          className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                        />
+                        <span className="text-xs font-bold text-slate-500">KG</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Trip Remarks</label>
+                  <textarea
+                    rows={2}
+                    value={editTripData.remarks}
+                    onChange={(e) => setEditTripData({ ...editTripData, remarks: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditForm(false)}
+                    className="py-2 px-3 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-50"
+                  >
+                    Save All Changes
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* FULL IMAGE EXPAND PREVIEW MODAL */}
+        {isImagePreviewOpen && (
+          <div
+            className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+            onClick={() => setIsImagePreviewOpen(false)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl">
+              <img src={previewImageUrl} alt="Full Preview" className="w-full h-full object-contain max-h-[85vh] rounded-2xl" />
+              <button
+                onClick={() => setIsImagePreviewOpen(false)}
+                className="absolute top-3 right-3 p-2 bg-slate-900/80 text-white hover:bg-rose-600 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ========================================================================= */
+  /* MAIN GROUPED TRIP LISTING SCREEN (Pickup / Trip Planner Style)            */
+  /* ========================================================================= */
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Top Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+            <Truck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Trip Summaries</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Manage, review, approve, reject, and track waste collection submission records per trip.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              fetchTripSummaries();
+              fetchStats();
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh Schedule
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Cards Row (6 Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{stats.total_trips || 0}</h3>
+          </div>
+          <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl">
+            <Truck className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Collections</p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{stats.total_collections || 0}</h3>
+          </div>
+          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+            <Package className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Waste</p>
+            <h3 className="text-xl font-extrabold text-emerald-700 mt-1">{stats.total_waste_kg || 0} <span className="text-xs font-semibold">KG</span></h3>
+          </div>
+          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+            <Scale className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending</p>
+            <h3 className="text-xl font-extrabold text-amber-700 mt-1">{stats.pending || 0}</h3>
+          </div>
+          <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Approved</p>
+            <h3 className="text-xl font-extrabold text-emerald-700 mt-1">{stats.approved || 0}</h3>
+          </div>
+          <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Rejected</p>
+            <h3 className="text-xl font-extrabold text-rose-700 mt-1">{stats.rejected || 0}</h3>
+          </div>
+          <div className="p-2.5 bg-rose-100 text-rose-700 rounded-xl">
+            <XCircle className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Subcategory Wise Waste Collection Cards Section */}
+      {subCategoryBreakdown.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-600" />
+              Subcategory Collection Breakdown ({subCategoryBreakdown.length} Categories)
+            </h2>
+            <span className="text-[11px] font-semibold text-slate-500">
+              Click a card to filter collection table
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {subCategoryBreakdown.map((sub) => {
+              const isSelected = String(filterSubcategoryId) === String(sub.subcategory_id);
+              return (
+                <div
+                  key={sub.subcategory_id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setFilterSubcategoryId("");
+                    } else {
+                      setFilterSubcategoryId(sub.subcategory_id);
+                    }
+                  }}
+                  className={`bg-white rounded-2xl border p-4 shadow-xs hover:shadow-md transition-all cursor-pointer relative overflow-hidden group ${
+                    isSelected ? "border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/20" : "border-slate-200/90 hover:border-indigo-300"
+                  }`}
+                >
+                  {/* Card Header: Subcategory Title & Total KG */}
+                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-black flex items-center justify-center shrink-0">
+                        <Layers className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-800 group-hover:text-indigo-600 transition">
+                          {sub.subcategory_name}
+                        </h3>
+                        <p className="text-[11px] font-medium text-slate-400">
+                          {sub.total_count} Collection{sub.total_count !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-base font-black text-emerald-700 block">
+                        {sub.total_waste_kg.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total KG</span>
+                    </div>
+                  </div>
+
+                  {/* Inner Status Breakdown Grid: Pending, Approved, Rejected */}
+                  <div className="grid grid-cols-3 gap-2 pt-3">
+                    {/* Pending */}
+                    <div className="bg-amber-50/80 border border-amber-200/70 p-2 rounded-xl text-center">
+                      <span className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider block">Pending</span>
+                      <span className="text-xs font-black text-amber-900 block mt-0.5">{sub.pending_kg.toFixed(2)} KG</span>
+                      <span className="text-[9px] font-semibold text-amber-600">({sub.pending_count})</span>
+                    </div>
+
+                    {/* Approved */}
+                    <div className="bg-emerald-50/80 border border-emerald-200/70 p-2 rounded-xl text-center">
+                      <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">Approved</span>
+                      <span className="text-xs font-black text-emerald-900 block mt-0.5">{sub.approved_kg.toFixed(2)} KG</span>
+                      <span className="text-[9px] font-semibold text-emerald-600">({sub.approved_count})</span>
+                    </div>
+
+                    {/* Rejected */}
+                    <div className="bg-rose-50/80 border border-rose-200/70 p-2 rounded-xl text-center">
+                      <span className="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider block">Rejected</span>
+                      <span className="text-xs font-black text-rose-900 block mt-0.5">{sub.rejected_kg.toFixed(2)} KG</span>
+                      <span className="text-[9px] font-semibold text-rose-600">({sub.rejected_count})</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Global Search & Server-Side Filters Section */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-sm font-bold text-slate-800">Search & Filters</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleApplyFilters}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+            >
+              Apply Filters
+            </button>
+            <button
+              onClick={handleResetFilters}
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Global Search Bar */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Search Trip ID, Order ID, Customer, Driver, Vehicle, Subcategory..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+          />
+        </div>
+
+        {/* Filter Inputs Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trip ID</label>
+            <input
+              type="text"
+              placeholder="e.g. 5001"
+              value={filterTripId}
+              onChange={(e) => setFilterTripId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Order ID</label>
+            <input
+              type="text"
+              placeholder="e.g. ORD-113842"
+              value={filterOrderId}
+              onChange={(e) => setFilterOrderId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vehicle</label>
+            <select
+              value={filterVehicleId}
+              onChange={(e) => setFilterVehicleId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            >
+              <option value="">All Vehicles</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.registration_number}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver</label>
+            <select
+              value={filterDriverId}
+              onChange={(e) => setFilterDriverId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            >
+              <option value="">All Drivers</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            >
+              <option value="All Status">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
+            <select
+              value={filterCategoryId}
+              onChange={(e) => setFilterCategoryId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Subcategory</label>
+            <select
+              value={filterSubcategoryId}
+              onChange={(e) => setFilterSubcategoryId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            >
+              <option value="">All Subcategories</option>
+              {subCategories.map((sc) => (
+                <option key={sc.id} value={sc.id}>
+                  {sc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grouped Data Table (1 Row per Trip) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-500 space-y-3">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-600" />
+            <p className="text-sm font-semibold">Loading Trip Summaries...</p>
+          </div>
+        ) : paginatedGroups.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 space-y-2">
+            <Truck className="w-12 h-12 mx-auto text-slate-300" />
+            <p className="text-base font-bold text-slate-700">No collection trips found</p>
+            <p className="text-xs text-slate-500">Try clearing filters or submitting a trip collection.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs sm:text-sm">
+              <thead>
+                <tr className="bg-slate-100/90 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                  <th className="py-3.5 px-4 w-12 text-center">#</th>
+                  <th className="py-3.5 px-4">Trip ID</th>
+                  <th className="py-3.5 px-4">Order ID</th>
+                  <th className="py-3.5 px-4">Customer</th>
+                  <th className="py-3.5 px-4">Vehicle</th>
+                  <th className="py-3.5 px-4">Driver</th>
+                  <th className="py-3.5 px-4">Collected Subcategories & Weights</th>
+                  <th className="py-3.5 px-4 text-right">Total Waste (KG)</th>
+                  <th className="py-3.5 px-4">Submitted At</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {paginatedGroups.map((group, idx) => {
+                  const itemIndex = (page - 1) * limit + idx + 1;
+
+                  return (
+                    <tr
+                      key={group.trip_id}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      onClick={() => openDetailsPage(group)}
+                    >
+                      <td className="py-4 px-4 text-center font-semibold text-slate-400 align-top">{itemIndex}</td>
+
+                      {/* Trip ID */}
+                      <td className="py-4 px-4 align-top">
+                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
+                          {group.trip_id}
+                        </span>
+                      </td>
+
+                      {/* Order ID */}
+                      <td className="py-4 px-4 font-mono font-bold text-slate-900 align-top whitespace-nowrap">{group.order_id}</td>
+
+                      {/* Customer */}
+                      <td className="py-4 px-4 font-semibold text-slate-700 align-top whitespace-nowrap">{group.customer_name || "—"}</td>
+
+                      {/* Vehicle */}
+                      <td className="py-4 px-4 align-top whitespace-nowrap">
+                        <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                          {group.vehicle_number || "—"}
+                        </span>
+                      </td>
+
+                      {/* Driver */}
+                      <td className="py-4 px-4 font-semibold text-slate-700 align-top whitespace-nowrap">{group.driver_name || "—"}</td>
+
+                      {/* Subcategories & Weights Badges Inline List */}
+                      <td className="py-3.5 px-4 align-top min-w-[280px]">
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs shadow-2xs whitespace-nowrap"
+                            >
+                              <span className="font-bold text-emerald-800">
+                                {item.subcategory_name || item.subCategory?.name || "Subcategory"}
+                              </span>
+                              <span className="font-black text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">
+                                {Number(item.total_waste_kg || 0).toFixed(2)} KG
+                              </span>
+                              <span
+                                className={`w-2 h-2 rounded-full ${item.status === "Approved"
+                                  ? "bg-emerald-500"
+                                  : item.status === "Rejected"
+                                    ? "bg-rose-500"
+                                    : "bg-amber-500"
+                                  }`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Total Waste Sum */}
+                      <td className="py-4 px-4 text-right font-black text-slate-900 text-base align-top whitespace-nowrap">
+                        {group.total_waste_kg} KG
+                      </td>
+
+                      {/* Submitted At */}
+                      <td className="py-4 px-4 text-slate-500 text-xs align-top whitespace-nowrap">
+                        {formatDate(group.submitted_at || group.created_at)}
+                      </td>
+
+                      {/* Overall Status Badge */}
+                      <td className="py-4 px-4 text-center align-top whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${group.overallStatus === "Pending"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : group.overallStatus === "Approved"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                            }`}
+                        >
+                          {group.overallStatus}
+                        </span>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="py-4 px-4 text-center align-top whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openDetailsPage(group)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> View Details
+                          </button>
+
+                          {canEdit && group.overallStatus !== "Approved" && (
+                            <button
+                              onClick={() => handleOpenEditTrip(group)}
+                              className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition"
+                              title="Edit All Items in Trip"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteTrip(group.trip_id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              title="Delete Entire Trip"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Server-Side Pagination Footer */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing {groupedTrips.length > 0 ? (page - 1) * limit + 1 : 0} -{" "}
+              {Math.min(page * limit, groupedTrips.length)} of {groupedTrips.length} Trips ({records.length} Total Collection Items)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400">Trips per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-40 transition cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 py-1 bg-white border border-slate-300 rounded-lg font-bold text-slate-800">
+              Page {page} of {totalPagesCount}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPagesCount, p + 1))}
+              disabled={page >= totalPagesCount}
+              className="p-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 disabled:opacity-40 transition cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* CUSTOM DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[110] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Confirm Trip Deletion</h3>
+                <p className="text-xs text-slate-500 font-medium">Trip #{deletingTripId}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 font-semibold leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+              Are you sure you want to delete all collection records for Trip <strong className="text-slate-900">#{deletingTripId}</strong>? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => { setShowDeleteModal(false); setDeletingTripId(null); }}
+                disabled={actionLoading}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTrip}
+                disabled={actionLoading}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {actionLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL IMAGE EXPAND PREVIEW MODAL */}
+      {isImagePreviewOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setIsImagePreviewOpen(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl">
+            <img src={previewImageUrl} alt="Full Preview" className="w-full h-full object-contain max-h-[85vh] rounded-2xl" />
+            <button
+              onClick={() => setIsImagePreviewOpen(false)}
+              className="absolute top-3 right-3 p-2 bg-slate-900/80 text-white hover:bg-rose-600 rounded-full transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

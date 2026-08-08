@@ -36,6 +36,7 @@ const Notification = require("./notificationModel");
 
 const CustomerComplaint = require("./customerComplaintModel");
 const Driver = require("./driverModel");
+const Trip = require("./tripModel");
 const TripSummary = require("./tripSummaryModel");
 
 
@@ -199,26 +200,17 @@ Employee.hasOne(Driver, {
   as: "driverAccount",
 });
 
-// Trip Summary Associations
-TripSummary.belongsTo(WasteOrder, {
-  foreignKey: "waste_order_id",
-  as: "wasteOrder", 
-});
+// Trip & Trip Summary Associations
+TripSummary.belongsTo(Trip, { foreignKey: "trip_id", as: "trip" });
+Trip.hasMany(TripSummary, { foreignKey: "trip_id", as: "tripSummaries" });
 
-WasteOrder.hasMany(TripSummary, {
-  foreignKey: "waste_order_id",
-  as: "tripSummaries",
-});
-
-TripSummary.belongsTo(Customer, {
-  foreignKey: "customer_id",
-  as: "customer",
-});
-
-TripSummary.belongsTo(User, {
-  foreignKey: "vendor_id",
-  as: "vendor",
-});
+TripSummary.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
+TripSummary.belongsTo(User, { foreignKey: "user_id", as: "user" });
+TripSummary.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+TripSummary.belongsTo(Employee, { foreignKey: "driver_id", as: "driver" });
+TripSummary.belongsTo(Category, { foreignKey: "category_id", as: "category" });
+TripSummary.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
+TripSummary.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 
 module.exports = {
   User, Role, Permission, RolePermission,
@@ -231,6 +223,7 @@ module.exports = {
   BusinessRegion, BusinessSubRegion,
   Employee, Vehicle, Driver,
   WasteOrder,
+  Trip,
   TripSummary,
   Notification,
   CustomerComplaint

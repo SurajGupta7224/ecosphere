@@ -34,6 +34,7 @@ import ComplaintDetails from "./pages/ComplaintDetails";
 import TripPlanner from './pages/TripPlanner';
 import VehicleHistory from './pages/VehicleHistory';
 import LiveMovement from './pages/LiveMovement';
+import TripSummaries from './pages/TripSummaries';
 
 function App() {
   const PrivateRoute = ({ children }) => {
@@ -207,6 +208,22 @@ function App() {
             }
           />
           <Route path="trip-planner" element={<TripPlanner />} />
+          <Route
+            path="trip-summaries"
+            element={
+              <RequirePermission requiredPermission="trip_summaries.view">
+                <TripSummaries />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="admin/trip-summaries"
+            element={
+              <RequirePermission requiredPermission="trip_summaries.view">
+                <TripSummaries />
+              </RequirePermission>
+            }
+          />
           <Route
             path="developer/module-creation"
             element={

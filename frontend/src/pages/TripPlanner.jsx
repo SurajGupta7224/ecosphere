@@ -168,7 +168,7 @@ export default function TripPlanner() {
   }), [filteredOrders, groupedOrders]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">

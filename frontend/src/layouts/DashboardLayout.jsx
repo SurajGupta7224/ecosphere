@@ -257,12 +257,13 @@ const DashboardLayout = () => {
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
     { name: 'Pickup / Trip Planner', path: '/trip-planner', icon: Calendar, isSubMenu: false },
+    { name: 'Trip Summaries', path: '/trip-summaries', icon: ClipboardList, isSubMenu: false, req: 'trip_summaries.view' },
     {
-  name: "Complaint Management",
-  path: "/complaints",
-  icon: MessageSquare,
-  isSubMenu: false,
-},
+      name: "Complaint Management",
+      path: "/complaints",
+      icon: MessageSquare,
+      isSubMenu: false,
+    },
    
     {
       id: 'aggregator_employees_group',

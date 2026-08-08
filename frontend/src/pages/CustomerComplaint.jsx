@@ -89,7 +89,7 @@ export default function CustomerComplaint() {
 };
 
   return (
-  <div className="min-h-screen bg-slate-100 p-4">
+    <div className="space-y-6 animate-in fade-in duration-300">
 
     {/* Header */}
 

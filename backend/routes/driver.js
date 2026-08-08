@@ -31,17 +31,20 @@ router.post("/reset-password", resetPassword);
 router.get("/me", verifyDriverToken, getDriverProfile);
 router.get("/profile", verifyDriverToken, getDriverProfile);
 
-// Trip Summary Routes
+const upload = require("../middleware/uploadMiddleware");
+
+// POST /api/v1/driver/fetch-order-details - Fetch Order Subcategories for Driver
 router.post(
   "/fetch-order-details",
   verifyDriverToken,
   fetchOrderDetails
 );
 
-// Driver Trip Summary Route
+// POST /api/v1/driver/create-trip-summary - Submit Waste Collection Trip Summary
 router.post(
-  "/trip-summary",
+  "/create-trip-summary",
   verifyDriverToken,
+  upload.any(),
   submitTripSummary
 );
 

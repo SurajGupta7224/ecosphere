@@ -89,7 +89,7 @@ const updateComplaint = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
 
       {/* Header */}
 

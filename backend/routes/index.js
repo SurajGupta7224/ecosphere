@@ -356,34 +356,21 @@ router.patch(
 );
 
 
-// GET /api/admin/trip-summaries
-router.get(
-  "/trip-summaries",
-  verifyToken,
-  tripSummaryController.getAllTripSummaries
-);
-
-
-// GET /api/admin/trip-summaries/:id
-router.get(
-  "/trip-summaries/:id",
-  verifyToken,
-  tripSummaryController.getTripSummaryById
-);
-
-// PATCH /api/admin/trip-summaries/:id
-router.patch(
-  "/trip-summaries/:id",
-  verifyToken,
-  tripSummaryController.updateTripSummary
-);
-
-// PATCH /api/admin/trip-summaries/:id/approve
-router.patch(
-  "/trip-summaries/:id/approve",
-  verifyToken,
-  tripSummaryController.approveTripSummary
-);
+// Trip Summaries Routes
+router.get("/trip-summaries/stats", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getTripSummaryStats);
+router.get("/trip-summaries", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getAllTripSummaries);
+router.get("/trip-summaries/:id", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getTripSummaryById);
+router.post("/trip-summaries", verifyToken, requirePermission(['trip_summaries.create', 'trip_summaries']), tripSummaryController.createTripSummary);
+router.put("/trip-summaries/trip/:tripId", verifyToken, requirePermission(['trip_summaries.edit', 'trip_summaries']), tripSummaryController.updateTripByTripId);
+router.post("/trip-summaries/trip/:tripId/approve", verifyToken, requirePermission(['trip_summaries.approve', 'trip_summaries']), tripSummaryController.approveTripByTripId);
+router.post("/trip-summaries/trip/:tripId/reject", verifyToken, requirePermission(['trip_summaries.reject', 'trip_summaries']), tripSummaryController.rejectTripByTripId);
+router.put("/trip-summaries/:id", verifyToken, requirePermission(['trip_summaries.edit', 'trip_summaries']), tripSummaryController.updateTripSummary);
+router.patch("/trip-summaries/:id", verifyToken, requirePermission(['trip_summaries.edit', 'trip_summaries']), tripSummaryController.updateTripSummary);
+router.delete("/trip-summaries/:id", verifyToken, requirePermission(['trip_summaries.delete', 'trip_summaries']), tripSummaryController.deleteTripSummary);
+router.post("/trip-summaries/:id/approve", verifyToken, requirePermission(['trip_summaries.approve', 'trip_summaries']), tripSummaryController.approveTripSummary);
+router.patch("/trip-summaries/:id/approve", verifyToken, requirePermission(['trip_summaries.approve', 'trip_summaries']), tripSummaryController.approveTripSummary);
+router.post("/trip-summaries/:id/reject", verifyToken, requirePermission(['trip_summaries.reject', 'trip_summaries']), tripSummaryController.rejectTripSummary);
+router.patch("/trip-summaries/:id/reject", verifyToken, requirePermission(['trip_summaries.reject', 'trip_summaries']), tripSummaryController.rejectTripSummary);
 
 
 module.exports = router;

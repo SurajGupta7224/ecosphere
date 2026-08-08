@@ -73,18 +73,23 @@ const loginDriver = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // 6. Return driver details in standard response format
+    // 6. Return driver & vehicle details in requested format
+    const responsePayload = {
+      token,
+      driver: {
+        id: driver.id,
+        name: driver.name
+      },
+      vehicle: {
+        id: driver.vehicle ? driver.vehicle.id : (driver.vehicle_id || null),
+        vehicleNumber: driver.vehicle ? (driver.vehicle.registration_number || driver.vehicle_number) : driver.vehicle_number
+      }
+    };
+
     return res.status(200).json({
       status: 1,
       message: "Login successful.",
-      body: {
-        token,
-        driver: {
-          id: driver.id,
-          vehicleNumber: driver.vehicle_number,
-          name: driver.name
-        }
-      }
+      data: responsePayload
     });
   } catch (err) {
     console.error("loginDriver error:", err);

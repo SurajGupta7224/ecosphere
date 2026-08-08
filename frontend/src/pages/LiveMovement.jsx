@@ -30,7 +30,7 @@ const LiveMovement = () => {
   } = useVehicleTracking();
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1920px] mx-auto space-y-4 font-sans bg-slate-50 min-h-[calc(100vh-80px)] flex flex-col">
+    <div className="space-y-6 animate-in fade-in duration-300 flex flex-col">
       {/* Top Header Navigation & Status Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3">
