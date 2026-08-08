@@ -350,85 +350,151 @@ const getTripSummaryById = async (req, res) => {
 
 // POST /api/trip-summaries - Manual creation by Admin
 const createTripSummary = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
-    const {
+    let {
       trip_id,
       order_id,
       customer_id,
-      user_id,
       vehicle_id,
       driver_id,
+      remarks,
+      items,
       category_id,
       subcategory_id,
       total_waste_kg,
-      image,
-      remarks,
     } = req.body;
 
-    if (!trip_id || !order_id || !vehicle_id || !subcategory_id) {
+    if (!order_id || !vehicle_id) {
+      await transaction.rollback();
       return res.status(400).json({
         status: 0,
-        message: "trip_id, order_id, vehicle_id, and subcategory_id are required fields.",
+        message: "order_id and vehicle_id are required fields.",
       });
+    }
+
+    // Auto-generate numeric trip_id if missing/omitted
+    let activeTripId = trip_id;
+    if (!activeTripId) {
+      const maxTripRecord = await TripSummary.max("trip_id");
+      const maxTripIdNum = Number(maxTripRecord || 0);
+      activeTripId = maxTripIdNum > 0 ? maxTripIdNum + 1 : 1;
+    } else {
+      activeTripId = Number(activeTripId);
     }
 
     // Ensure Trip master record exists
     await Trip.findOrCreate({
-      where: { id: trip_id },
-      defaults: { id: trip_id, order_id },
+      where: { id: activeTripId },
+      defaults: { id: activeTripId, order_id },
+      transaction,
     });
 
-    // Lookup Master Data for names
+    // Determine Driver Name
     let driver_name = req.body.driver_name || null;
     if (!driver_name && driver_id) {
       const emp = await Employee.findByPk(driver_id);
       if (emp) driver_name = emp.name;
     }
 
-    let category_name = req.body.category_name || null;
-    if (!category_name && category_id) {
-      const cat = await Category.findByPk(category_id);
-      if (cat) category_name = cat.name;
-    }
-
-    let subcategory_name = req.body.subcategory_name || "";
-    if (subcategory_id) {
-      const sub = await SubCategory.findByPk(subcategory_id);
-      if (sub) {
-        subcategory_name = sub.name;
-        if (!category_id) category_id = sub.category_id;
+    // Handle items list or single item
+    let collectionItems = [];
+    if (items) {
+      if (typeof items === "string") {
+        try {
+          collectionItems = JSON.parse(items);
+        } catch (e) {
+          collectionItems = [];
+        }
+      } else if (Array.isArray(items)) {
+        collectionItems = items;
       }
     }
 
-    const record = await TripSummary.create({
-      trip_id,
-      order_id,
-      customer_id: customer_id || null,
-      user_id: user_id || req.user.id,
-      vehicle_id,
-      driver_id: driver_id || null,
-      driver_name,
-      category_id: category_id || null,
-      category_name,
-      subcategory_id,
-      subcategory_name,
-      total_waste_kg: Number(total_waste_kg || 0),
-      image: image || null,
-      remarks: remarks || null,
-      status: "Pending",
-      submitted_at: new Date(),
-    });
+    if (collectionItems.length === 0 && subcategory_id) {
+      collectionItems.push({
+        category_id,
+        subcategory_id,
+        subcategory_name: req.body.subcategory_name,
+        total_waste_kg: total_waste_kg || 0,
+      });
+    }
+
+    if (collectionItems.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: 0,
+        message: "At least one collection subcategory item is required.",
+      });
+    }
+
+    // Find customer_id if missing
+    if (!customer_id && order_id) {
+      const orderObj = await WasteOrder.findOne({ where: { order_id } });
+      if (orderObj) customer_id = orderObj.customer_id;
+    }
+
+    const createdRecords = [];
+    for (const item of collectionItems) {
+      let subId = item.subcategory_id;
+      let catId = item.category_id;
+      let subName = item.subcategory_name || "";
+      let catName = item.category_name || "";
+
+      if (subId) {
+        const subObj = await SubCategory.findByPk(subId);
+        if (subObj) {
+          subName = subObj.name;
+          if (!catId) catId = subObj.category_id;
+        }
+      }
+
+      if (catId) {
+        const catObj = await Category.findByPk(catId);
+        if (catObj) catName = catObj.name;
+      }
+
+      const newRecord = await TripSummary.create(
+        {
+          trip_id: activeTripId,
+          order_id,
+          customer_id: customer_id || null,
+          user_id: req.user ? req.user.id : null,
+          vehicle_id,
+          driver_id: driver_id || null,
+          driver_name,
+          category_id: catId || null,
+          category_name: catName || null,
+          subcategory_id: subId,
+          subcategory_name: subName,
+          total_waste_kg: Number(item.total_waste_kg || 0),
+          image: item.image || null,
+          remarks: remarks || null,
+          status: "Pending",
+          submitted_at: new Date(),
+        },
+        { transaction }
+      );
+      createdRecords.push(newRecord);
+    }
+
+    await transaction.commit();
 
     return res.status(201).json({
       status: 1,
-      message: "Trip Summary record created successfully.",
-      data: record,
+      message: `${createdRecords.length} Manual Collection item(s) created successfully for Trip #${String(activeTripId).padStart(3, "0")}.`,
+      data: {
+        trip_id: activeTripId,
+        formatted_trip_id: String(activeTripId).padStart(3, "0"),
+        created_records: createdRecords,
+      },
     });
   } catch (err) {
+    await transaction.rollback();
     console.error("createTripSummary error:", err);
     return res.status(500).json({
       status: 0,
-      message: "Failed to create Trip Summary record.",
+      message: "Failed to create manual collection trip summary.",
       error: err.message,
     });
   }
@@ -735,6 +801,73 @@ const rejectTripByTripId = async (req, res) => {
   }
 };
 
+// GET /api/trip-summaries/suggestions - Get vehicles, waste orders & subcategories for collection creation
+const getTripSummarySuggestions = async (req, res) => {
+  try {
+    const { search, vehicle_id } = req.query;
+    let vehicleWhere = {};
+    let orderWhere = {};
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      const qClean = q.replace(/[\s-]/g, "");
+      vehicleWhere = {
+        [Op.or]: [
+          { registration_number: { [Op.like]: `%${q}%` } },
+          { registration_number: { [Op.like]: `%${qClean}%` } },
+          { brand: { [Op.like]: `%${q}%` } },
+          { model: { [Op.like]: `%${q}%` } },
+          { device_assigned_to: { [Op.like]: `%${q}%` } },
+        ],
+      };
+      orderWhere = {
+        [Op.or]: [
+          { order_id: { [Op.like]: `%${q}%` } },
+          { customer_legal_name: { [Op.like]: `%${q}%` } },
+          { contact_person: { [Op.like]: `%${q}%` } },
+        ],
+      };
+    }
+
+    if (vehicle_id) {
+      orderWhere.vehicle_id = vehicle_id;
+    }
+
+    const vehicles = await Vehicle.findAll({
+      where: vehicleWhere,
+      attributes: ["id", "registration_number", "brand", "model", "driver_id", "device_assigned_to"],
+      order: [["id", "DESC"]],
+      limit: 100,
+    });
+
+    const wasteOrders = await WasteOrder.findAll({
+      where: orderWhere,
+      attributes: ["id", "order_id", "customer_id", "vehicle_id", "subcategory_id", "customer_legal_name", "contact_person"],
+      order: [["id", "DESC"]],
+      limit: 100,
+    });
+
+    const subCategories = await SubCategory.findAll({
+      attributes: ["id", "name", "category_id"],
+      order: [["name", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      vehicles,
+      wasteOrders,
+      subCategories,
+    });
+  } catch (error) {
+    console.error("Error in getTripSummarySuggestions:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch collection creation suggestions.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getTripSummaryStats,
   getAllTripSummaries,
@@ -747,4 +880,5 @@ module.exports = {
   updateTripByTripId,
   approveTripByTripId,
   rejectTripByTripId,
+  getTripSummarySuggestions,
 };

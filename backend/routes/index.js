@@ -322,6 +322,7 @@ router.patch(
 router.get(
   "/complaints",
   verifyToken,
+  requirePermission(['complaints.view', 'complaints', 'complaint_management']),
   customerComplaintController.getAllComplaints
 );
 
@@ -330,6 +331,7 @@ router.get(
 router.get(
   "/complaints/dashboard",
   verifyToken,
+  requirePermission(['complaints.view', 'complaints', 'complaint_management']),
   customerComplaintController.getComplaintDashboard
 );
 
@@ -337,6 +339,7 @@ router.get(
 router.get(
   "/complaints/export",
   verifyToken,
+  requirePermission(['complaints.export', 'complaints', 'complaint_management']),
   customerComplaintController.exportComplaints
 );
 
@@ -345,6 +348,7 @@ router.get(
 router.get(
   "/complaints/:id",
   verifyToken,
+  requirePermission(['complaints.view', 'complaints', 'complaint_management']),
   customerComplaintController.getComplaintById
 );
 
@@ -352,12 +356,14 @@ router.get(
 router.patch(
   "/complaints/:id",
   verifyToken,
+  requirePermission(['complaints.edit', 'complaints', 'complaint_management']),
   customerComplaintController.updateComplaint
 );
 
 
 // Trip Summaries Routes
 router.get("/trip-summaries/stats", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getTripSummaryStats);
+router.get("/trip-summaries/suggestions", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries', 'trip_summaries.create']), tripSummaryController.getTripSummarySuggestions);
 router.get("/trip-summaries", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getAllTripSummaries);
 router.get("/trip-summaries/:id", verifyToken, requirePermission(['trip_summaries.view', 'trip_summaries']), tripSummaryController.getTripSummaryById);
 router.post("/trip-summaries", verifyToken, requirePermission(['trip_summaries.create', 'trip_summaries']), tripSummaryController.createTripSummary);

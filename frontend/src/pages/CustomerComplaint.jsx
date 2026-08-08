@@ -7,6 +7,11 @@ import {
   Clock,
   CheckCircle2,
   Archive,
+  Search,
+  MessageSquare,
+  RefreshCw,
+  Download,
+  Filter,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api";
@@ -16,19 +21,17 @@ export default function CustomerComplaint() {
 
   const [complaints, setComplaints] = useState([]);
   const [dashboard, setDashboard] = useState({});
-
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
   const fetchComplaints = async () => {
     try {
       setLoading(true);
-
       const res = await api.get("/complaints", {
         params: {
           search,
@@ -37,7 +40,6 @@ export default function CustomerComplaint() {
           to,
         },
       });
-
       setComplaints(res.data.data || []);
     } catch (err) {
       console.error(err);
@@ -52,7 +54,7 @@ export default function CustomerComplaint() {
       const res = await api.get("/complaints/dashboard");
       setDashboard(res.data.data || {});
     } catch (err) {
-      console.error(err);
+      console.error("Error loading complaints dashboard:", err);
     }
   };
 
@@ -61,343 +63,289 @@ export default function CustomerComplaint() {
     fetchDashboard();
   }, []);
 
-
-
-
   const clearFilters = async () => {
-  setSearch("");
-  setStatus("");
-  setFrom("");
-  setTo("");
+    setSearch("");
+    setStatus("");
+    setFrom("");
+    setTo("");
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
+      const res = await api.get("/complaints");
+      setComplaints(res.data.data || []);
+      const dash = await api.get("/complaints/dashboard");
+      setDashboard(dash.data.data || {});
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const res = await api.get("/complaints");
-
-    setComplaints(res.data.data || []);
-
-    const dash = await api.get("/complaints/dashboard");
-
-    setDashboard(dash.data.data);
-
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const res = await api.get("/complaints/export", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `complaints_report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      toast.success("Complaint report exported successfully!");
+    } catch (err) {
+      toast.error("Failed to export complaint report.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-
-    {/* Header */}
-
-    <div className="bg-white rounded-xl shadow border p-4 mb-4">
-
-     <h1 className="text-xl font-semibold text-slate-800">
-        Complaint Management
-      </h1>
-
-      <p className="text-sm text-gray-500 mt-1">
-        View and manage all customer complaints.
-      </p>
-
-    </div>
-
-    {/* Dashboard */}
-
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5 mb-4">
-
-      <div className="bg-white rounded-xl shadow border p-4">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-gray-500 text-sm">Total</p>
-            <h2 className="text-2xl font-bold mt-2">
-              {dashboard.total || 0}
-            </h2>
+      {/* Top Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-6 h-6" />
           </div>
-
-          <FileText className="text-gray-500" size={24} />
-        </div>
-      </div>
-
-      <div className="bg-yellow-50 border border-yellow-200 rounded-xl shadow p-4">
-        <div className="flex justify-between">
           <div>
-            <p className="text-yellow-700 text-sm">Pending</p>
-
-            <h2 className="text-xl font-bold text-yellow-700 mt-2">
-              {dashboard.pending || 0}
-            </h2>
-          </div>
-
-          <AlertCircle className="text-yellow-600" size={34} />
-        </div>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-xl shadow p-4">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-blue-700 text-sm">
-              In Progress
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Complaint Management</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              View, filter, track, and resolve customer service complaints.
             </p>
-
-            <h2 className="text-3xl font-bold text-blue-700 mt-2">
-              {dashboard.in_progress || 0}
-            </h2>
           </div>
+        </div>
 
-          <Clock className="text-blue-600" size={34} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <Download className={`w-4 h-4 ${exporting ? "animate-bounce" : ""}`} />
+            {exporting ? "Exporting..." : "Export Report"}
+          </button>
+          <button
+            onClick={() => {
+              fetchComplaints();
+              fetchDashboard();
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-xl shadow p-4">
-        <div className="flex justify-between">
+      {/* Dashboard Stat Cards Row (5 Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Total */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-green-700 text-sm">
-              Resolved
-            </p>
-
-            <h2 className="text-3xl font-bold text-green-700 mt-2">
-              {dashboard.resolved || 0}
-            </h2>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Complaints</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{dashboard.total || 0}</h3>
           </div>
-
-          <CheckCircle2
-            className="text-green-600"
-            size={34}
-          />
+          <div className="p-3 bg-slate-100 text-slate-600 rounded-xl">
+            <FileText className="w-5 h-5" />
+          </div>
         </div>
-      </div>
 
-      <div className="bg-gray-50 border rounded-xl shadow p-4">
-        <div className="flex justify-between">
+        {/* Pending */}
+        <div className="bg-amber-50/60 p-5 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-gray-600 text-sm">
-              Closed
-            </p>
-
-            <h2 className="text-3xl font-bold mt-2">
-              {dashboard.closed || 0}
-            </h2>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending</p>
+            <h3 className="text-2xl font-extrabold text-amber-700 mt-1">{dashboard.pending || 0}</h3>
           </div>
+          <div className="p-3 bg-amber-100 text-amber-700 rounded-xl">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+        </div>
 
-          <Archive className="text-gray-600" size={34} />
+        {/* In Progress */}
+        <div className="bg-blue-50/60 p-5 rounded-2xl border border-blue-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">In Progress</p>
+            <h3 className="text-2xl font-extrabold text-blue-700 mt-1">{dashboard.in_progress || 0}</h3>
+          </div>
+          <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Resolved */}
+        <div className="bg-emerald-50/60 p-5 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Resolved</p>
+            <h3 className="text-2xl font-extrabold text-emerald-700 mt-1">{dashboard.resolved || 0}</h3>
+          </div>
+          <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Closed */}
+        <div className="bg-slate-100/60 p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Closed</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{dashboard.closed || 0}</h3>
+          </div>
+          <div className="p-3 bg-slate-200 text-slate-700 rounded-xl">
+            <Archive className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
-    </div>
+      {/* Search & Filter Bar Card */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3 items-center">
+          <div className="md:col-span-2 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="Search complaint ID, customer, subject..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && fetchComplaints()}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+            />
+          </div>
 
-    {/* Filters */}
+          <div>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            >
+              <option value="">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
 
-    <div className="bg-white rounded-xl shadow border p-4 mb-4">
+          <div>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            />
+          </div>
 
-      <div className="grid lg:grid-cols-5 gap-4">
+          <div>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            />
+          </div>
 
-        <input
-          type="text"
-          placeholder="Search complaint..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        />
-
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        >
-          <option value="">All Status</option>
-          <option>Pending</option>
-          <option>In Progress</option>
-          <option>Resolved</option>
-          <option>Closed</option>
-        </select>
-
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        />
-
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        />
-
-        <button
-          onClick={fetchComplaints}
-          className="bg-green-600 hover:bg-green-700 text-white rounded-lg"
-        >
-          Search
-        </button>
-
-        <button
-  onClick={clearFilters}
-  className="border border-gray-300 hover:bg-gray-100 rounded-lg px-4 py-2"
->
-  Clear
-</button>
-
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchComplaints}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer text-center"
+            >
+              Search
+            </button>
+            <button
+              onClick={clearFilters}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
-    </div>
-
-    {/* Table */}
-
-    <div className="bg-white rounded-xl shadow border overflow-hidden">
-
-      <table className="min-w-full">
-
-        <thead className="bg-slate-100">
-
-          <tr>
-
-            <th className="px-4 py-3 text-left">
-              Complaint ID
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Customer
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Pickup Date
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Subject
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Status
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Created
-            </th>
-
-            <th className="px-4 py-3 text-center">
-              Action
-            </th>
-
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {loading ? (
-
-            <tr>
-
-              <td
-                colSpan="7"
-                className="text-center py-10"
-              >
-                Loading...
-              </td>
-
-            </tr>
-
-          ) : complaints.length === 0 ? (
-
-            <tr>
-
-              <td
-                colSpan="7"
-                className="text-center py-10 text-gray-500"
-              >
-                No complaints found.
-              </td>
-
-            </tr>
-
-          ) : (
-
-            complaints.map((item) => (
-
-              <tr
-                key={item.id}
-                className="border-t hover:bg-slate-50"
-              >
-
-                <td className="px-5 py-4 font-semibold">
-                  {item.complaint_id}
-                </td>
-
-                <td className="px-5 py-4">
-                  {item.customer_name}
-                </td>
-
-                <td className="px-5 py-4">
-                  {item.pickup_date}
-                </td>
-
-                <td className="px-5 py-4">
-                  {item.subject}
-                </td>
-
-                <td className="px-5 py-4">
-
-                  <span
-  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-  ${
-    item.status === "Pending"
-      ? "bg-yellow-100 text-yellow-700"
-      : item.status === "Resolved"
-      ? "bg-green-100 text-green-700"
-      : item.status === "In Progress"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-gray-200 text-gray-700"
-  }`}
->
-  {item.status}
-</span>
-
-                </td>
-
-                <td className="px-5 py-4">
-                  {new Date(
-                    item.created_at
-                  ).toLocaleDateString()}
-                </td>
-
-                <td className="px-5 py-4 text-center">
-
-                  <button
-                    onClick={() =>
-                      navigate(`/complaints/${item.id}`)
-                    }
-                    className="text-blue-600 hover:text-blue-800"
+      {/* Main Complaints Table Container */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-500 space-y-3">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-600" />
+            <p className="text-sm font-semibold">Loading Customer Complaints...</p>
+          </div>
+        ) : complaints.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 space-y-2">
+            <MessageSquare className="w-12 h-12 mx-auto text-slate-300" />
+            <p className="text-base font-bold text-slate-700">No complaints found</p>
+            <p className="text-xs text-slate-500">Try clearing filters or search terms.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs sm:text-sm">
+              <thead>
+                <tr className="bg-slate-100/90 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                  <th className="py-3.5 px-5">Complaint ID</th>
+                  <th className="py-3.5 px-5">Customer</th>
+                  <th className="py-3.5 px-5">Pickup Date</th>
+                  <th className="py-3.5 px-5">Subject</th>
+                  <th className="py-3.5 px-5 text-center">Status</th>
+                  <th className="py-3.5 px-5">Created At</th>
+                  <th className="py-3.5 px-5 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {complaints.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/complaints/${item.id}`)}
                   >
-                    <button
-  onClick={() => navigate(`/complaints/${item.id}`)}
-  className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
->
-  <Eye size={18}/>
-  View
-</button>
-                  </button>
+                    <td className="py-4 px-5">
+                      <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 font-mono">
+                        {item.complaint_id}
+                      </span>
+                    </td>
 
-                </td>
+                    <td className="py-4 px-5 font-bold text-slate-900">{item.customer_name || "—"}</td>
 
-              </tr>
+                    <td className="py-4 px-5 text-slate-600 font-medium">{item.pickup_date || "—"}</td>
 
-            ))
+                    <td className="py-4 px-5 font-semibold text-slate-700 max-w-xs truncate">{item.subject || "—"}</td>
 
-          )}
+                    <td className="py-4 px-5 text-center">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                          item.status === "Pending"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : item.status === "Resolved"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : item.status === "In Progress"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
 
-        </tbody>
+                    <td className="py-4 px-5 text-slate-500 text-xs">
+                      {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                    </td>
 
-      </table>
-
+                    <td className="py-4 px-5 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/complaints/${item.id}`);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
-
-  </div>
-);
+  );
 }

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
-import { Plus, Minus, Crosshair, RefreshCw, AlertTriangle, Maximize2, Minimize2 } from 'lucide-react';
+import { Plus, Minus, Crosshair, AlertTriangle, Maximize2, Minimize2, Navigation } from 'lucide-react';
 
 const LiveMap = ({
   vehicle,
@@ -192,9 +192,11 @@ const LiveMap = ({
   }, [googleLoaded, selectedVehicleId, isFleetOverview, currentLocation, allVehicles]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [smoothFollow, setSmoothFollow] = useState(true); // Auto-pan to vehicle on live update
   const prevVehicleIdRef = useRef(null);
+  const lastTrackedLocationRef = useRef(null);
 
-  // 2. Fast & Accurate Marker Positioning Snapped Strictly to Recorded Route Line
+  // 2. Fast & Accurate Marker Positioning + Live Auto-Pan when GPS updates from Firebase
   useEffect(() => {
     if (!googleLoaded || !mapInstance.current || !selectedVehicleId || !currentLocation) return;
     const marker = markersRef.current[selectedVehicleId];
@@ -205,6 +207,7 @@ const LiveMap = ({
     // If vehicle changed or first load, instantly snap position & camera with zero delay
     if (prevVehicleIdRef.current !== selectedVehicleId) {
       prevVehicleIdRef.current = selectedVehicleId;
+      lastTrackedLocationRef.current = targetPos;
       marker.setPosition(targetPos);
       marker.setZIndex(99999);
       mapInstance.current.setCenter(targetPos);
@@ -221,7 +224,7 @@ const LiveMap = ({
 
     if (Math.abs(deltaLat) > 0.000001 || Math.abs(deltaLng) > 0.000001) {
       let startTime = null;
-      const duration = 300; // Fast smooth transition
+      const duration = 600; // Smooth transition for live GPS updates
 
       const animateMarker = (time) => {
         if (!startTime) startTime = time;
@@ -235,6 +238,11 @@ const LiveMap = ({
         marker.setPosition({ lat: curLat, lng: curLng });
         marker.setZIndex(99999);
 
+        // Live auto-pan: smoothly pan map to follow vehicle while animating
+        if (smoothFollow && mapInstance.current) {
+          mapInstance.current.panTo({ lat: curLat, lng: curLng });
+        }
+
         if (progress < 1) {
           animationFrameRef.current = requestAnimationFrame(animateMarker);
         }
@@ -244,11 +252,12 @@ const LiveMap = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
       animationFrameRef.current = requestAnimationFrame(animateMarker);
+      lastTrackedLocationRef.current = targetPos;
     } else {
       marker.setPosition(targetPos);
       marker.setZIndex(99999);
     }
-  }, [googleLoaded, selectedVehicleId, currentLocation]);
+  }, [googleLoaded, selectedVehicleId, currentLocation, smoothFollow]);
 
 
   // 3. Render Route (Directions API or Fallback Polylines) & Pickup Pins (P1, P2, P3)
@@ -517,6 +526,18 @@ const LiveMap = ({
             title="Recenter Map on Active Vehicle"
           >
             <Crosshair className="w-4 h-4" />
+          </button>
+          {/* Live Follow Toggle Button */}
+          <button
+            onClick={() => setSmoothFollow(f => !f)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer border-t border-slate-100 pt-1 ${
+              smoothFollow
+                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                : 'hover:bg-slate-100 text-slate-400'
+            }`}
+            title={smoothFollow ? 'Live Follow ON — click to disable auto-pan' : 'Live Follow OFF — click to enable auto-pan'}
+          >
+            <Navigation className={`w-4 h-4 ${smoothFollow ? 'animate-pulse' : ''}`} />
           </button>
         </div>
 

@@ -44,10 +44,29 @@ function App() {
 
   const RequirePermission = ({ children, requiredPermission }) => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const permissions = user.permissions || [];
+    const roleName = (user.role?.role_name || user.role_name || '').toLowerCase();
+    const isAdmin = roleName === 'admin' || roleName === 'super admin';
 
-    if (requiredPermission && !permissions.includes(requiredPermission)) {
-      return <Navigate to="/unauthorized" replace />;
+    if (isAdmin) {
+      return children;
+    }
+
+    const rawPerms = Array.isArray(user.permissions)
+      ? user.permissions
+      : Array.isArray(user.role?.permissions)
+      ? user.role.permissions
+      : [];
+
+    const userPermissions = rawPerms
+      .map((p) => (typeof p === 'string' ? p : p?.permission_name || p?.name || ''))
+      .filter(Boolean);
+
+    if (requiredPermission) {
+      const permsArray = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+      const hasPerm = permsArray.some((p) => userPermissions.includes(p));
+      if (!hasPerm) {
+        return <Navigate to="/unauthorized" replace />;
+      }
     }
 
     return children;
@@ -69,7 +88,14 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="live-movement" element={<LiveMovement />} />
+          <Route
+            path="live-movement"
+            element={
+              <RequirePermission requiredPermission="live_movement">
+                <LiveMovement />
+              </RequirePermission>
+            }
+          />
           <Route
             path="users"
             element={
@@ -190,7 +216,14 @@ function App() {
               </RequirePermission>
             }
           />
-          <Route path="waste-collection-requests" element={<WasteCollectionRequests />} />
+          <Route
+            path="waste-collection-requests"
+            element={
+              <RequirePermission requiredPermission="waste_collection_requests">
+                <WasteCollectionRequests />
+              </RequirePermission>
+            }
+          />
           <Route
             path="waste-requests-list"
             element={
@@ -202,12 +235,19 @@ function App() {
           <Route
             path="waste-orders"
             element={
-              <RequirePermission requiredPermission="waste_requests_list">
+              <RequirePermission requiredPermission="order_management">
                 <WasteOrdersList />
               </RequirePermission>
             }
           />
-          <Route path="trip-planner" element={<TripPlanner />} />
+          <Route
+            path="trip-planner"
+            element={
+              <RequirePermission requiredPermission="trip_planner">
+                <TripPlanner />
+              </RequirePermission>
+            }
+          />
           <Route
             path="trip-summaries"
             element={
@@ -281,14 +321,22 @@ function App() {
             }
           />
           <Route
-  path="/complaints"
-  element={<CustomerComplaint />}
-/>
+            path="/complaints"
+            element={
+              <RequirePermission requiredPermission="complaints">
+                <CustomerComplaint />
+              </RequirePermission>
+            }
+          />
 
-<Route
-  path="/complaints/:id"
-  element={<ComplaintDetails />}
-/>
+          <Route
+            path="/complaints/:id"
+            element={
+              <RequirePermission requiredPermission="complaints">
+                <ComplaintDetails />
+              </RequirePermission>
+            }
+          />
 
 
           <Route

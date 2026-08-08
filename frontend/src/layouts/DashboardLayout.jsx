@@ -14,8 +14,26 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userPermissions = user.permissions || [];
   const { settings, t } = useSettings();
+
+  const rawPerms = Array.isArray(user.permissions)
+    ? user.permissions
+    : Array.isArray(user.role?.permissions)
+    ? user.role.permissions
+    : [];
+
+  const userPermissions = rawPerms
+    .map((p) => (typeof p === 'string' ? p : p?.permission_name || p?.name || ''))
+    .filter(Boolean);
+
+  const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
+
+  const hasAccess = (requiredPermissionString) => {
+    if (isAdmin) return true;
+    if (!requiredPermissionString) return true;
+    const permsArray = Array.isArray(requiredPermissionString) ? requiredPermissionString : [requiredPermissionString];
+    return permsArray.some((p) => userPermissions.includes(p));
+  };
 
   // Dynamic theme values from settings
   const sidebarBg = settings?.theme?.sidebar_color || '#1e133c';
@@ -26,7 +44,6 @@ const DashboardLayout = () => {
   const [currentStatus, setCurrentStatus] = useState(user.profile_status || 'pending');
   const isVendor = user.role?.role_name?.toLowerCase().includes('vendor') || user.role?.role_name?.toLowerCase().includes('seller');
   const isApproved = currentStatus === 'approved';
-  const isAdmin = user.role?.role_name?.toLowerCase().includes('admin');
 
   const [openSections, setOpenSections] = useState({ access: true, master: false, catalog: true, bwg_mapping: false });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -195,15 +212,10 @@ const DashboardLayout = () => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const hasAccess = (requiredPermissionString) => {
-    if (!requiredPermissionString) return true;
-    return userPermissions.includes(requiredPermissionString);
-  };
-
   // Redefined menu to match Airowin style structure
   const sidebarItems = [
     { name: t('dashboard'), path: '/', icon: LayoutDashboard, isSubMenu: false },
-    { name: 'Live Movement', path: '/live-movement', icon: Radio, isSubMenu: false },
+    { name: 'Live Movement', path: '/live-movement', icon: Radio, isSubMenu: false, req: 'live_movement' },
     { name: t('profile'), path: '/profile', icon: UserCircle, isSubMenu: false, req: 'profile' },
     {
       id: 'catalog',
@@ -256,13 +268,14 @@ const DashboardLayout = () => {
     { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
     { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
-    { name: 'Pickup / Trip Planner', path: '/trip-planner', icon: Calendar, isSubMenu: false },
+    { name: 'Pickup / Trip Planner', path: '/trip-planner', icon: Calendar, isSubMenu: false, req: 'trip_planner' },
     { name: 'Trip Summaries', path: '/trip-summaries', icon: ClipboardList, isSubMenu: false, req: 'trip_summaries.view' },
     {
       name: "Complaint Management",
       path: "/complaints",
       icon: MessageSquare,
       isSubMenu: false,
+      req: "complaints",
     },
    
     {

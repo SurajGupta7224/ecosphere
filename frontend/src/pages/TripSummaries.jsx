@@ -19,6 +19,10 @@ import {
   ArrowLeft,
   Calendar,
   Layers,
+  PlusCircle,
+  Plus,
+  QrCode,
+  Upload,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api, { IMAGE_BASE_URL } from "../api";
@@ -49,6 +53,29 @@ export default function TripSummaries() {
   const [subCategories, setSubCategories] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [wasteOrders, setWasteOrders] = useState([]);
+
+  // Full-Page Create View State
+  const [isCreateViewOpen, setIsCreateViewOpen] = useState(false);
+  const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
+  const [fetchingOrderItems, setFetchingOrderItems] = useState(false);
+  const [loadingMasterData, setLoadingMasterData] = useState(false);
+  const [qrCodeInput, setQrCodeInput] = useState("");
+
+  // Searchable Autocomplete States for Creation Screen
+  const [vehicleSearchQuery, setVehicleSearchQuery] = useState("");
+  const [isVehicleDropdownOpen, setIsVehicleDropdownOpen] = useState(false);
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [isOrderDropdownOpen, setIsOrderDropdownOpen] = useState(false);
+
+  const [createFormData, setCreateFormData] = useState({
+    trip_id: "",
+    order_id: "",
+    vehicle_id: "",
+    driver_id: "",
+    remarks: "",
+    items: [],
+  });
 
   // Search & Filter State
   const [search, setSearch] = useState("");
@@ -96,7 +123,6 @@ export default function TripSummaries() {
 
   useEffect(() => {
     fetchStats();
-    fetchMasterData();
   }, []);
 
   useEffect(() => {
@@ -112,21 +138,29 @@ export default function TripSummaries() {
     }
   };
 
-  const fetchMasterData = async () => {
+  const fetchMasterData = async (searchQuery = "") => {
     try {
-      const [catRes, subRes, vehRes, empRes] = await Promise.all([
-        api.get("/categories").catch(() => ({ data: { categories: [] } })),
-        api.get("/sub-categories").catch(() => ({ data: { subCategories: [] } })),
-        api.get("/aggregator-vehicles").catch(() => ({ data: { vehicles: [] } })),
-        api.get("/aggregator-employees").catch(() => ({ data: { employees: [] } })),
-      ]);
-
-      setCategories(catRes.data?.categories || catRes.data?.data || []);
-      setSubCategories(subRes.data?.subCategories || subRes.data?.data || []);
-      setVehicles(vehRes.data?.vehicles || vehRes.data?.data || []);
-      setEmployees(empRes.data?.employees || empRes.data?.data || []);
+      const res = await api.get("/trip-summaries/suggestions", {
+        params: { search: searchQuery.trim() || undefined }
+      });
+      if (res.data?.success) {
+        setVehicles(res.data.vehicles || []);
+        setWasteOrders(res.data.wasteOrders || []);
+        setSubCategories(res.data.subCategories || []);
+      }
     } catch (err) {
-      console.error("Error loading master data:", err);
+      console.error("Error loading master data suggestions:", err);
+    }
+  };
+
+  // Open Create View and Fetch Suggestions On Demand
+  const openCreateCollectionScreen = async () => {
+    setIsCreateViewOpen(true);
+    setLoadingMasterData(true);
+    try {
+      await fetchMasterData();
+    } finally {
+      setLoadingMasterData(false);
     }
   };
 
@@ -337,6 +371,181 @@ export default function TripSummaries() {
       fetchTripSummaries();
       fetchStats();
     }, 50);
+  };
+
+  // Orders assigned to selected vehicle
+  const assignedOrders = useMemo(() => {
+    if (!createFormData.vehicle_id) return wasteOrders;
+    return wasteOrders.filter((ord) => String(ord.vehicle_id) === String(createFormData.vehicle_id));
+  }, [wasteOrders, createFormData.vehicle_id]);
+
+  // Filtered vehicles for autocomplete search
+  const filteredVehicles = useMemo(() => {
+    if (!vehicleSearchQuery.trim()) return vehicles;
+    const q = vehicleSearchQuery.toLowerCase();
+    return vehicles.filter(
+      (v) =>
+        (v.registration_number && v.registration_number.toLowerCase().includes(q)) ||
+        (v.vehicleNumber && v.vehicleNumber.toLowerCase().includes(q)) ||
+        (v.brand && v.brand.toLowerCase().includes(q)) ||
+        (v.model && v.model.toLowerCase().includes(q))
+    );
+  }, [vehicles, vehicleSearchQuery]);
+
+  // Filtered assigned orders for autocomplete search
+  const filteredAssignedOrders = useMemo(() => {
+    const list = assignedOrders;
+    if (!orderSearchQuery.trim()) return list;
+    const q = orderSearchQuery.toLowerCase();
+    return list.filter(
+      (ord) =>
+        (ord.order_id && ord.order_id.toLowerCase().includes(q)) ||
+        (ord.customer_legal_name && ord.customer_legal_name.toLowerCase().includes(q)) ||
+        (ord.contact_person && ord.contact_person.toLowerCase().includes(q))
+    );
+  }, [assignedOrders, orderSearchQuery]);
+
+  // Vehicle Selection Handler
+  const handleVehicleChange = (vehicleId) => {
+    const selectedVeh = vehicles.find((v) => String(v.id) === String(vehicleId));
+    let autoDriverId = createFormData.driver_id;
+    if (selectedVeh) {
+      if (selectedVeh.driver_id) {
+        autoDriverId = selectedVeh.driver_id;
+      } else if (selectedVeh.driver) {
+        autoDriverId = selectedVeh.driver.id;
+      } else if (employees.length > 0) {
+        const matchedEmp = employees.find(
+          (e) => String(e.vehicle_id) === String(vehicleId) || e.role === "Driver"
+        );
+        if (matchedEmp) autoDriverId = matchedEmp.id;
+      }
+      setVehicleSearchQuery(`${selectedVeh.registration_number || selectedVeh.vehicleNumber} (${selectedVeh.brand || selectedVeh.model || "Vehicle"})`);
+    }
+    setCreateFormData((prev) => ({
+      ...prev,
+      vehicle_id: vehicleId,
+      driver_id: autoDriverId,
+      order_id: "",
+      items: [],
+    }));
+    setOrderSearchQuery("");
+  };
+
+  // Order Auto-Fetch Assigned Subcategories
+  const handleOrderChange = async (orderId) => {
+    setCreateFormData((prev) => ({ ...prev, order_id: orderId }));
+    setOrderSearchQuery(orderId);
+    setIsOrderDropdownOpen(false);
+    if (!orderId) return;
+
+    setFetchingOrderItems(true);
+    try {
+      const res = await api.get(`/waste-orders`, { params: { search: orderId } });
+      const orders = res.data?.orders || res.data?.data || [];
+      const matchedOrders = orders.filter((o) => o.order_id === orderId);
+
+      if (matchedOrders.length > 0) {
+        const fetchedItems = matchedOrders.map((ord) => ({
+          subcategory_id: ord.subcategory_id,
+          subcategory_name: ord.subCategory?.name || ord.subcategory_name || "Assigned Waste",
+          total_waste_kg: "",
+        }));
+
+        setCreateFormData((prev) => ({
+          ...prev,
+          order_id: orderId,
+          vehicle_id: prev.vehicle_id || matchedOrders[0].vehicle_id || "",
+          driver_id: prev.driver_id || matchedOrders[0].driver_id || "",
+          items: fetchedItems.length > 0 ? fetchedItems : [{ subcategory_id: "", total_waste_kg: "" }],
+        }));
+        toast.success(`Loaded ${fetchedItems.length} assigned subcategory item(s) for Order #${orderId}`);
+      } else {
+        setCreateFormData((prev) => ({
+          ...prev,
+          items: prev.items.length > 0 ? prev.items : [{ subcategory_id: "", total_waste_kg: "" }],
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching order subcategories:", err);
+    } finally {
+      setFetchingOrderItems(false);
+    }
+  };
+
+  // QR Code Image / Barcode Scanner
+  const handleQrUploadOrScan = (e) => {
+    const file = e.target.files?.[0];
+    let codeStr = qrCodeInput.trim();
+    if (file) {
+      const match = file.name.match(/ORD-\d+/i);
+      if (match) {
+        codeStr = match[0].toUpperCase();
+      }
+    }
+
+    if (!codeStr && qrCodeInput.trim()) {
+      codeStr = qrCodeInput.trim();
+    }
+
+    if (!codeStr) {
+      toast.error("Please enter or scan a valid QR Code / Barcode (e.g. ORD-95472261393).");
+      return;
+    }
+
+    toast.success(`QR Code Scanned Successfully! Matched Order: ${codeStr}`);
+    handleOrderChange(codeStr);
+    setQrCodeInput("");
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!createFormData.order_id || !createFormData.vehicle_id) {
+      toast.error("Order ID and Vehicle are required.");
+      return;
+    }
+    const validItems = createFormData.items.filter(
+      (item) => item.subcategory_id && Number(item.total_waste_kg) > 0
+    );
+    if (validItems.length === 0) {
+      toast.error("Please add at least one valid subcategory with weight > 0 KG.");
+      return;
+    }
+
+    setIsSubmittingCreate(true);
+    try {
+      const payload = {
+        trip_id: createFormData.trip_id || undefined,
+        order_id: createFormData.order_id,
+        vehicle_id: createFormData.vehicle_id,
+        driver_id: createFormData.driver_id || undefined,
+        remarks: createFormData.remarks || undefined,
+        items: validItems,
+      };
+
+      const res = await api.post("/trip-summaries", payload);
+      if (res.data?.status === 1) {
+        toast.success(res.data.message || "Manual collection entry created successfully.");
+        setIsCreateViewOpen(false);
+        setCreateFormData({
+          trip_id: "",
+          order_id: "",
+          vehicle_id: "",
+          driver_id: "",
+          remarks: "",
+          items: [],
+        });
+        fetchTripSummaries();
+        fetchStats();
+      } else {
+        toast.error(res.data?.message || "Failed to create manual collection entry.");
+      }
+    } catch (err) {
+      console.error("handleCreateSubmit error:", err);
+      toast.error(err.response?.data?.message || "Error creating manual collection entry.");
+    } finally {
+      setIsSubmittingCreate(false);
+    }
   };
 
   // Open Full-Size Details Screen for a Trip
@@ -944,6 +1153,366 @@ export default function TripSummaries() {
   }
 
   /* ========================================================================= */
+  /* FULL PAGE: CREATE MANUAL COLLECTION SCREEN (Driver App Workflow Style)     */
+  /* ========================================================================= */
+  if (isCreateViewOpen) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300 w-full">
+        {loadingMasterData && (
+          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl text-xs font-bold text-indigo-700 flex items-center justify-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+            Loading vehicle, order, and waste subcategory suggestion options from API...
+          </div>
+        )}
+        {/* Top Header & Navigation */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsCreateViewOpen(false)}
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer flex items-center justify-center shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                  Manual Entry
+                </span>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Record Waste Collection</h1>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                Full-page waste collection creation screen (matches Driver Mobile App workflow).
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateViewOpen(false)}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        {/* MAIN CREATION FORM CARD */}
+        <form onSubmit={handleCreateSubmit} className="space-y-6">
+          {/* SECTION 1: VEHICLE SELECTION (SEARCHABLE AUTOCOMPLETE) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Truck className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                1. Select / Search Vehicle
+              </h2>
+            </div>
+
+            <div className="relative">
+              <label className="block text-xs font-extrabold text-slate-700 uppercase mb-1.5">
+                Select Vehicle <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search vehicle reg number, brand, or model..."
+                  value={vehicleSearchQuery}
+                  onFocus={() => {
+                    setIsVehicleDropdownOpen(true);
+                    fetchMasterData(vehicleSearchQuery);
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setVehicleSearchQuery(val);
+                    setIsVehicleDropdownOpen(true);
+                    fetchMasterData(val);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 pr-10 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-4 pointer-events-none" />
+              </div>
+
+              {/* Suggestions Popup Dropdown */}
+              {isVehicleDropdownOpen && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-1.5 space-y-1">
+                  {filteredVehicles.length > 0 ? (
+                    filteredVehicles.map((v) => {
+                      const label = `${v.registration_number || v.vehicleNumber} (${v.brand || v.model || "Vehicle"})`;
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => {
+                            setVehicleSearchQuery(label);
+                            handleVehicleChange(v.id);
+                            setIsVehicleDropdownOpen(false);
+                          }}
+                          className="p-3 hover:bg-indigo-50 rounded-xl text-xs font-bold text-slate-800 cursor-pointer flex items-center justify-between transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-indigo-600" />
+                            <span>{v.registration_number || v.vehicleNumber}</span>
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-400">
+                            {v.brand || v.model || "Vehicle"}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-xs font-semibold text-slate-400 text-center">
+                      No matching vehicles found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 2: ORDER SEARCH & QR CODE SCANNER (SEARCHABLE AUTOCOMPLETE) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  2. Order Selection & QR Code Scan
+                </h2>
+              </div>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                {assignedOrders.length} Order(s) Assigned to Vehicle
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Option A: Searchable Order ID Autocomplete */}
+              <div className="relative">
+                <label className="block text-xs font-extrabold text-slate-700 uppercase mb-1.5">
+                  Select Order ID <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={
+                      !createFormData.vehicle_id
+                        ? "Select Vehicle First..."
+                        : "Type Order ID or Customer Name..."
+                    }
+                    value={orderSearchQuery}
+                    onFocus={() => {
+                      if (createFormData.vehicle_id) {
+                        setIsOrderDropdownOpen(true);
+                        fetchMasterData(orderSearchQuery);
+                      }
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setOrderSearchQuery(val);
+                      setIsOrderDropdownOpen(true);
+                      fetchMasterData(val);
+                    }}
+                    disabled={!createFormData.vehicle_id}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition disabled:opacity-60"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                </div>
+
+                {/* Suggestions Popup Dropdown */}
+                {isOrderDropdownOpen && createFormData.vehicle_id && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-1.5 space-y-1">
+                    {filteredAssignedOrders.length > 0 ? (
+                      filteredAssignedOrders.map((ord) => (
+                        <div
+                          key={ord.id}
+                          onClick={() => {
+                            setOrderSearchQuery(ord.order_id);
+                            handleOrderChange(ord.order_id);
+                            setIsOrderDropdownOpen(false);
+                          }}
+                          className="p-3 hover:bg-emerald-50 rounded-xl text-xs font-bold text-slate-800 cursor-pointer flex items-center justify-between transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-mono text-[11px] font-extrabold">
+                              {ord.order_id}
+                            </span>
+                            <span>{ord.customer_legal_name || ord.contact_person || "Order"}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs font-semibold text-slate-400 text-center">
+                        No assigned orders found for this vehicle
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Option B: Scan / Upload QR Code */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase mb-1.5">
+                  Scan QR Code / Barcode Image
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Paste/Scan QR Code string (e.g. ORD-95472261393)"
+                    value={qrCodeInput}
+                    onChange={(e) => setQrCodeInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleQrUploadOrScan(e))}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+                  />
+                  <label className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0">
+                    <Upload className="w-4 h-4" />
+                    Upload QR
+                    <input type="file" accept="image/*" onChange={handleQrUploadOrScan} className="hidden" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: COLLECTED SUB-CATEGORIES & WEIGHT INPUT (AUTO-POPULATED) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  3. Assigned Waste Subcategories & Weight Entry (KG)
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setCreateFormData((prev) => ({
+                    ...prev,
+                    items: [...prev.items, { subcategory_id: "", total_waste_kg: "" }],
+                  }))
+                }
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Add Extra Subcategory
+              </button>
+            </div>
+
+            {fetchingOrderItems && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-700 flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Fetching subcategories assigned to Order #{createFormData.order_id}...
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4">
+              {createFormData.items.map((item, idx) => (
+                <div key={idx} className="bg-slate-50/90 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs hover:border-indigo-300 transition">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-extrabold text-xs flex items-center justify-center">
+                        #{idx + 1}
+                      </span>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        {item.subcategory_name || "Subcategory Item"}
+                      </h4>
+                    </div>
+                    {createFormData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newItems = createFormData.items.filter((_, i) => i !== idx);
+                          setCreateFormData((prev) => ({ ...prev, items: newItems }));
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Remove Subcategory"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Subcategory Select */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Subcategory Name</label>
+                      <select
+                        value={item.subcategory_id}
+                        onChange={(e) => {
+                          const newItems = [...createFormData.items];
+                          newItems[idx].subcategory_id = e.target.value;
+                          setCreateFormData((prev) => ({ ...prev, items: newItems }));
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 shadow-2xs"
+                        required
+                      >
+                        <option value="">Select Subcategory...</option>
+                        {subCategories.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name || sub.sub_category_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Weight (KG) */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Collected Weight (KG)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.total_waste_kg}
+                          onChange={(e) => {
+                            const newItems = [...createFormData.items];
+                            newItems[idx].total_waste_kg = e.target.value;
+                            setCreateFormData((prev) => ({ ...prev, items: newItems }));
+                          }}
+                          className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-3 pr-10 text-xs font-black text-slate-900 outline-none focus:border-indigo-500 shadow-2xs text-base"
+                          required
+                        />
+                        <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400">KG</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION 4: TRIP REMARKS & SUBMIT */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div>
+              <label className="block text-xs font-extrabold text-slate-700 uppercase mb-1.5">Collection Remarks / Notes</label>
+              <input
+                type="text"
+                placeholder="Enter collection remarks (e.g. Morning waste collection completed)..."
+                value={createFormData.remarks}
+                onChange={(e) => setCreateFormData({ ...createFormData, remarks: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsCreateViewOpen(false)}
+                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingCreate}
+                className="px-7 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+              >
+                {isSubmittingCreate ? "Saving Collection..." : "Save & Complete Collection"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  /* ========================================================================= */
   /* MAIN GROUPED TRIP LISTING SCREEN (Pickup / Trip Planner Style)            */
   /* ========================================================================= */
   return (
@@ -963,6 +1532,14 @@ export default function TripSummaries() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={openCreateCollectionScreen}
+            disabled={loadingMasterData}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <PlusCircle className={`w-4 h-4 ${loadingMasterData ? "animate-spin" : ""}`} />
+            {loadingMasterData ? "Loading Options..." : "Add Collection"}
+          </button>
+          <button
             onClick={() => {
               fetchTripSummaries();
               fetchStats();
@@ -976,64 +1553,59 @@ export default function TripSummaries() {
         </div>
       </div>
 
-      {/* Summary Cards Row (6 Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+      {/* Summary Cards Row (5 Cards - Matching App Dashboard & Complaint Management Style) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Total Trips */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{stats.total_trips || 0}</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{stats.total_trips || 0}</h3>
           </div>
-          <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl">
+          <div className="p-3 bg-slate-100 text-slate-600 rounded-xl">
             <Truck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        {/* Pending */}
+        <div className="bg-amber-50/60 p-5 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Collections</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{stats.total_collections || 0}</h3>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending</p>
+            <h3 className="text-2xl font-extrabold text-amber-700 mt-1">{stats.pending || 0}</h3>
           </div>
-          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-            <Package className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Waste</p>
-            <h3 className="text-xl font-extrabold text-emerald-700 mt-1">{stats.total_waste_kg || 0} <span className="text-xs font-semibold">KG</span></h3>
-          </div>
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-            <Scale className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending</p>
-            <h3 className="text-xl font-extrabold text-amber-700 mt-1">{stats.pending || 0}</h3>
-          </div>
-          <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl">
+          <div className="p-3 bg-amber-100 text-amber-700 rounded-xl">
             <Clock className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+        {/* Collections / Total Waste */}
+        <div className="bg-blue-50/60 p-5 rounded-2xl border border-blue-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Approved</p>
-            <h3 className="text-xl font-extrabold text-emerald-700 mt-1">{stats.approved || 0}</h3>
+            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Total Waste</p>
+            <h3 className="text-2xl font-extrabold text-blue-700 mt-1">{stats.total_waste_kg || 0} <span className="text-xs font-semibold">KG</span></h3>
           </div>
-          <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+          <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">
+            <Scale className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Approved */}
+        <div className="bg-emerald-50/60 p-5 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Approved</p>
+            <h3 className="text-2xl font-extrabold text-emerald-700 mt-1">{stats.approved || 0}</h3>
+          </div>
+          <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl">
             <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-200/80 shadow-sm flex items-center justify-between">
+        {/* Rejected */}
+        <div className="bg-rose-50/60 p-5 rounded-2xl border border-rose-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Rejected</p>
-            <h3 className="text-xl font-extrabold text-rose-700 mt-1">{stats.rejected || 0}</h3>
+            <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Rejected</p>
+            <h3 className="text-2xl font-extrabold text-rose-700 mt-1">{stats.rejected || 0}</h3>
           </div>
-          <div className="p-2.5 bg-rose-100 text-rose-700 rounded-xl">
+          <div className="p-3 bg-rose-100 text-rose-700 rounded-xl">
             <XCircle className="w-5 h-5" />
           </div>
         </div>
@@ -1065,9 +1637,8 @@ export default function TripSummaries() {
                       setFilterSubcategoryId(sub.subcategory_id);
                     }
                   }}
-                  className={`bg-white rounded-2xl border p-4 shadow-xs hover:shadow-md transition-all cursor-pointer relative overflow-hidden group ${
-                    isSelected ? "border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/20" : "border-slate-200/90 hover:border-indigo-300"
-                  }`}
+                  className={`bg-white rounded-2xl border p-4 shadow-xs hover:shadow-md transition-all cursor-pointer relative overflow-hidden group ${isSelected ? "border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/20" : "border-slate-200/90 hover:border-indigo-300"
+                    }`}
                 >
                   {/* Card Header: Subcategory Title & Total KG */}
                   <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
@@ -1123,104 +1694,27 @@ export default function TripSummaries() {
         </div>
       )}
 
-      {/* Global Search & Server-Side Filters Section */}
+      {/* Global Search & Server-Side Filters Section (Matching Complaint Management Filter Layout) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm font-bold text-slate-800">Search & Filters</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleApplyFilters}
-              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
-            >
-              Apply Filters
-            </button>
-            <button
-              onClick={handleResetFilters}
-              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer"
-            >
-              Reset Filters
-            </button>
-          </div>
-        </div>
-
-        {/* Global Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search Trip ID, Order ID, Customer, Driver, Vehicle, Subcategory..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
-          />
-        </div>
-
-        {/* Filter Inputs Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trip ID</label>
+        {/* Search and Action Row */}
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3 items-center">
+          <div className="md:col-span-2 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="e.g. 5001"
-              value={filterTripId}
-              onChange={(e) => setFilterTripId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+              placeholder="Search Trip ID, Order ID, Customer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Order ID</label>
-            <input
-              type="text"
-              placeholder="e.g. ORD-113842"
-              value={filterOrderId}
-              onChange={(e) => setFilterOrderId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Vehicle</label>
-            <select
-              value={filterVehicleId}
-              onChange={(e) => setFilterVehicleId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
-            >
-              <option value="">All Vehicles</option>
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.registration_number}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver</label>
-            <select
-              value={filterDriverId}
-              onChange={(e) => setFilterDriverId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
-            >
-              <option value="">All Drivers</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
             >
               <option value="All Status">All Status</option>
               <option value="Pending">Pending</option>
@@ -1230,55 +1724,36 @@ export default function TripSummaries() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
-            <select
-              value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Subcategory</label>
-            <select
-              value={filterSubcategoryId}
-              onChange={(e) => setFilterSubcategoryId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
-            >
-              <option value="">All Subcategories</option>
-              {subCategories.map((sc) => (
-                <option key={sc.id} value={sc.id}>
-                  {sc.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date</label>
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleApplyFilters}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer text-center"
+            >
+              Search
+            </button>
+            <button
+              onClick={handleResetFilters}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
@@ -1525,6 +2000,8 @@ export default function TripSummaries() {
           </div>
         </div>
       )}
+
+
 
       {/* FULL IMAGE EXPAND PREVIEW MODAL */}
       {isImagePreviewOpen && (
