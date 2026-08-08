@@ -209,7 +209,6 @@ TripSummary.belongsTo(User, { foreignKey: "user_id", as: "user" });
 TripSummary.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 TripSummary.belongsTo(Employee, { foreignKey: "driver_id", as: "driver" });
 TripSummary.belongsTo(Category, { foreignKey: "category_id", as: "category" });
-TripSummary.belongsTo(SubCategory, { foreignKey: "subcategory_id", as: "subCategory" });
 TripSummary.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
 
 module.exports = {

@@ -11,7 +11,7 @@ const TripSummary = sequelize.define(
     },
     trip_id: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,  // Optional - may not exist in all DB versions
     },
     order_id: {
       type: DataTypes.STRING(100),
@@ -47,11 +47,11 @@ const TripSummary = sequelize.define(
     },
     subcategory_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,  // Optional - may not exist in all DB versions
     },
     subcategory_name: {
       type: DataTypes.STRING(150),
-      allowNull: false,
+      allowNull: true,
     },
     total_waste_kg: {
       type: DataTypes.DECIMAL(10, 2),

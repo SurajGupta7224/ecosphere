@@ -17,10 +17,8 @@ const getTripSummaryStats = async (req, res) => {
   try {
     const totalCollections = await TripSummary.count();
 
-    const distinctTrips = await TripSummary.count({
-      distinct: true,
-      col: "trip_id",
-    });
+    // Use total row count as trips count since trip_id may not exist in DB
+    const distinctTrips = totalCollections;
 
     const totalWasteRes = await TripSummary.sum("total_waste_kg");
     const totalWasteKg = Number(totalWasteRes || 0).toFixed(2);
@@ -159,13 +157,11 @@ const getAllTripSummaries = async (req, res) => {
     const where = {};
 
     // Exact Filters
-    if (trip_id) where.trip_id = trip_id;
     if (order_id) where.order_id = { [Op.like]: `%${order_id.trim()}%` };
     if (customer_id) where.customer_id = customer_id;
     if (vehicle_id) where.vehicle_id = vehicle_id;
     if (driver_id) where.driver_id = driver_id;
     if (category_id) where.category_id = category_id;
-    if (subcategory_id) where.subcategory_id = subcategory_id;
 
     if (status && status !== "All Status" && status !== "all") {
       where.status = status;
@@ -190,7 +186,6 @@ const getAllTripSummaries = async (req, res) => {
     if (search && search.trim() !== "") {
       const term = `%${search.trim()}%`;
       const searchConditions = [
-        sequelize.where(sequelize.cast(sequelize.col("TripSummary.trip_id"), "CHAR"), { [Op.like]: term }),
         { order_id: { [Op.like]: term } },
         { driver_name: { [Op.like]: term } },
         { subcategory_name: { [Op.like]: term } },
@@ -220,30 +215,14 @@ const getAllTripSummaries = async (req, res) => {
       { model: Vehicle, as: "vehicle", attributes: ["id", "registration_number", "brand", "model"], required: false },
       { model: Employee, as: "driver", attributes: ["id", "name", "mobile_number"], required: false },
       { model: Category, as: "category", attributes: ["id", "name"], required: false },
-      { model: SubCategory, as: "subCategory", attributes: ["id", "name"], required: false },
       { model: User, as: "approver", attributes: ["id", "name", "email"], required: false },
     ];
 
-    // If filter conditions are applied, find matching trip_ids so ALL collection subcategories for matched trips are retrieved
-    let finalWhere = { ...where };
-    if (Object.keys(where).length > 0) {
-      const matchedRows = await TripSummary.findAll({
-        where,
-        include: includeModels,
-        attributes: ["trip_id"],
-        subQuery: false,
-      });
-      const matchedTripIds = [...new Set(matchedRows.map((r) => r.trip_id))];
-      finalWhere = {
-        trip_id: { [Op.in]: matchedTripIds.length > 0 ? matchedTripIds : [0] },
-      };
-    }
-
     const { count, rows } = await TripSummary.findAndCountAll({
-      where: finalWhere,
+      where,
       limit: limitNum,
       offset,
-      order: [["trip_id", "DESC"], [sort, order.toUpperCase()]],
+      order: [[sort, order.toUpperCase()]],
       include: includeModels,
       subQuery: false,
     });
@@ -251,7 +230,7 @@ const getAllTripSummaries = async (req, res) => {
     const processedRows = await Promise.all(
       rows.map(async (r) => {
         const item = r.toJSON();
-        item.formatted_trip_id = String(item.trip_id).padStart(3, "0");
+        item.formatted_trip_id = item.id ? String(item.id).padStart(3, "0") : String(item.order_id || '');
         if (!item.customer_name && (!item.customer || !item.customer.customer_name) && item.order_id) {
           try {
             const orderObj = await WasteOrder.findOne({
@@ -304,7 +283,6 @@ const getTripSummaryById = async (req, res) => {
         { model: Vehicle, as: "vehicle", attributes: ["id", "registration_number", "brand", "model"] },
         { model: Employee, as: "driver", attributes: ["id", "name", "mobile_number"] },
         { model: Category, as: "category", attributes: ["id", "name"] },
-        { model: SubCategory, as: "subCategory", attributes: ["id", "name"] },
         { model: User, as: "approver", attributes: ["id", "name", "email"] },
       ],
     });
@@ -316,26 +294,13 @@ const getTripSummaryById = async (req, res) => {
       });
     }
 
-    // Fetch all subcategory items collected for this same trip_id
-    const siblingItems = await TripSummary.findAll({
-      where: { trip_id: tripSummary.trip_id },
-      include: [
-        { model: Category, as: "category", attributes: ["id", "name"] },
-        { model: SubCategory, as: "subCategory", attributes: ["id", "name"] },
-      ],
-    });
-
-    const totalWasteKgSum = siblingItems
-      .reduce((sum, item) => sum + Number(item.total_waste_kg || 0), 0)
-      .toFixed(2);
-
     return res.status(200).json({
       status: 1,
       message: "Trip Summary details fetched successfully.",
       data: {
         ...tripSummary.toJSON(),
-        trip_items: siblingItems,
-        total_trip_waste_kg: Number(totalWasteKgSum),
+        trip_items: [],
+        total_trip_waste_kg: Number(tripSummary.total_waste_kg || 0),
       },
     });
   } catch (err) {
@@ -372,23 +337,6 @@ const createTripSummary = async (req, res) => {
         message: "order_id and vehicle_id are required fields.",
       });
     }
-
-    // Auto-generate numeric trip_id if missing/omitted
-    let activeTripId = trip_id;
-    if (!activeTripId) {
-      const maxTripRecord = await TripSummary.max("trip_id");
-      const maxTripIdNum = Number(maxTripRecord || 0);
-      activeTripId = maxTripIdNum > 0 ? maxTripIdNum + 1 : 1;
-    } else {
-      activeTripId = Number(activeTripId);
-    }
-
-    // Ensure Trip master record exists
-    await Trip.findOrCreate({
-      where: { id: activeTripId },
-      defaults: { id: activeTripId, order_id },
-      transaction,
-    });
 
     // Determine Driver Name
     let driver_name = req.body.driver_name || null;
@@ -456,7 +404,6 @@ const createTripSummary = async (req, res) => {
 
       const newRecord = await TripSummary.create(
         {
-          trip_id: activeTripId,
           order_id,
           customer_id: customer_id || null,
           user_id: req.user ? req.user.id : null,
@@ -465,7 +412,6 @@ const createTripSummary = async (req, res) => {
           driver_name,
           category_id: catId || null,
           category_name: catName || null,
-          subcategory_id: subId,
           subcategory_name: subName,
           total_waste_kg: Number(item.total_waste_kg || 0),
           image: item.image || null,
@@ -482,10 +428,8 @@ const createTripSummary = async (req, res) => {
 
     return res.status(201).json({
       status: 1,
-      message: `${createdRecords.length} Manual Collection item(s) created successfully for Trip #${String(activeTripId).padStart(3, "0")}.`,
+      message: `${createdRecords.length} Manual Collection item(s) created successfully.`,
       data: {
-        trip_id: activeTripId,
-        formatted_trip_id: String(activeTripId).padStart(3, "0"),
         created_records: createdRecords,
       },
     });
