@@ -17,8 +17,11 @@ const getTripSummaryStats = async (req, res) => {
   try {
     const totalCollections = await TripSummary.count();
 
-    // Use total row count as trips count since trip_id may not exist in DB
-    const distinctTrips = totalCollections;
+    // Use raw SQL to count distinct trip_ids safely (avoids Sequelize model caching issues)
+    const [[tripCountRow]] = await sequelize.query(
+      "SELECT COUNT(DISTINCT trip_id) AS trip_count FROM trip_summaries"
+    );
+    const distinctTrips = Number(tripCountRow?.trip_count || 0);
 
     const totalWasteRes = await TripSummary.sum("total_waste_kg");
     const totalWasteKg = Number(totalWasteRes || 0).toFixed(2);
@@ -338,6 +341,14 @@ const createTripSummary = async (req, res) => {
       });
     }
 
+    // Auto-generate numeric trip_id (column exists in DB as NOT NULL)
+    let activeTripId = trip_id ? Number(trip_id) : null;
+    if (!activeTripId) {
+      const maxTripId = await TripSummary.max("trip_id");
+      const maxTripIdNum = Number(maxTripId || 0);
+      activeTripId = maxTripIdNum > 0 ? maxTripIdNum + 1 : 1;
+    }
+
     // Determine Driver Name
     let driver_name = req.body.driver_name || null;
     if (!driver_name && driver_id) {
@@ -384,7 +395,7 @@ const createTripSummary = async (req, res) => {
 
     const createdRecords = [];
     for (const item of collectionItems) {
-      let subId = item.subcategory_id;
+      let subId = item.subcategory_id || null;
       let catId = item.category_id;
       let subName = item.subcategory_name || "";
       let catName = item.category_name || "";
@@ -404,6 +415,7 @@ const createTripSummary = async (req, res) => {
 
       const newRecord = await TripSummary.create(
         {
+          trip_id: activeTripId,
           order_id,
           customer_id: customer_id || null,
           user_id: req.user ? req.user.id : null,
@@ -412,6 +424,7 @@ const createTripSummary = async (req, res) => {
           driver_name,
           category_id: catId || null,
           category_name: catName || null,
+          subcategory_id: subId,
           subcategory_name: subName,
           total_waste_kg: Number(item.total_waste_kg || 0),
           image: item.image || null,
@@ -428,8 +441,10 @@ const createTripSummary = async (req, res) => {
 
     return res.status(201).json({
       status: 1,
-      message: `${createdRecords.length} Manual Collection item(s) created successfully.`,
+      message: `${createdRecords.length} Manual Collection item(s) created successfully for Trip #${String(activeTripId).padStart(3, "0")}.`,
       data: {
+        trip_id: activeTripId,
+        formatted_trip_id: String(activeTripId).padStart(3, "0"),
         created_records: createdRecords,
       },
     });
