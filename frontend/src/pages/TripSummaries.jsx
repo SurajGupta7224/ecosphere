@@ -2034,11 +2034,6 @@ export default function TripSummaries() {
                         {group.total_waste_kg}
                       </td>
 
-                      {/* Submitted At */}
-                      <td className="py-4 px-4 text-slate-500 text-xs align-top whitespace-nowrap">
-                        {formatDate(group.submitted_at || group.created_at)}
-                      </td>
-
                       {/* Overall Status Badge */}
                       <td className="py-4 px-4 text-center align-top whitespace-nowrap">
                         <span
