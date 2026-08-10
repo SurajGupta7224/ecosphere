@@ -488,6 +488,45 @@ const rejectVehicle = async (req, res) => {
   }
 };
 
+// PATCH /api/aggregator-vehicles/:id/reset-password - Reset driver password (no email sent)
+const resetDriverPassword = async (req, res) => {
+  const { id } = req.params;
+  const { new_password } = req.body;
+
+  if (!new_password || new_password.trim().length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters." });
+  }
+
+  try {
+    const vehicle = await Vehicle.findByPk(id);
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    const driver = await Driver.findOne({
+      where: { vehicle_number: vehicle.registration_number }
+    });
+
+    if (!driver) {
+      return res.status(404).json({ message: "No driver account found for this vehicle. Please approve the vehicle first to auto-create a driver account." });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password.trim(), 10);
+    await driver.update({ password: hashedPassword });
+
+    console.log(`[Password Reset] Driver password reset for vehicle ${vehicle.registration_number} (Driver ID: ${driver.id}) — no email sent.`);
+
+    return res.status(200).json({
+      message: "Driver password updated successfully. No email was sent.",
+      vehicleNumber: vehicle.registration_number,
+      driverName: driver.name
+    });
+  } catch (err) {
+    console.error("resetDriverPassword error:", err);
+    return res.status(500).json({ message: "Failed to reset driver password" });
+  }
+};
+
 module.exports = {
   getAllVehicles,
   getVehicleById,
@@ -497,5 +536,6 @@ module.exports = {
   deleteVehicle,
   approveVehicle,
   rejectVehicle,
+  resetDriverPassword,
   createOrResetDriverAccountForVehicle
 };

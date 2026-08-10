@@ -158,6 +158,7 @@ router.put("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregato
 router.patch("/aggregator-vehicles/:id/status", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.updateVehicleStatus);
 router.patch("/aggregator-vehicles/:id/approve", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.approveVehicle);
 router.patch("/aggregator-vehicles/:id/reject", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.rejectVehicle);
+router.patch("/aggregator-vehicles/:id/reset-password", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.resetDriverPassword);
 router.delete("/aggregator-vehicles/:id", verifyToken, requirePermission('aggregator_vehicle'), vehicleController.deleteVehicle);
 
 // Notification routes
