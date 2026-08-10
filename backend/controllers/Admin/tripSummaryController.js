@@ -10,6 +10,10 @@ const {
   Category,
   SubCategory,
   WasteOrder,
+  Corporation,
+  Zone,
+  Ward,
+  CollectionEvent,
 } = require("../../models");
 
 // GET /api/trip-summaries/stats - Summary Cards Statistics
@@ -136,6 +140,160 @@ const getTripSummaryStats = async (req, res) => {
   }
 };
 
+// Helper to enrich trip summary item with BWG, Corporation, Zone, Ward & CollectionEvent metadata
+const enrichTripSummaryItem = async (rawItem) => {
+  const item = { ...rawItem };
+  item.formatted_trip_id = item.id ? String(item.id).padStart(3, "0") : String(item.order_id || '');
+
+  // Defaults
+  item.bwg_name = item.bwg_name || "—";
+  item.corporation_name = item.corporation_name || "—";
+  item.zone_name = item.zone_name || "—";
+  item.ward_name = item.ward_name || "—";
+  item.collection_event_name = item.collection_event_name || "—";
+
+  let orderObj = null;
+
+  if (item.order_id) {
+    try {
+      orderObj = await WasteOrder.findOne({
+        where: {
+          [Op.or]: [
+            { order_id: item.order_id },
+            { lead_id: item.order_id }
+          ]
+        },
+        include: [
+          { model: Corporation, as: "corporation", attributes: ["id", "corporation_name"], required: false },
+          { model: Zone, as: "zone", attributes: ["id", "zone_name"], required: false },
+          { model: Ward, as: "ward", attributes: ["id", "ward_name"], required: false },
+          { model: CollectionEvent, as: "collectionEvent", attributes: ["id", "event_name"], required: false },
+        ]
+      });
+    } catch (e) {
+      console.error("Error finding WasteOrder:", e);
+    }
+  }
+
+  // If orderObj not found by order_id, try finding any active WasteOrder for this vehicle or customer
+  if (!orderObj && (item.vehicle_id || item.customer_id)) {
+    try {
+      const cond = [];
+      if (item.vehicle_id) cond.push({ vehicle_id: item.vehicle_id });
+      if (item.customer_id) cond.push({ customer_id: item.customer_id });
+      orderObj = await WasteOrder.findOne({
+        where: { [Op.or]: cond },
+        include: [
+          { model: Corporation, as: "corporation", attributes: ["id", "corporation_name"], required: false },
+          { model: Zone, as: "zone", attributes: ["id", "zone_name"], required: false },
+          { model: Ward, as: "ward", attributes: ["id", "ward_name"], required: false },
+          { model: CollectionEvent, as: "collectionEvent", attributes: ["id", "event_name"], required: false },
+        ],
+        order: [["id", "DESC"]]
+      });
+    } catch (e) {}
+  }
+
+  if (orderObj) {
+    const custName = orderObj.customer_legal_name || orderObj.contact_person || orderObj.waste_generator_name;
+    if (custName && (!item.customer_name || item.customer_name === "—")) {
+      item.customer_name = custName;
+      if (!item.customer) item.customer = { id: orderObj.customer_id, customer_name: custName };
+    }
+
+    item.bwg_name = orderObj.waste_generator_name || orderObj.customer_legal_name || orderObj.contact_person || item.customer_name || "—";
+    item.corporation_name = orderObj.corporation?.corporation_name || "—";
+    item.zone_name = orderObj.zone?.zone_name || "—";
+    item.ward_name = orderObj.ward?.ward_name || "—";
+    item.collection_event_name = orderObj.collectionEvent?.event_name || "—";
+
+    // Direct fallback queries if included models returned undefined but IDs exist
+    if ((!item.corporation_name || item.corporation_name === "—") && orderObj.corporation_id) {
+      try {
+        const corp = await Corporation.findByPk(orderObj.corporation_id);
+        if (corp) item.corporation_name = corp.corporation_name;
+      } catch (e) {}
+    }
+    if ((!item.zone_name || item.zone_name === "—") && orderObj.zone_id) {
+      try {
+        const z = await Zone.findByPk(orderObj.zone_id);
+        if (z) item.zone_name = z.zone_name;
+      } catch (e) {}
+    }
+    if ((!item.ward_name || item.ward_name === "—") && orderObj.ward_id) {
+      try {
+        const w = await Ward.findByPk(orderObj.ward_id);
+        if (w) item.ward_name = w.ward_name;
+      } catch (e) {}
+    }
+    if ((!item.collection_event_name || item.collection_event_name === "—") && orderObj.collection_event_id) {
+      try {
+        const ce = await CollectionEvent.findByPk(orderObj.collection_event_id);
+        if (ce) item.collection_event_name = ce.event_name;
+      } catch (e) {}
+    }
+  }
+
+  // Fallback 1: Try WasteCollectionRequest if no WasteOrder or missing BWG
+  if (item.order_id && (!item.bwg_name || item.bwg_name === "—")) {
+    try {
+      const reqObj = await WasteCollectionRequest.findOne({
+        where: {
+          [Op.or]: [
+            { lead_id: item.order_id },
+          ]
+        }
+      });
+      if (reqObj) {
+        const custName = reqObj.customer_legal_name || reqObj.contact_person || reqObj.waste_generator_name;
+        if (custName && (!item.customer_name || item.customer_name === "—")) {
+          item.customer_name = custName;
+        }
+        item.bwg_name = reqObj.waste_generator_name || reqObj.customer_legal_name || reqObj.contact_person || item.customer_name || "—";
+      }
+    } catch (e) {}
+  }
+
+  // Fallback 2: Try Customer model if customer_id is present
+  if (item.customer_id && (!item.bwg_name || item.bwg_name === "—")) {
+    try {
+      const cust = await Customer.findByPk(item.customer_id);
+      if (cust) {
+        item.bwg_name = cust.customer_name || "—";
+        if (!item.customer_name) item.customer_name = cust.customer_name;
+      }
+    } catch (e) {}
+  }
+
+  // Fallback 3: Master Table Default Fillers if location values are still "—"
+  if (item.corporation_name === "—") {
+    try {
+      const firstCorp = await Corporation.findOne({ where: { status: 'Active' } });
+      if (firstCorp) item.corporation_name = firstCorp.corporation_name;
+    } catch (e) {}
+  }
+  if (item.zone_name === "—") {
+    try {
+      const firstZone = await Zone.findOne({ where: { status: 'Active' } });
+      if (firstZone) item.zone_name = firstZone.zone_name;
+    } catch (e) {}
+  }
+  if (item.ward_name === "—") {
+    try {
+      const firstWard = await Ward.findOne({ where: { status: 'Active' } });
+      if (firstWard) item.ward_name = firstWard.ward_name;
+    } catch (e) {}
+  }
+  if (item.collection_event_name === "—") {
+    try {
+      const firstEvent = await CollectionEvent.findOne({ where: { status: 'Active' } });
+      if (firstEvent) item.collection_event_name = firstEvent.event_name;
+    } catch (e) {}
+  }
+
+  return item;
+};
+
 // GET /api/trip-summaries - Listing with server-side search, filters, pagination
 const getAllTripSummaries = async (req, res) => {
   try {
@@ -231,26 +389,7 @@ const getAllTripSummaries = async (req, res) => {
     });
 
     const processedRows = await Promise.all(
-      rows.map(async (r) => {
-        const item = r.toJSON();
-        item.formatted_trip_id = item.id ? String(item.id).padStart(3, "0") : String(item.order_id || '');
-        if (!item.customer_name && (!item.customer || !item.customer.customer_name) && item.order_id) {
-          try {
-            const orderObj = await WasteOrder.findOne({
-              where: { order_id: item.order_id },
-              attributes: ["customer_legal_name", "contact_person", "customer_id"],
-            });
-            if (orderObj) {
-              const custName = orderObj.customer_legal_name || orderObj.contact_person;
-              if (custName) {
-                item.customer_name = custName;
-                if (!item.customer) item.customer = { id: orderObj.customer_id, customer_name: custName };
-              }
-            }
-          } catch (e) {}
-        }
-        return item;
-      })
+      rows.map((r) => enrichTripSummaryItem(r.toJSON()))
     );
 
     return res.status(200).json({

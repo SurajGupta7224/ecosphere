@@ -23,11 +23,16 @@ import {
   Plus,
   QrCode,
   Upload,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api, { IMAGE_BASE_URL } from "../api";
+import { useSettings } from "../context/SettingsContext";
 
 export default function TripSummaries() {
+  const { settings } = useSettings();
+  const primaryColor = settings?.theme?.primary_color || '#31975C';
+
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [stats, setStats] = useState({
@@ -203,6 +208,12 @@ export default function TripSummaries() {
       const vehNum = rec.vehicle_number || rec.vehicle?.registration_number || null;
       const drvName = rec.driver_name || rec.driver?.name || null;
 
+      const bwgName = rec.bwg_name || rec.waste_generator_name || rec.customer_legal_name || rec.customer_name || rec.customer?.customer_name || rec.customer?.name || null;
+      const corpName = rec.corporation_name || rec.corporation?.name || null;
+      const zoneName = rec.zone_name || rec.zone?.name || null;
+      const wardName = rec.ward_name || rec.ward?.name || null;
+      const eventName = rec.collection_event_name || rec.collectionEvent?.name || null;
+
       if (!map[key]) {
         map[key] = {
           trip_id: rec.trip_id,
@@ -210,6 +221,11 @@ export default function TripSummaries() {
           customer_id: rec.customer_id,
           customer: rec.customer,
           customer_name: custName,
+          bwg_name: bwgName,
+          corporation_name: corpName,
+          zone_name: zoneName,
+          ward_name: wardName,
+          collection_event_name: eventName,
           user_id: rec.user_id,
           vehicle_id: rec.vehicle_id,
           vehicle: rec.vehicle,
@@ -226,6 +242,11 @@ export default function TripSummaries() {
           map[key].customer_name = custName;
           map[key].customer = rec.customer;
         }
+        if (!map[key].bwg_name && bwgName) map[key].bwg_name = bwgName;
+        if (!map[key].corporation_name && corpName) map[key].corporation_name = corpName;
+        if (!map[key].zone_name && zoneName) map[key].zone_name = zoneName;
+        if (!map[key].ward_name && wardName) map[key].ward_name = wardName;
+        if (!map[key].collection_event_name && eventName) map[key].collection_event_name = eventName;
         if (!map[key].vehicle_number && vehNum) {
           map[key].vehicle_number = vehNum;
           map[key].vehicle = rec.vehicle;
@@ -341,12 +362,142 @@ export default function TripSummaries() {
     }));
   }, [subCategories, stats.by_subcategory, records]);
 
+  // Dynamic Subcategory Columns for Table (Wet, Dry, Sanitary, Special Care, etc.)
+  const subCategoryColumns = useMemo(() => {
+    const list = [];
+    const map = new Map();
+
+    if (Array.isArray(subCategories) && subCategories.length > 0) {
+      subCategories.forEach((sc) => {
+        const id = String(sc.id);
+        const rawName = sc.name || sc.sub_category_name || "SubCategory";
+        if (!map.has(id)) {
+          map.set(id, rawName);
+        }
+      });
+    }
+
+    records.forEach((rec) => {
+      const id = String(rec.subcategory_id);
+      const rawName = rec.subcategory_name || rec.subCategory?.name || "SubCategory";
+      if (rec.subcategory_id && !map.has(id)) {
+        map.set(id, rawName);
+      }
+    });
+
+    map.forEach((rawName, id) => {
+      let cleanName = rawName.replace(/waste/i, '').trim().toUpperCase();
+      if (!cleanName) cleanName = rawName.toUpperCase();
+      const label = `${cleanName} (KG)`;
+      list.push({
+        id,
+        name: rawName,
+        label,
+      });
+    });
+
+    if (list.length === 0) {
+      return [
+        { id: 'wet', name: 'Wet Waste', label: 'WET (KG)' },
+        { id: 'dry', name: 'Dry Waste', label: 'DRY (KG)' },
+        { id: 'sanitary', name: 'Sanitary Waste', label: 'SANITARY (KG)' },
+        { id: 'special', name: 'Special Care', label: 'SPECIAL CARE (KG)' },
+        { id: 'other', name: 'Other', label: 'OTHER (KG)' },
+      ];
+    }
+
+    return list;
+  }, [subCategories, records]);
+
+  // Filtered grouped trips based on active client/server filters (e.g. Subcategory Card selection)
+  const filteredGroupedTrips = useMemo(() => {
+    return groupedTrips.filter((group) => {
+      if (filterSubcategoryId) {
+        const hasSubCat = group.items.some(
+          (item) => String(item.subcategory_id) === String(filterSubcategoryId)
+        );
+        if (!hasSubCat) return false;
+      }
+      return true;
+    });
+  }, [groupedTrips, filterSubcategoryId]);
+
   const paginatedGroups = useMemo(() => {
     const startIndex = (page - 1) * limit;
-    return groupedTrips.slice(startIndex, startIndex + limit);
-  }, [groupedTrips, page, limit]);
+    return filteredGroupedTrips.slice(startIndex, startIndex + limit);
+  }, [filteredGroupedTrips, page, limit]);
 
-  const totalPagesCount = Math.ceil(groupedTrips.length / limit) || 1;
+  const totalPagesCount = Math.ceil(filteredGroupedTrips.length / limit) || 1;
+
+  // Export CSV Function (Exports active filtered trips)
+  const handleExportCSV = () => {
+    if (filteredGroupedTrips.length === 0) {
+      toast.error("No filtered trip summaries data to export.");
+      return;
+    }
+
+    const headers = [
+      "Trip ID",
+      "Date",
+      "BWG Name",
+      "Order ID",
+      "Corporation",
+      "Zone",
+      "Ward",
+      "Collection Event",
+      "Vehicle Number",
+      "Driver Name",
+      ...subCategoryColumns.map((c) => c.label),
+      "Total Waste (KG)",
+      "Status",
+    ];
+
+    const rows = filteredGroupedTrips.map((group) => {
+      const dateStr = formatDate(group.submitted_at || group.created_at);
+      const subCatWeights = subCategoryColumns.map((col) => {
+        const items = group.items.filter((item) => {
+          if (String(item.subcategory_id) === String(col.id)) return true;
+          const nameA = (item.subcategory_name || item.subCategory?.name || "").toLowerCase().trim();
+          const nameB = col.name.toLowerCase().trim();
+          return nameA === nameB && nameA.length > 0;
+        });
+        const w = items.reduce((acc, curr) => acc + Number(curr.total_waste_kg || 0), 0);
+        return w.toFixed(2);
+      });
+
+      return [
+        group.trip_id || "",
+        dateStr || "",
+        (group.bwg_name || group.customer_name || "—").replace(/"/g, '""'),
+        group.order_id || "",
+        (group.corporation_name || "—").replace(/"/g, '""'),
+        (group.zone_name || "—").replace(/"/g, '""'),
+        (group.ward_name || "—").replace(/"/g, '""'),
+        (group.collection_event_name || "—").replace(/"/g, '""'),
+        group.vehicle_number || "—",
+        (group.driver_name || "—").replace(/"/g, '""'),
+        ...subCatWeights,
+        group.total_waste_kg || "0.00",
+        group.overallStatus || "Pending",
+      ];
+    });
+
+    const csvContent = [
+      headers.map((h) => `"${h}"`).join(","),
+      ...rows.map((r) => r.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `filtered_trip_summaries_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${filteredGroupedTrips.length} filtered trip record(s) to CSV!`);
+  };
 
   const handleApplyFilters = () => {
     setPage(1);
@@ -707,13 +858,13 @@ export default function TripSummaries() {
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? dateStr : d.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return isNaN(d.getTime())
+      ? dateStr
+      : d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
   };
 
   /* ========================================================================= */
@@ -1694,10 +1845,10 @@ export default function TripSummaries() {
         </div>
       )}
 
-      {/* Global Search & Server-Side Filters Section (Matching Complaint Management Filter Layout) */}
+      {/* Global Search & Server-Side Filters Section */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
         {/* Search and Action Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 items-center">
           <div className="md:col-span-2 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
@@ -1741,7 +1892,7 @@ export default function TripSummaries() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="md:col-span-2 flex items-center gap-2">
             <button
               onClick={handleApplyFilters}
               className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer text-center"
@@ -1750,9 +1901,15 @@ export default function TripSummaries() {
             </button>
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
             >
               Clear
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" /> Export CSV
             </button>
           </div>
         </div>
@@ -1777,16 +1934,24 @@ export default function TripSummaries() {
               <thead>
                 <tr className="bg-slate-100/90 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
                   <th className="py-3.5 px-4 w-12 text-center">#</th>
-                  <th className="py-3.5 px-4">Trip ID</th>
-                  <th className="py-3.5 px-4">Order ID</th>
-                  <th className="py-3.5 px-4">Customer</th>
-                  <th className="py-3.5 px-4">Vehicle</th>
-                  <th className="py-3.5 px-4">Driver</th>
-                  <th className="py-3.5 px-4">Collected Subcategories & Weights</th>
-                  <th className="py-3.5 px-4 text-right">Total Waste (KG)</th>
-                  <th className="py-3.5 px-4">Submitted At</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-center">Action</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Date</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">BWG Name</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Trip ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Order ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Corporation</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Zone</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Ward</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Collection Event</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Vehicle</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Driver</th>
+                  {subCategoryColumns.map((col) => (
+                    <th key={col.id} className="py-3.5 px-4 text-center whitespace-nowrap">
+                      {col.label}
+                    </th>
+                  ))}
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap font-black">TOTAL (KG)</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Status</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -1801,8 +1966,18 @@ export default function TripSummaries() {
                     >
                       <td className="py-4 px-4 text-center font-semibold text-slate-400 align-top">{itemIndex}</td>
 
+                      {/* Date */}
+                      <td className="py-4 px-4 text-slate-600 text-xs font-semibold align-top whitespace-nowrap">
+                        {formatDate(group.submitted_at || group.created_at)}
+                      </td>
+
+                      {/* BWG Name */}
+                      <td className="py-4 px-4 font-bold text-slate-800 align-top whitespace-nowrap">
+                        {group.bwg_name || group.customer_name || "—"}
+                      </td>
+
                       {/* Trip ID */}
-                      <td className="py-4 px-4 align-top">
+                      <td className="py-4 px-4 align-top whitespace-nowrap">
                         <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
                           {group.trip_id}
                         </span>
@@ -1811,8 +1986,17 @@ export default function TripSummaries() {
                       {/* Order ID */}
                       <td className="py-4 px-4 font-mono font-bold text-slate-900 align-top whitespace-nowrap">{group.order_id}</td>
 
-                      {/* Customer */}
-                      <td className="py-4 px-4 font-semibold text-slate-700 align-top whitespace-nowrap">{group.customer_name || "—"}</td>
+                      {/* Corporation */}
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-700 align-top whitespace-nowrap">{group.corporation_name || "—"}</td>
+
+                      {/* Zone */}
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-700 align-top whitespace-nowrap">{group.zone_name || "—"}</td>
+
+                      {/* Ward */}
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-700 align-top whitespace-nowrap">{group.ward_name || "—"}</td>
+
+                      {/* Collection Event */}
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-700 align-top whitespace-nowrap">{group.collection_event_name || "—"}</td>
 
                       {/* Vehicle */}
                       <td className="py-4 px-4 align-top whitespace-nowrap">
@@ -1824,36 +2008,30 @@ export default function TripSummaries() {
                       {/* Driver */}
                       <td className="py-4 px-4 font-semibold text-slate-700 align-top whitespace-nowrap">{group.driver_name || "—"}</td>
 
-                      {/* Subcategories & Weights Badges Inline List */}
-                      <td className="py-3.5 px-4 align-top min-w-[280px]">
-                        <div className="flex flex-wrap gap-1.5">
-                          {group.items.map((item) => (
-                            <div
-                              key={item.id}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs shadow-2xs whitespace-nowrap"
-                            >
-                              <span className="font-bold text-emerald-800">
-                                {item.subcategory_name || item.subCategory?.name || "Subcategory"}
-                              </span>
-                              <span className="font-black text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">
-                                {Number(item.total_waste_kg || 0).toFixed(2)} KG
-                              </span>
-                              <span
-                                className={`w-2 h-2 rounded-full ${item.status === "Approved"
-                                  ? "bg-emerald-500"
-                                  : item.status === "Rejected"
-                                    ? "bg-rose-500"
-                                    : "bg-amber-500"
-                                  }`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </td>
+                      {/* Dynamic Subcategory columns - Each subcategory in its own column */}
+                      {subCategoryColumns.map((col) => {
+                        const items = group.items.filter((item) => {
+                          if (String(item.subcategory_id) === String(col.id)) return true;
+                          const nameA = (item.subcategory_name || item.subCategory?.name || "").toLowerCase().trim();
+                          const nameB = col.name.toLowerCase().trim();
+                          return nameA === nameB && nameA.length > 0;
+                        });
+
+                        const weight = items.reduce((acc, curr) => acc + Number(curr.total_waste_kg || 0), 0);
+                        const formattedWeight = weight.toFixed(2);
+
+                        return (
+                          <td key={col.id} className="py-4 px-4 text-center align-top font-extrabold whitespace-nowrap">
+                            <span style={{ color: primaryColor }}>
+                              {formattedWeight}
+                            </span>
+                          </td>
+                        );
+                      })}
 
                       {/* Total Waste Sum */}
-                      <td className="py-4 px-4 text-right font-black text-slate-900 text-base align-top whitespace-nowrap">
-                        {group.total_waste_kg} KG
+                      <td className="py-4 px-4 text-center font-black text-slate-900 text-sm align-top whitespace-nowrap">
+                        {group.total_waste_kg}
                       </td>
 
                       {/* Submitted At */}
