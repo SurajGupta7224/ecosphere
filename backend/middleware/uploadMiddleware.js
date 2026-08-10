@@ -74,21 +74,23 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept common images and pdfs
-  const filetypes = /jpeg|jpg|png|webp|gif|svg|pdf/;
-  const mimetype = filetypes.test(file.mimetype);
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  // Accept common images, pdfs, and word documents (doc, docx)
+  const allowedExts = /jpeg|jpg|png|webp|gif|svg|pdf|doc|docx/;
+  const allowedMimes = /image\/(jpeg|jpg|png|webp|gif|svg\+xml)|application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|octet-stream)/;
 
-  if (mimetype && extname) {
+  const extname = allowedExts.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedMimes.test(file.mimetype.toLowerCase());
+
+  if (extname || mimetype) {
     return cb(null, true);
   }
-  cb(new Error("File type not supported. Please upload an image (JPG, PNG, WEBP, GIF, SVG) or a PDF."));
+  cb(new Error("Invalid file type. Allowed file formats are PDF, DOC, DOCX, JPG, PNG, and WEBP."));
 };
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
 module.exports = upload;

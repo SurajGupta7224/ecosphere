@@ -227,7 +227,7 @@ export default function WasteCollectionRequestsList() {
       "Billing Country", 
       "Billing Others Note", 
       "Billing Complete Address", 
-      "MOM Agreement File", 
+      "MOA Agreement File", 
       "PO Copy File", 
       "RWA File", 
       "GST File", 

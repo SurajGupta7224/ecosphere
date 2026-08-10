@@ -244,21 +244,6 @@ const Login = () => {
           />
         </div>
 
-        {/* 1. Top Left Branding / Logo */}
-        <div className="relative z-20 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center p-1.5 border border-emerald-100">
-            <img src="/logologinpage.png" alt="Ecosphere Logo" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-[#0f382a] tracking-tight leading-none flex items-center gap-1">
-              ecosphere
-            </h1>
-            <p className="text-[9px] font-extrabold text-[#1a5e47] tracking-[0.2em] uppercase mt-0.5">
-              WASTE SOLUTIONS
-            </p>
-          </div>
-        </div>
-
         {/* 2. Middle Hero Content (Headline + Subtitle + 3 Features) */}
         <div className="relative z-20 max-w-lg my-auto pt-4 pb-4">
           <h2 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-black text-[#0c3325] leading-[1.15] tracking-tight">

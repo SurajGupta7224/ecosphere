@@ -215,7 +215,7 @@ const DashboardLayout = () => {
   // Redefined menu to match Airowin style structure
   const sidebarItems = [
     { name: t('dashboard'), path: '/', icon: LayoutDashboard, isSubMenu: false },
-    { name: 'Live Movement', path: '/live-movement', icon: Radio, isSubMenu: false, req: 'live_movement' },
+    { name: 'Vehicle Live GPS', path: '/live-movement', icon: Radio, isSubMenu: false, req: 'live_movement' },
     { name: t('profile'), path: '/profile', icon: UserCircle, isSubMenu: false, req: 'profile' },
     {
       id: 'catalog',
@@ -265,8 +265,8 @@ const DashboardLayout = () => {
         { name: 'Business Sub Region', path: '/bwg/business-sub-region', req: 'business_region' }
       ]
     },
-    { name: t('waste_collection_requests'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
-    { name: 'Waste Requests List', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
+    { name: t('Generate Lead'), path: '/waste-collection-requests', icon: ShoppingBag, isSubMenu: false, req: 'waste_collection_requests' },
+    { name: 'Verify Lead', path: '/waste-requests-list', icon: ClipboardList, isSubMenu: false, req: 'waste_requests_list' },
     { name: 'Order Management', path: '/waste-orders', icon: ClipboardList, isSubMenu: false, req: 'order_management' },
     { name: 'Pickup / Trip Planner', path: '/trip-planner', icon: Calendar, isSubMenu: false, req: 'trip_planner' },
     { name: 'Trip Summaries', path: '/trip-summaries', icon: ClipboardList, isSubMenu: false, req: 'trip_summaries.view' },
@@ -286,7 +286,7 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: 'Add Employee', path: '/aggregator-employees/add', req: 'aggregator_employee' },
-        { name: 'Employee List', path: '/aggregator-employees', req: 'aggregator_employee' }
+        { name: 'View Employees', path: '/aggregator-employees', req: 'aggregator_employee' }
       ]
     },
     {
@@ -297,8 +297,8 @@ const DashboardLayout = () => {
       hidden: isVendor && !isApproved,
       items: [
         { name: 'Register Vehicle', path: '/aggregator-vehicles/add', req: 'aggregator_vehicle' },
-        { name: 'Vehicles List', path: '/aggregator-vehicles', req: 'aggregator_vehicle' },
-        { name: 'Tracking History & Replay', path: '/vehicle-history', req: 'aggregator_vehicle' }
+        { name: 'View Vehicles', path: '/aggregator-vehicles', req: 'aggregator_vehicle' },
+        // { name: 'Tracking History & Replay', path: '/vehicle-history', req: 'aggregator_vehicle' }
       ]
 
     },
