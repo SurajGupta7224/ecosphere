@@ -573,7 +573,7 @@ export default function WasteOrdersList() {
               <SectionCard title="Uploaded Documents & Certificates" icon={FolderOpen} iconColor="text-slate-600">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
                   {[
-                    { label: 'MOM Copy (Agreement)', file: selectedGroup.first.mom_agreement_file },
+                    { label: 'MOA Copy (Agreement)', file: selectedGroup.first.mom_agreement_file },
                     { label: 'PO Copy', file: selectedGroup.first.po_copy_file },
                     { label: 'RWA Copy', file: selectedGroup.first.rwa_file },
                     { label: 'GST Certificate', file: selectedGroup.first.gst_file },
@@ -581,8 +581,13 @@ export default function WasteOrdersList() {
                     { label: 'Trade License', file: selectedGroup.first.trade_license_file },
                     { label: 'Email Copy', file: selectedGroup.first.email_copy_file },
                   ].filter(doc => doc.file).map((doc, idx) => {
-                    const fileUrl = `${IMAGE_BASE_URL}/CollectionRequests/${doc.file}`;
-                    const isPdf = doc.file.toLowerCase().endsWith('.pdf');
+                    const cleanFilename = String(doc.file).split(/[/\\]/).pop();
+                    const fileUrl = `${IMAGE_BASE_URL}/CollectionRequests/${cleanFilename}`;
+                    const lowerFile = cleanFilename.toLowerCase();
+                    const isPdf = lowerFile.endsWith('.pdf');
+                    const isWord = lowerFile.endsWith('.doc') || lowerFile.endsWith('.docx');
+                    const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(lowerFile);
+
                     return (
                       <a
                         key={idx}
@@ -591,21 +596,23 @@ export default function WasteOrdersList() {
                         rel="noopener noreferrer"
                         className="group relative border border-slate-200 hover:border-slate-350 rounded-xl overflow-hidden bg-slate-50 aspect-video flex flex-col justify-between p-3 transition-all hover:shadow-md"
                       >
-                        <div className="flex-1 flex items-center justify-center">
-                          {isPdf ? (
-                            <div className="text-center">
-                              <FileText className="w-8 h-8 text-slate-400 mx-auto" />
-                              <span className="text-[9px] font-bold text-slate-400 block mt-1 uppercase">PDF Document</span>
-                            </div>
-                          ) : (
+                        <div className="flex-1 flex items-center justify-center w-full h-full relative">
+                          {isImage ? (
                             <img
                               src={fileUrl}
                               alt={doc.label}
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
+                          ) : (
+                            <div className="text-center p-2 z-10">
+                              <FileText className="w-8 h-8 text-slate-400 mx-auto" />
+                              <span className="text-[9px] font-bold text-slate-550 block mt-1 uppercase truncate max-w-[120px]">
+                                {isPdf ? 'PDF Document' : (isWord ? 'Word Document' : 'Document')}
+                              </span>
+                            </div>
                           )}
                         </div>
-                        <div className="relative bg-slate-900/60 backdrop-blur-xs text-white p-1 text-[9px] font-bold rounded-md truncate w-full text-center">
+                        <div className="relative bg-slate-900/60 backdrop-blur-xs text-white p-1 text-[9px] font-bold rounded-md truncate w-full text-center z-10">
                           {doc.label}
                         </div>
                       </a>
@@ -691,8 +698,8 @@ export default function WasteOrdersList() {
                 </div>
               </SectionCard>
 
-              {/* License & Compliance Details */}
-              <SectionCard title="License & Compliance Details" icon={Award} iconColor="text-slate-600">
+              {/* Compliance Details */}
+              <SectionCard title="Compliance" icon={Award} iconColor="text-slate-600">
                 <div className="space-y-3">
                   <InfoItem icon={Building} label="Registered RWA" value={selectedGroup.first.registered_rwa} iconColor="text-slate-500" />
                   <InfoItem icon={FileText} label="GST Number" value={selectedGroup.first.gst_number} iconColor="text-slate-500" />

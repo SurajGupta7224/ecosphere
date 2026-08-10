@@ -501,10 +501,23 @@ export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel 
   };
 
   const handleFileUpload = (e, fileType) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    const isImage = file.type.startsWith('image/');
+    const allowedExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
+
+    if (!allowedExts.includes(ext) && !isImage) {
+      toast.error('Invalid file format. Please upload PDF, Word (DOC/DOCX), or Image (JPG, PNG, WEBP) files.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit. Please upload a smaller file.');
+      return;
+    }
+
     const previewUrl = isImage ? URL.createObjectURL(file) : null;
 
     if (fileType === 'mom') {
@@ -602,14 +615,14 @@ export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel 
       return false;
     }
 
-    // Document Validation: MOM is required, and either PO or Email Copy is required
+    // Document Validation: MOA is required, and either PO or Email Copy is required
     const hasMom = Boolean(momFile || existingMomFile);
     const hasPo = Boolean(poFile || existingPoFile);
     const hasEmail = Boolean(emailCopyFile || existingEmailFile);
 
     if (!hasMom) {
       setDocErrors(prev => ({ ...prev, mom: true }));
-      toast.error('MOM Copy (Minutes of Meeting) document is required.');
+      toast.error('MOA Copy (Memorandum of Association) document is required.');
       const momBox = document.getElementById('mom_upload_box');
       if (momBox) {
         momBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -840,6 +853,127 @@ export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel 
 
     return Array.from(map.values());
   })();
+
+  const renderBookingDocField = (
+    label,
+    isRequired,
+    subLabel,
+    file,
+    setFile,
+    previewUrl,
+    setPreviewUrl,
+    existingFile,
+    setExistingFile,
+    fileTypeKey,
+    hasError,
+    boxId
+  ) => {
+    const currentFile = file || existingFile;
+    const isNew = Boolean(file);
+    const fileName = isNew ? file.name : (existingFile ? String(existingFile).split('/').pop() : '');
+
+    const isNewImage = isNew && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name));
+    const isExistingImage = !isNew && existingFile && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(existingFile);
+    const isImage = isNewImage || isExistingImage;
+
+    const displayImageSrc = isNewImage
+      ? previewUrl
+      : (isExistingImage ? `${IMAGE_BASE_URL}/${existingFile}` : null);
+
+    const viewUrl = isNewImage
+      ? previewUrl
+      : (isNew ? (previewUrl || (file ? URL.createObjectURL(file) : '')) : `${IMAGE_BASE_URL}/${existingFile}`);
+
+    const handleClear = (e) => {
+      e?.stopPropagation();
+      setFile(null);
+      if (setPreviewUrl) setPreviewUrl(null);
+      if (setExistingFile) setExistingFile(null);
+    };
+
+    return (
+      <div className="space-y-2">
+        <label className="block text-[12px] font-semibold text-slate-700">
+          {label} {isRequired && <span className="text-rose-500 font-bold">*</span>} {subLabel && <span className="text-amber-600 font-bold text-[11px]">{subLabel}</span>}
+        </label>
+        <div
+          id={boxId}
+          className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
+            hasError
+              ? 'border-rose-500 bg-rose-50/80 ring-4 ring-rose-200/80 animate-pulse shadow-md'
+              : 'border-slate-300 hover:border-emerald-600 bg-white'
+          }`}
+        >
+          {currentFile ? (
+            <div className="w-full flex flex-col items-center gap-2 p-1 animate-in fade-in duration-200">
+              {isImage && displayImageSrc ? (
+                <div className="relative max-h-32 w-full flex justify-center overflow-hidden rounded-lg border border-slate-200 p-1 bg-white">
+                  <img src={displayImageSrc} alt={label} className="max-h-28 max-w-full object-contain rounded-md" />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center py-2">
+                  <FileText className="w-10 h-10 text-emerald-600 mb-1" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {fileName.endsWith('.pdf') ? 'PDF Document' : (fileName.match(/\.(doc|docx)$/i) ? 'Word Document' : 'Document')}
+                  </span>
+                </div>
+              )}
+
+              <span className="text-[11px] font-bold text-slate-800 break-all text-center px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200 max-w-full truncate">
+                {fileName}
+              </span>
+
+              <div className="flex items-center justify-center gap-2 w-full pt-1">
+                {viewUrl && (
+                  <a
+                    href={viewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View
+                  </a>
+                )}
+
+                <label className="px-2.5 py-1 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer">
+                  <UploadCloud className="w-3.5 h-3.5" /> Change
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*"
+                    onChange={e => handleFileUpload(e, fileTypeKey)}
+                    className="hidden"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Remove File"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-2 text-center relative w-full h-full cursor-pointer">
+              <UploadCloud className={`w-8 h-8 mb-1.5 ${hasError ? 'text-rose-600' : 'text-emerald-600 opacity-80'}`} />
+              <span className={`text-[12px] font-semibold ${hasError ? 'text-rose-700 font-extrabold' : 'text-slate-700'}`}>
+                Click to Upload {label.split(' ')[0]} Copy {isRequired ? '*' : ''}
+              </span>
+              <span className="text-[10px] text-slate-400 mt-0.5 font-medium">PDF, DOC, DOCX, or Image (Max 10MB)</span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*"
+                onChange={e => handleFileUpload(e, fileTypeKey)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden w-full animate-in fade-in duration-200">
@@ -1469,157 +1603,50 @@ export default function BookOrderForm({ selectedGroup = {}, onSuccess, onCancel 
           <div className="pt-3 border-t border-slate-200 space-y-3">
             <label className="block text-[12px] font-medium text-slate-600 uppercase">Document Uploads & Live Previews</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {renderBookingDocField(
+                'MOA Copy (Memorandum of Association)',
+                true,
+                null,
+                momFile,
+                setMomFile,
+                momPreview,
+                setMomPreview,
+                existingMomFile,
+                setExistingMomFile,
+                'mom',
+                docErrors.mom,
+                'mom_upload_box'
+              )}
 
-              {/* MOM Copy */}
-              <div className="space-y-2">
-                <label className="block text-[12px] font-semibold text-slate-700">
-                  MOM Copy (Minutes of Meeting) <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <div
-                  id="mom_upload_box"
-                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
-                    docErrors.mom
-                      ? 'border-rose-500 bg-rose-50/80 ring-4 ring-rose-200/80 animate-pulse shadow-md'
-                      : 'border-slate-300 hover:border-emerald-600 bg-white'
-                  }`}
-                >
-                  {momPreview ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <img src={momPreview} alt="MOM Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
-                      <div className="flex items-center justify-center gap-2 w-full">
-                        <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200">{momFile?.name}</span>
-                        <button type="button" onClick={() => { setMomFile(null); setMomPreview(null); }} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="Remove Uploaded Image">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (momFile || existingMomFile) ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <FileText className="w-10 h-10 text-emerald-600 mb-1" />
-                      <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2 py-1 bg-slate-100 rounded-md border border-slate-200">{momFile ? momFile.name : existingMomFile.split('/').pop()}</span>
-                      <div className="flex items-center gap-2">
-                        {momFile ? (
-                          <button type="button" onClick={() => setMomFile(null)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Trash2 className="w-4 h-4" /> Remove
-                          </button>
-                        ) : (
-                          <a href={`${IMAGE_BASE_URL}/${existingMomFile}`} target="_blank" rel="noreferrer" className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Eye className="w-4 h-4" /> View Document
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.mom ? 'text-rose-600' : 'text-emerald-600 opacity-80'}`} />
-                      <span className={`text-[12px] font-semibold ${docErrors.mom ? 'text-rose-700 font-extrabold' : 'text-slate-700'}`}>Click to Upload MOM Copy *</span>
-                      <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
-                      <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'mom')} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    </div>
-                  )}
-                </div>
-              </div>
+              {renderBookingDocField(
+                'PO Copy (Purchase Order)',
+                false,
+                '(Either PO or Email Required *)',
+                poFile,
+                setPoFile,
+                poPreview,
+                setPoPreview,
+                existingPoFile,
+                setExistingPoFile,
+                'po',
+                docErrors.poEmail,
+                'po_upload_box'
+              )}
 
-              {/* PO Copy */}
-              <div className="space-y-2">
-                <label className="block text-[12px] font-semibold text-slate-700">
-                  PO Copy (Purchase Order) <span className="text-amber-600 font-bold text-[11px]">(Either PO or Email Required *)</span>
-                </label>
-                <div
-                  id="po_upload_box"
-                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
-                    docErrors.poEmail
-                      ? 'border-amber-500 bg-amber-50/80 ring-4 ring-amber-200/80 animate-pulse shadow-md'
-                      : 'border-slate-300 hover:border-emerald-600 bg-white'
-                  }`}
-                >
-                  {poPreview ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <img src={poPreview} alt="PO Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
-                      <div className="flex items-center justify-center gap-2 w-full">
-                        <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200">{poFile?.name}</span>
-                        <button type="button" onClick={() => { setPoFile(null); setPoPreview(null); }} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="Remove Uploaded Image">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (poFile || existingPoFile) ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <FileText className="w-10 h-10 text-emerald-600 mb-1" />
-                      <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2 py-1 bg-slate-100 rounded-md border border-slate-200">{poFile ? poFile.name : existingPoFile.split('/').pop()}</span>
-                      <div className="flex items-center gap-2">
-                        {poFile ? (
-                          <button type="button" onClick={() => setPoFile(null)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Trash2 className="w-4 h-4" /> Remove
-                          </button>
-                        ) : (
-                          <a href={`${IMAGE_BASE_URL}/${existingPoFile}`} target="_blank" rel="noreferrer" className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Eye className="w-4 h-4" /> View Document
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.poEmail ? 'text-amber-600' : 'text-emerald-600 opacity-80'}`} />
-                      <span className={`text-[12px] font-semibold ${docErrors.poEmail ? 'text-amber-800 font-extrabold' : 'text-slate-700'}`}>Click to Upload PO Copy</span>
-                      <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
-                      <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'po')} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Email Copy */}
-              <div className="space-y-2">
-                <label className="block text-[12px] font-semibold text-slate-700">
-                  Email Confirmation Copy <span className="text-amber-600 font-bold text-[11px]">(Either PO or Email Required *)</span>
-                </label>
-                <div
-                  id="email_upload_box"
-                  className={`relative border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all min-h-[160px] ${
-                    docErrors.poEmail
-                      ? 'border-amber-500 bg-amber-50/80 ring-4 ring-amber-200/80 animate-pulse shadow-md'
-                      : 'border-slate-300 hover:border-emerald-600 bg-white'
-                  }`}
-                >
-                  {emailCopyPreview ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <img src={emailCopyPreview} alt="Email Copy Preview" className="max-h-36 max-w-full object-contain rounded-xl border border-slate-200 shadow-xs p-1 bg-white mx-auto" />
-                      <div className="flex items-center justify-center gap-2 w-full">
-                        <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200">{emailCopyFile?.name}</span>
-                        <button type="button" onClick={() => { setEmailCopyFile(null); setEmailCopyPreview(null); }} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="Remove Uploaded Image">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (emailCopyFile || existingEmailFile) ? (
-                    <div className="w-full flex flex-col items-center gap-2 p-1">
-                      <FileText className="w-10 h-10 text-emerald-600 mb-1" />
-                      <span className="text-[12px] font-bold text-slate-800 break-all text-center px-2 py-1 bg-slate-100 rounded-md border border-slate-200">{emailCopyFile ? emailCopyFile.name : existingEmailFile.split('/').pop()}</span>
-                      <div className="flex items-center gap-2">
-                        {emailCopyFile ? (
-                          <button type="button" onClick={() => setEmailCopyFile(null)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Trash2 className="w-4 h-4" /> Remove
-                          </button>
-                        ) : (
-                          <a href={`${IMAGE_BASE_URL}/${existingEmailFile}`} target="_blank" rel="noreferrer" className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg text-xs font-semibold flex items-center gap-1">
-                            <Eye className="w-4 h-4" /> View Document
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-2 text-center">
-                      <UploadCloud className={`w-8 h-8 mb-1.5 ${docErrors.poEmail ? 'text-amber-600' : 'text-emerald-600 opacity-80'}`} />
-                      <span className={`text-[12px] font-semibold ${docErrors.poEmail ? 'text-amber-800 font-extrabold' : 'text-slate-700'}`}>Click to Upload Email Copy</span>
-                      <span className="text-[10px] text-slate-400 mt-0.5">PDF / Image</span>
-                      <input type="file" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'email')} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
+              {renderBookingDocField(
+                'Email Confirmation Copy',
+                false,
+                '(Either PO or Email Required *)',
+                emailCopyFile,
+                setEmailCopyFile,
+                emailCopyPreview,
+                setEmailCopyPreview,
+                existingEmailFile,
+                setExistingEmailFile,
+                'email',
+                docErrors.poEmail,
+                'email_upload_box'
+              )}
             </div>
           </div>
         </div>

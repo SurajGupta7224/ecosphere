@@ -932,7 +932,7 @@ export default function WasteCollectionRequests() {
       {/* SECTION 1: Customer Details */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-          <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
+          <User className="w-5 h-5 text-violet-500" /> Customer Details
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -1094,7 +1094,7 @@ export default function WasteCollectionRequests() {
     {/* SECTION 2: License Details */ }
     < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details (Optional)
+                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Compliance (Optional)
                 </h2>
 
                 <div className="space-y-6">
@@ -1176,7 +1176,7 @@ export default function WasteCollectionRequests() {
     {/* SECTION 3: Location Details */ }
     < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <Building className="w-5 h-5 text-violet-500" /> Section 3: Location Details
+                  <Building className="w-5 h-5 text-violet-500" /> Location Tracking
                 </h2>
                 <div className="space-y-6">
 
