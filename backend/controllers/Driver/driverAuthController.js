@@ -3,6 +3,53 @@ const jwt = require("jsonwebtoken");
 const { Driver, Vehicle, Employee } = require("../../models/index");
 const { sendDriverOTPEmail, sendDriverSMS } = require("../../services/emailService");
 
+// Helper to find driver flexible to whitespace formatting (e.g. "KA 02 BC 7890" vs "KA02BC7890")
+const findDriverByVehicleNumber = async (vehicleNumberInput) => {
+  if (!vehicleNumberInput) return null;
+  const rawInput = vehicleNumberInput.trim();
+  const normalizedInput = rawInput.replace(/\s+/g, '').toUpperCase();
+
+  // 1. Try exact match
+  let driver = await Driver.findOne({
+    where: { vehicle_number: rawInput },
+    include: [{ model: Vehicle, as: "vehicle" }]
+  });
+
+  if (driver) return driver;
+
+  // 2. Try normalized comparison across all drivers
+  const allDrivers = await Driver.findAll({
+    include: [{ model: Vehicle, as: "vehicle" }]
+  });
+
+  driver = allDrivers.find(d => 
+    d.vehicle_number && d.vehicle_number.replace(/\s+/g, '').toUpperCase() === normalizedInput
+  );
+
+  if (driver) return driver;
+
+  // 3. Fallback: find vehicle by normalized registration_number and then get driver
+  const allVehicles = await Vehicle.findAll();
+  const matchedVehicle = allVehicles.find(v => 
+    v.registration_number && v.registration_number.replace(/\s+/g, '').toUpperCase() === normalizedInput
+  );
+
+  if (matchedVehicle) {
+    driver = await Driver.findOne({
+      where: { vehicle_id: matchedVehicle.id },
+      include: [{ model: Vehicle, as: "vehicle" }]
+    });
+    if (!driver) {
+      driver = await Driver.findOne({
+        where: { vehicle_number: matchedVehicle.registration_number },
+        include: [{ model: Vehicle, as: "vehicle" }]
+      });
+    }
+  }
+
+  return driver || null;
+};
+
 // POST /api/v1/driver/login - Driver Login
 const loginDriver = async (req, res) => {
   try {
@@ -16,14 +63,7 @@ const loginDriver = async (req, res) => {
       });
     }
 
-    // 1. Find driver using vehicleNumber (exact or trimmed match)
-    const formattedVehicleNumber = vehicleNumber.trim();
-    const driver = await Driver.findOne({
-      where: { vehicle_number: formattedVehicleNumber },
-      include: [
-        { model: Vehicle, as: "vehicle" }
-      ]
-    });
+    const driver = await findDriverByVehicleNumber(vehicleNumber);
 
     if (!driver) {
       return res.status(401).json({
@@ -114,35 +154,20 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const formattedVehicleNumber = vehicleNumber.trim();
-    const vehicle = await Vehicle.findOne({
-      where: { registration_number: formattedVehicleNumber }
-    });
-
-    if (!vehicle) {
-      return res.status(404).json({
-        status: 0,
-        message: "Vehicle not found.",
-        body: null
-      });
-    }
-
-    if (vehicle.approval_status !== "approved") {
-      return res.status(403).json({
-        status: 0,
-        message: "Vehicle is not approved.",
-        body: null
-      });
-    }
-
-    const driver = await Driver.findOne({
-      where: { vehicle_number: formattedVehicleNumber }
-    });
+    const driver = await findDriverByVehicleNumber(vehicleNumber);
 
     if (!driver) {
       return res.status(404).json({
         status: 0,
-        message: "Driver account not found for this vehicle.",
+        message: "Driver account or vehicle not found.",
+        body: null
+      });
+    }
+
+    if (!driver.vehicle || driver.vehicle.approval_status !== "approved") {
+      return res.status(403).json({
+        status: 0,
+        message: "Vehicle is not approved.",
         body: null
       });
     }
@@ -207,10 +232,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    const formattedVehicleNumber = vehicleNumber.trim();
-    const driver = await Driver.findOne({
-      where: { vehicle_number: formattedVehicleNumber }
-    });
+    const driver = await findDriverByVehicleNumber(vehicleNumber);
 
     if (!driver) {
       return res.status(404).json({
@@ -264,10 +286,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const formattedVehicleNumber = vehicleNumber.trim();
-    const driver = await Driver.findOne({
-      where: { vehicle_number: formattedVehicleNumber }
-    });
+    const driver = await findDriverByVehicleNumber(vehicleNumber);
 
     if (!driver) {
       return res.status(404).json({
