@@ -162,7 +162,7 @@ const Certifications = () => {
   const closeCert = () => setSelectedCert(null);
 
   return (
-    <section className="py-0 px-4 sm:px-6 md:px-8 bg-white">
+    <section className="py-0 px-4 sm:px-6 md:px-8 bg-white max-w-7xl mx-auto -mt-10 sm:-mt-20">
       {/* TITLE */}
       {/* <div className="text-center max-w-4xl mx-auto mb-10 px-2">
         <h2 className="text-3xl sm:text-4xl font-bold text-[#1e293b]">
@@ -257,7 +257,7 @@ const Certifications = () => {
       `}</style>
 
       {/* PREMIUM STATS SECTION */}
-      <div className="bg-white mb-10 px-4 sm:px-6 md:px-8 rounded-2xl max-w-7xl mx-auto mt-10">
+      <div className="bg-white mb-10 px-4 sm:px-4 rounded-2xl max-w-7xl mx-auto mt-10">
         <h2 className="text-2xl sm:text-4xl md:text-3xl text-black font-extrabold text-center mb-14">
           Real-Time Operational Excellence
         </h2>

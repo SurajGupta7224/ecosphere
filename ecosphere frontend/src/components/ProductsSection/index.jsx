@@ -82,7 +82,7 @@ export default function OurProductsSection() {
       </div>
 
       {/* ARROWS + SCROLLER WRAPPER */}
-      <div className="relative max-w-6xl mx-auto">
+      <div className="relative max-w-7xl px-6 mx-auto">
         {/* LEFT ARROW */}
         <button
           type="button"

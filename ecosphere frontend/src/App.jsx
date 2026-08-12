@@ -20,7 +20,6 @@ import BsfInnovation from "./Pages/bsfinnovation";
 import GpsSolutions from "./Pages/GpsSolutions";
 import LoginPage from "./components/login";
 import MobileNavbar from "./components/MobileNavbar";
-import PartnerWithUs from "./Pages/partnerwithus";
 import OurProductsSection from "./components/ProductsSection";
 import Segments from "./Pages/Segments";
 import PrivacyPolicy from "./Pages/PrivacyPolicy";
@@ -90,7 +89,6 @@ function AppContent() {
         />
 
         {/* PARTNER WITH US PAGE (header hidden) */}
-        <Route path="/partnerwithus" element={<PartnerWithUs />} />
         <Route path="/segments" element={<Segments />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />

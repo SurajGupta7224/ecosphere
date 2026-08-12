@@ -33,7 +33,6 @@ export default function PlanStatusCard({
           </p>
           <p className="text-sm font-bold text-gray-800">
             {planName}
-            {siteName ? ` · ${siteName}` : ""}
           </p>
         </div>
 

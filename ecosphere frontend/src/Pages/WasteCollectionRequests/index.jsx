@@ -224,7 +224,7 @@ export default function WasteCollectionRequests() {
             </div>
           </div>
         ) : (
-          <div className="w-full h-full border-2 border-dashed border-slate-200 hover:border-violet-400 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 p-4">
+          <div className="w-full h-full border-2 border-dashed border-slate-200 hover:border-[#84cc16] transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 p-4">
             <ImageIcon className="w-6 h-6 mb-2 opacity-50 text-slate-400" />
             <span className="text-xs font-bold text-slate-500">{title}</span>
             <span className="text-[10px] text-slate-400 mt-1">Image or PDF (Max 5MB)</span>
@@ -781,7 +781,7 @@ export default function WasteCollectionRequests() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[78rem] mx-auto">
 
         {/* Toast Banner */}
         {toastMsg.message && (
@@ -813,9 +813,9 @@ export default function WasteCollectionRequests() {
 
             {/* Terms Box */}
             <div className="p-6 sm:p-8">
-              <div className="bg-[#f6f2ff] border border-[#e8dcfc] rounded-2xl p-6 mb-6">
+              <div className="bg-amber-50/70 border border-[#e8dcfc] rounded-2xl p-6 mb-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-700 shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-700 shadow-sm">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
@@ -825,50 +825,50 @@ export default function WasteCollectionRequests() {
                 </div>
 
                 <div className="space-y-4">
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-amber-300 transition-all">
                     <input
                       type="checkbox"
                       checked={tncBoxes.tnc_agree}
                       onChange={(e) => setTncBoxes(prev => ({ ...prev, tnc_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      className="mt-0.5 w-5 h-5 accent-[#84cc16] rounded  cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                    <span className="text-xs font-semibold text-gray-700 leading-relaxed">
                       By using our waste management services, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, as well as the terms and conditions outlined in the MoU, which are hereby incorporated by reference.
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-amber-300 transition-all">
                     <input
                       type="checkbox"
                       checked={tncBoxes.accuracy_agree}
                       onChange={(e) => setTncBoxes(prev => ({ ...prev, accuracy_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      className="mt-0.5 w-5 h-5 accent-[#84cc16] rounded  cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                    <span className="text-xs font-semibold text-gray-700 leading-relaxed">
                       We warrant that the information provided by us is to the best of our knowledge and belief, accurate and current at the time of provisioning.
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-amber-300 transition-all">
                     <input
                       type="checkbox"
                       checked={tncBoxes.copyright_agree}
                       onChange={(e) => setTncBoxes(prev => ({ ...prev, copyright_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      className="mt-0.5 w-5 h-5 accent-[#84cc16] rounded  cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                    <span className="text-xs font-semibold text-gray-700 leading-relaxed">
                       Copyrights reserved with Ecosphere Waste Solutions and Mukka Protiens Limited.
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-purple-300 transition-all">
+                  <label className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#e4d9fd] cursor-pointer hover:border-amber-300 transition-all">
                     <input
                       type="checkbox"
                       checked={tncBoxes.promo_agree}
                       onChange={(e) => setTncBoxes(prev => ({ ...prev, promo_agree: e.target.checked }))}
-                      className="mt-0.5 w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
+                      className="mt-0.5 w-5 h-5 accent-[#84cc16] rounded  cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-purple-900 leading-relaxed">
+                    <span className="text-xs font-semibold text-gray-700 leading-relaxed">
                       I agree to receive promotional emails
                     </span>
                   </label>
@@ -880,7 +880,7 @@ export default function WasteCollectionRequests() {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all cursor-pointer"
+                  className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-[#84cc16] transition-all cursor-pointer"
                 >
                   Decline
                 </button>
@@ -888,7 +888,7 @@ export default function WasteCollectionRequests() {
                 <button
                   type="button"
                   onClick={handleTncAccept}
-                  className="px-8 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                  className="px-8 py-3 rounded-xl bg-[#84cc16] hover:bg-[#76b814] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-2"
                 >
                   Accept &amp; Continue →
                 </button>
@@ -932,7 +932,7 @@ export default function WasteCollectionRequests() {
       {/* SECTION 1: Customer Details */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-          <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
+          <User className="w-5 h-5 text-emerald-600" /> Section 1: Customer Details
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -944,7 +944,7 @@ export default function WasteCollectionRequests() {
               value={formData.business_lead}
               onChange={handleInputChange}
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 cursor-pointer"
             >
               <option value="Web Lead">Web Lead</option>
               <option value="Exhibition">Exhibition</option>
@@ -961,7 +961,7 @@ export default function WasteCollectionRequests() {
               onChange={handleInputChange}
               required
               placeholder="e.g. Acme Corporation"
-              className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.customer_legal_name ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+              className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 ${fieldErrors.customer_legal_name ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-[#84cc16]'}`}
             />
             {fieldErrors.customer_legal_name && (
               <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
@@ -979,7 +979,7 @@ export default function WasteCollectionRequests() {
               value={formData.customer_trade_name}
               onChange={handleInputChange}
               placeholder="e.g. Acme Trading"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
             />
           </div>
 
@@ -992,7 +992,7 @@ export default function WasteCollectionRequests() {
               onChange={handleInputChange}
               required
               placeholder="e.g. John Doe"
-              className={`w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.contact_person ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+              className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 ${fieldErrors.contact_person ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-[#84cc16]'}`}
             />
             {fieldErrors.contact_person && (
               <p className="mt-1.5 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
@@ -1010,7 +1010,7 @@ export default function WasteCollectionRequests() {
               value={formData.designation}
               onChange={handleInputChange}
               placeholder="e.g. Sales Manager"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
             />
           </div>
 
@@ -1026,7 +1026,7 @@ export default function WasteCollectionRequests() {
                 required
                 placeholder="e.g. 9876543210"
                 maxLength={10}
-                className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.mobile_number ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 ${fieldErrors.mobile_number ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-[#84cc16]'}`}
               />
             </div>
             {fieldErrors.mobile_number && (
@@ -1047,7 +1047,7 @@ export default function WasteCollectionRequests() {
               value={formData.phone_number_2}
               onChange={handleInputChange}
               placeholder="e.g. +91 9123456780"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
             />
           </div>
         </div>
@@ -1063,7 +1063,7 @@ export default function WasteCollectionRequests() {
               onChange={handleInputChange}
               required
               placeholder="e.g. john@example.com"
-              className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.email ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+              className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 ${fieldErrors.email ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-[#84cc16]'}`}
             />
           </div>
           {fieldErrors.email && (
@@ -1084,7 +1084,7 @@ export default function WasteCollectionRequests() {
             value={formData.email_2}
             onChange={handleInputChange}
             placeholder="e.g. contact@acme.com"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
           />
         </div>
       </div>
@@ -1094,7 +1094,7 @@ export default function WasteCollectionRequests() {
     {/* SECTION 2: License Details */ }
     < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 2: License Details (Optional)
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" /> Section 2: License Details (Optional)
                 </h2>
 
                 <div className="space-y-6">
@@ -1107,7 +1107,7 @@ export default function WasteCollectionRequests() {
                         value={formData.registered_rwa}
                         onChange={handleInputChange}
                         placeholder="e.g. Green Valley RWA"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
 
@@ -1119,7 +1119,7 @@ export default function WasteCollectionRequests() {
                         value={formData.gst}
                         onChange={handleInputChange}
                         placeholder="e.g. 29ABCDE1234F1Z5"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
 
@@ -1131,7 +1131,7 @@ export default function WasteCollectionRequests() {
                         value={formData.pan}
                         onChange={handleInputChange}
                         placeholder="e.g. ABCDE1234F"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
 
@@ -1143,7 +1143,7 @@ export default function WasteCollectionRequests() {
                         value={formData.trade_license}
                         onChange={handleInputChange}
                         placeholder="e.g. TL-987654"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
                   </div>
@@ -1176,7 +1176,7 @@ export default function WasteCollectionRequests() {
     {/* SECTION 3: Location Details */ }
     < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <Building className="w-5 h-5 text-violet-500" /> Section 3: Location Details
+                  <Building className="w-5 h-5 text-emerald-600" /> Section 3: Location Details
                 </h2>
                 <div className="space-y-6">
 
@@ -1193,7 +1193,7 @@ export default function WasteCollectionRequests() {
                         onChange={handleInputChange}
                         required
                         placeholder="Search locations using Google..."
-                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-4 focus:ring-violet-100 transition-all text-sm font-medium text-slate-700 ${fieldErrors.address_search ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-violet-400'}`}
+                        className={`w-full bg-slate-50 border rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 ${fieldErrors.address_search ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-slate-200 focus:border-[#84cc16]'}`}
                       />
                     </div>
                     {fieldErrors.address_search && (
@@ -1215,7 +1215,7 @@ export default function WasteCollectionRequests() {
         onChange={handleInputChange}
         required
         placeholder="e.g. 28.7041"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
 
@@ -1228,7 +1228,7 @@ export default function WasteCollectionRequests() {
         onChange={handleInputChange}
         required
         placeholder="e.g. 77.1025"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
   </div>
@@ -1248,7 +1248,7 @@ export default function WasteCollectionRequests() {
                         onChange={handleInputChange}
                         required
                         placeholder="e.g. Smart Bazar"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
                       />
                     </div>
 
@@ -1259,7 +1259,7 @@ export default function WasteCollectionRequests() {
                         value={formData.sector}
                         onChange={handleInputChange}
                         required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700 cursor-pointer"
                       >
                         <option value="">Select Sector</option>
                         <option value="Apartment">Apartment</option>
@@ -1308,7 +1308,7 @@ export default function WasteCollectionRequests() {
                 required
                 min="0"
                 placeholder="e.g. 150"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
               />
             </div>
 
@@ -1326,7 +1326,7 @@ export default function WasteCollectionRequests() {
                 required
                 min="0"
                 placeholder="e.g. 120"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
               />
             </div>
 
@@ -1345,7 +1345,7 @@ export default function WasteCollectionRequests() {
               required
               min="0"
               placeholder="e.g. 500"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
             />
           </div>
         )}
@@ -1362,7 +1362,7 @@ export default function WasteCollectionRequests() {
       required
       rows="3"
       placeholder="e.g. 456 Industrial Area, Bangalore"
-      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm resize-none"
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm resize-none"
     />
   </div>
 
@@ -1378,7 +1378,7 @@ export default function WasteCollectionRequests() {
         value={formData.landmark}
         onChange={handleInputChange}
         placeholder="e.g. Near Central Park"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
 
@@ -1390,7 +1390,7 @@ export default function WasteCollectionRequests() {
         value={formData.city}
         onChange={handleInputChange}
         placeholder="e.g. Bangalore"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
 
@@ -1402,7 +1402,7 @@ export default function WasteCollectionRequests() {
         value={formData.state}
         onChange={handleInputChange}
         placeholder="e.g. Karnataka"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
   </div>
@@ -1417,7 +1417,7 @@ export default function WasteCollectionRequests() {
         value={formData.pincode}
         onChange={handleInputChange}
         placeholder="e.g. 560001"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
 
@@ -1429,7 +1429,7 @@ export default function WasteCollectionRequests() {
         value={formData.country}
         onChange={handleInputChange}
         placeholder="e.g. India"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
 
@@ -1441,7 +1441,7 @@ export default function WasteCollectionRequests() {
         value={formData.google_map_link}
         onChange={handleInputChange}
         placeholder="e.g. https://www.google.com/maps/place/..."
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-medium text-slate-700"
       />
     </div>
   </div>
@@ -1451,7 +1451,7 @@ export default function WasteCollectionRequests() {
     {/* SECTION 4: Service Details / Expected Waste (KG) */ }
     < div className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8" >
                 <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 4: Service Details / Expected Waste (KG)
+                  <ClipboardCheck className="w-5 h-5 text-emerald-600" /> Section 4: Service Details / Expected Waste (KG)
                 </h2>
 
                 <div className="space-y-6">
@@ -1495,7 +1495,7 @@ export default function WasteCollectionRequests() {
                                         e.stopPropagation();
                                         handleToggleInclude(sub.subcategory_id);
                                       }}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
                                     >
                                       <span className="font-bold">×</span>
                                       {sub.subcategory_name}
@@ -1514,10 +1514,10 @@ export default function WasteCollectionRequests() {
                                         e.stopPropagation();
                                         handleToggleInclude(sub.subcategory_id);
                                       }}
-                                      className={`px-4 py-2 text-sm font-medium cursor-pointer flex items-center justify-between transition-colors ${sub.included ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
+                                      className={`px-4 py-2 text-sm font-medium cursor-pointer flex items-center justify-between transition-colors ${sub.included ? 'bg-emerald-100 text-emerald-700 font-bold' : 'text-slate-700 hover:bg-slate-50'}`}
                                     >
                                       <span>{sub.subcategory_name}</span>
-                                      {sub.included && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                      {sub.included && <CheckCircle className="w-4 h-4 text-em-600" />}
                                     </div>
                                   ))}
                                 </div>
@@ -1564,7 +1564,7 @@ export default function WasteCollectionRequests() {
                                   <select
                                     value={card.pricing_mode || 'KG'}
                                     onChange={(e) => handleCardPricingModeChange(card.subcategory_id, e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-semibold text-slate-800 cursor-pointer"
                                   >
                                     <option value="KG">KG</option>
                                     <option value="Bulk">Bulk</option>
@@ -1579,7 +1579,7 @@ export default function WasteCollectionRequests() {
                                     id={`variation_${card.subcategory_id}`}
                                     value={card.selected_variation_id}
                                     onChange={(e) => handleSelectVariation(card.subcategory_id, e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-4 focus:ring-purple-100 focus:border-purple-400 transition-all text-sm font-semibold text-slate-800 cursor-pointer"
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 outline-none focus:ring-1 focus:ring-[#84cc16] transition-all text-sm font-semibold text-slate-800 cursor-pointer"
                                   >
                                     <option value="">-Select Type-</option>
                                     {(card.variations || []).map((v) => (
@@ -1625,8 +1625,8 @@ export default function WasteCollectionRequests() {
                                       value={card.expected_waste}
                                       onChange={e => handleCardWasteChange(card.subcategory_id, e.target.value)}
                                       placeholder="Enter waste in KG per day"
-                                      className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-4 transition-all text-sm font-semibold text-slate-800 ${selectedVar
-                                          ? 'bg-white border-slate-200 focus:ring-purple-100 focus:border-purple-400'
+                                      className={`w-full border rounded-lg py-2.5 px-3 outline-none focus:ring-1 transition-all text-sm font-semibold text-slate-800 ${selectedVar
+                                          ? 'bg-white border-slate-200 focus:ring-[#84cc16] focus:border-[#84cc16]'
                                           : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
                                         }`}
                                     />
@@ -1649,7 +1649,7 @@ export default function WasteCollectionRequests() {
                         name="pickup_date"
                         value={formData.pickup_date}
                         onChange={handleInputChange}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] focus:border-[#84cc16] transition-all text-sm font-medium text-slate-700 cursor-pointer"
                       />
                     </div>
 
@@ -1660,7 +1660,7 @@ export default function WasteCollectionRequests() {
                         value={formData.time_slot_id}
                         onChange={handleInputChange}
                         disabled={loadingSlots || timeSlots.length === 0}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-400 transition-all text-sm font-medium text-slate-700 cursor-pointer disabled:opacity-50"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] focus:border-[#84cc16] transition-all text-sm font-medium text-slate-700 cursor-pointer disabled:opacity-50"
                       >
                         <option value="">{loadingSlots ? "Loading slots..." : timeSlots.length === 0 ? "Select Date First" : "Select Time Slot"}</option>
                         {timeSlots.map(slot => (

@@ -57,13 +57,13 @@ const Footer = () => {
         width: "100%",
         backgroundColor: "#ffffff",
         color: "#0f172a",
-        padding: "56px 16px 36px",
+        padding: "56px 56px 36px",
         fontFamily:
           'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         borderTop: "1px solid #e5e7eb",
       }}
     >
-      <div style={{ maxWidth: "1120px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1350px", margin: "0 auto" }}>
         {/* TOP ROW */}
         <div className="footer-top">
           {/* BRAND */}

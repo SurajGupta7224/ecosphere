@@ -124,7 +124,7 @@ const CircularEconomySection = () => {
       <div className="pointer-events-none absolute -top-20 left-0 right-0 h-24 rotate-1 bg-gradient-to-b from-emerald-900/70 to-transparent opacity-90" />
 
       {/* CONTENT WRAPPER */}
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+      <div className="relative max-w-7xl mx-auto px-6 sm:px-6 lg:px-8 z-10">
         {/* Heading */}
         <div
           className={`text-center mb-12 md:mb-16 transition-all duration-700 ${

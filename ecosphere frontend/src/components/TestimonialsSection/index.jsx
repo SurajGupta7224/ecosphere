@@ -53,7 +53,7 @@ const TestimonialsSection = () => {
       ref={rootRef}
       className="relative bg-[#181818] text-white py-14 sm:py-16 md:py-24"
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-10">
 
         {/* Heading */}
         <div

@@ -431,7 +431,7 @@ export default function CustomerDashboard() {
     <>
       <div className="min-h-screen bg-[#f0f3f1] pt-48 sm:pt-52 lg:pt-56 pb-24 px-4 sm:px-6 lg:px-10">
 
-        <div className="flex items-start justify-center gap-5 max-w-7xl mx-auto">
+        <div className="flex items-start justify-center gap-5 px-6 max-w-7xl mx-auto">
 
           {/* SIDEBAR */}
           <aside className="w-52 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
