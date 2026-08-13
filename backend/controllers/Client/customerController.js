@@ -11,7 +11,8 @@ const {
   Zone,
   Ward,
   Employee,
-  Vehicle
+  Vehicle,
+  TripSummary
 } = require("../../models/index");
 
 const { Op } = require("sequelize");
@@ -425,6 +426,40 @@ const getCustomerOrderQR = async (req, res) => {
     });
   }
 };
+
+
+// GET /api/customer/pickups/history (Fetch authenticated customer's pickup history)
+
+const getCustomerPickupHistory = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+
+    const pickupHistory = await TripSummary.findAll({
+      where: {
+        customer_id: customerId,
+      },
+      order: [["submitted_at", "DESC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Pickup history fetched successfully",
+      data: pickupHistory,
+    });
+
+  } catch (err) {
+    console.error("getCustomerPickupHistory error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pickup history",
+      error: err.message,
+    });
+  }
+};
+
+
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -434,5 +469,6 @@ module.exports = {
   updateCustomer,
   deleteCustomer,
   getCustomerPickups,
-  getCustomerOrderQR
+  getCustomerOrderQR,
+  getCustomerPickupHistory
 };
