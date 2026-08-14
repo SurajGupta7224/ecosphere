@@ -11,11 +11,15 @@ const {
   Zone,
   Ward,
   Employee,
-  Vehicle
+  Vehicle,
+  TripSummary
 } = require("../../models/index");
 
 const { Op } = require("sequelize");
 const QRCode = require("qrcode");
+
+const { fn, col } = require("sequelize");
+
 
 // Helper to write audit log
 const writeAuditLog = async (req, action, module, oldValue, newValue) => {
@@ -425,6 +429,168 @@ const getCustomerOrderQR = async (req, res) => {
     });
   }
 };
+
+
+// GET /api/customer/pickup-history
+// Fetch authenticated customer's pickup history with pagination
+const getCustomerPickupHistory = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+
+    // Pagination parameters
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit) || 10, 1),
+      100
+    );
+
+    const offset = (page - 1) * limit;
+
+    // ---------------------------------------------------------
+    // STEP 1: Count unique trips for this customer
+    // ---------------------------------------------------------
+    const totalTrips = await TripSummary.count({
+      where: {
+        customer_id: customerId,
+      },
+      distinct: true,
+      col: "trip_id",
+    });
+
+    // ---------------------------------------------------------
+    // STEP 2: Get only the trip IDs for the current page
+    // ---------------------------------------------------------
+    const tripRows = await TripSummary.findAll({
+      attributes: [
+        "trip_id",
+        [fn("MAX", col("submitted_at")), "latest_submitted_at"],
+      ],
+      where: {
+        customer_id: customerId,
+      },
+      group: ["trip_id"],
+      order: [[fn("MAX", col("submitted_at")), "DESC"]],
+      limit,
+      offset,
+      raw: true,
+    });
+
+    const tripIds = tripRows.map((row) => row.trip_id);
+
+    // No trips found
+    if (tripIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Pickup history fetched successfully",
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: totalTrips,
+          total_pages: Math.ceil(totalTrips / limit),
+          has_next_page: false,
+          has_previous_page: page > 1,
+        },
+      });
+    }
+
+    // ---------------------------------------------------------
+    // STEP 3: Fetch ALL subcategory records for these trips
+    // ---------------------------------------------------------
+    const pickupHistory = await TripSummary.findAll({
+      where: {
+        customer_id: customerId,
+        trip_id: tripIds,
+      },
+      include: [
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "registration_number"],
+        },
+      ],
+      order: [["submitted_at", "DESC"]],
+    });
+
+    // ---------------------------------------------------------
+    // STEP 4: Group subcategories under their trip
+    // ---------------------------------------------------------
+    const groupedTrips = {};
+
+    for (const trip of pickupHistory) {
+      const tripId = trip.trip_id;
+
+      if (!groupedTrips[tripId]) {
+        groupedTrips[tripId] = {
+          trip_id: trip.trip_id,
+          order_id: trip.order_id,
+          customer_id: trip.customer_id,
+
+          vehicle_id: trip.vehicle_id,
+          vehicle_number:
+            trip.vehicle?.registration_number || null,
+
+          driver_id: trip.driver_id,
+          driver_name: trip.driver_name,
+
+          status: trip.status,
+
+          submitted_at: trip.submitted_at,
+         // approved_by: trip.approved_by,
+          approved_at: trip.approved_at,
+
+          total_waste_kg: 0,
+          waste_details: [],
+        };
+      }
+
+      const wasteKg = Number(trip.total_waste_kg || 0);
+
+      // Calculate total waste
+      groupedTrips[tripId].total_waste_kg += wasteKg;
+
+      // Add subcategory details
+      groupedTrips[tripId].waste_details.push({
+        trip_id: trip.trip_id,
+        subcategory_id: trip.subcategory_id,
+        subcategory_name: trip.subcategory_name,
+        total_waste_kg: wasteKg,
+      });
+    }
+
+    const data = Object.values(groupedTrips);
+
+    // ---------------------------------------------------------
+    // STEP 5: Pagination information
+    // ---------------------------------------------------------
+    const totalPages = Math.ceil(totalTrips / limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "Pickup history fetched successfully",
+      data,
+      pagination: {
+        page,
+        limit,
+        total: totalTrips,
+        total_pages: totalPages,
+        has_next_page: page < totalPages,
+        has_previous_page: page > 1,
+      },
+    });
+
+  } catch (err) {
+    console.error("getCustomerPickupHistory error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pickup history",
+      error: err.message,
+    });
+  }
+};
+
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -434,5 +600,6 @@ module.exports = {
   updateCustomer,
   deleteCustomer,
   getCustomerPickups,
-  getCustomerOrderQR
+  getCustomerOrderQR,
+  getCustomerPickupHistory
 };
