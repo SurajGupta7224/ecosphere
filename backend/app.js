@@ -182,6 +182,20 @@ sequelize.sync()
       console.error("Error seeding permissions:", err);
     }
 
+    // Global Error Handler for Multer & API Errors
+    const multer = require("multer");
+    app.use((err, req, res, next) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File size limit exceeded. Maximum allowed size is 10MB." });
+        }
+        return res.status(400).json({ message: `Upload error: ${err.message}` });
+      } else if (err) {
+        return res.status(400).json({ message: err.message || "An error occurred during file upload." });
+      }
+      next();
+    });
+
     server.listen(PORT, () => {
       console.log(` Server running on port ${PORT}`);
     });

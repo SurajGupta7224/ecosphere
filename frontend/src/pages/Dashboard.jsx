@@ -182,28 +182,13 @@ const Dashboard = () => {
     const loadFilterData = async () => {
       try {
         const res = await api.get('/corporations', { params: { status: 'Active', limit: 1000 } });
-        let corpsList = res.data.corporations || [];
-
-        // If empty or Bommanahalli is not found, insert a fallback mock option
-        const hasBommanahalli = corpsList.some(c => c.corporation_name.toLowerCase() === 'bommanahalli');
-        if (!hasBommanahalli) {
-          corpsList = [{ id: 'bommanahalli-mock', corporation_name: 'Bommanahalli' }, ...corpsList];
-        }
-
+        const corpsList = res.data.corporations || res.data || [];
         setCorporations(corpsList);
-
-        const bommanahalli = corpsList.find(c => c.corporation_name.toLowerCase() === 'bommanahalli');
-        if (bommanahalli) {
-          setSelectedCorp(bommanahalli.id);
-        } else if (corpsList.length > 0) {
-          setSelectedCorp(corpsList[0].id);
-        }
+        setSelectedCorp('');
       } catch (err) {
         console.error("Error loading corporations for filters:", err);
-        // Fallback list
-        const fallbackList = [{ id: 'bommanahalli-mock', corporation_name: 'Bommanahalli' }];
-        setCorporations(fallbackList);
-        setSelectedCorp('bommanahalli-mock');
+        setCorporations([]);
+        setSelectedCorp('');
       }
     };
     loadFilterData();
@@ -217,19 +202,9 @@ const Dashboard = () => {
       return;
     }
     const loadDivisions = async () => {
-      if (selectedCorp === 'bommanahalli-mock') {
-        const mockDivisions = [
-          { id: 'div-1', zone_name: 'Bommanahalli Division' },
-          { id: 'div-2', zone_name: 'HSR Layout' },
-          { id: 'div-3', zone_name: 'Begur' }
-        ];
-        setDivisions(mockDivisions);
-        setSelectedDivision('All');
-        return;
-      }
       try {
         const res = await api.get(`/corporations/${selectedCorp}/zones`);
-        setDivisions(res.data.zones || []);
+        setDivisions(res.data.zones || res.data || []);
         setSelectedDivision('All');
       } catch (err) {
         console.error("Error loading divisions:", err);
@@ -248,19 +223,9 @@ const Dashboard = () => {
       return;
     }
     const loadWards = async () => {
-      if (selectedDivision.startsWith('div-')) {
-        const mockWards = [
-          { id: 'ward-174', ward_name: 'Ward 174 (HSR Layout)' },
-          { id: 'ward-175', ward_name: 'Ward 175 (Bommanahalli)' },
-          { id: 'ward-176', ward_name: 'Ward 176 (Anjanapura)' }
-        ];
-        setWards(mockWards);
-        setSelectedWard('All');
-        return;
-      }
       try {
         const res = await api.get(`/zones/${selectedDivision}/wards`);
-        setWards(res.data.wards || []);
+        setWards(res.data.wards || res.data || []);
         setSelectedWard('All');
       } catch (err) {
         console.error("Error loading wards:", err);
@@ -288,16 +253,7 @@ const Dashboard = () => {
   const handleResetFilters = () => {
     setFromDate('2026-07-01');
     setToDate('2026-07-08');
-
-    const bommanahalli = corporations.find(c => c.corporation_name.toLowerCase() === 'bommanahalli');
-    if (bommanahalli) {
-      setSelectedCorp(bommanahalli.id);
-    } else if (corporations.length > 0) {
-      setSelectedCorp(corporations[0].id);
-    } else {
-      setSelectedCorp('');
-    }
-
+    setSelectedCorp('');
     setSelectedDivision('All');
     setSelectedWard('All');
     setCollectionStatus('All');

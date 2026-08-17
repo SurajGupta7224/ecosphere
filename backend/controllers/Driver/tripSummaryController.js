@@ -1,4 +1,5 @@
 const sequelize = require("../../config/db");
+const { Op } = require("sequelize");
 const {
   TripSummary,
   Trip,
@@ -260,7 +261,215 @@ const fetchOrderDetails = async (req, res) => {
   }
 };
 
+
+
+
+// POST /api/v1/driver/vehicle-trip-summary
+// Fetch Trip Summary records using vehicle number
+const getVehicleTripSummaries = async (req, res) => {
+  try {
+    const { vehicle_id, date, status } = req.body;
+
+   if (!vehicle_id) {
+  return res.status(400).json({
+    status: 0,
+    message: "vehicle_id is required.",
+  });
+}
+
+// Find vehicle using vehicle ID
+const vehicle = await Vehicle.findByPk(vehicle_id);
+
+if (!vehicle) {
+  return res.status(404).json({
+    status: 0,
+    message: "Vehicle not found.",
+  });
+}
+
+    // Build Trip Summary filters
+    const whereCondition = {
+      vehicle_id: vehicle.id,
+    };
+
+    // Optional status filter
+    if (status) {
+      const allowedStatuses = ["Pending", "Approved", "Rejected"];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          status: 0,
+          message: "Invalid status. Use Pending, Approved, or Rejected.",
+        });
+      }
+
+      whereCondition.status = status;
+    }
+
+    // Optional date filter
+    if (date) {
+      whereCondition.submitted_at = {
+        [Op.gte]: `${date} 00:00:00`,
+        [Op.lt]: `${date} 23:59:59`,
+      };
+    }
+
+    // Find Trip Summary records
+    const tripSummaries = await TripSummary.findAll({
+      where: whereCondition,
+      order: [["submitted_at", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: 1,
+      message: "Vehicle trip summary fetched successfully.",
+      data: {
+        vehicle_id: vehicle.id,
+        vehicle_number: vehicle.registration_number,
+        trip_summaries: tripSummaries,
+      },
+    });
+
+  } catch (err) {
+    console.error("getVehicleTripSummaries error:", err);
+
+    return res.status(500).json({
+      status: 0,
+      message: "Failed to fetch vehicle trip summaries.",
+      error: err.message,
+    });
+  }
+};
+
+
+
+// POST /api/v1/driver/vehicle-waste-summary
+// Fetch total waste collected by vehicle, with subcategory-wise breakdown
+const getVehicleWasteSummary = async (req, res) => {
+  try {
+    const { vehicle_id, date, status } = req.body;
+
+    if (!vehicle_id) {
+      return res.status(400).json({
+        status: 0,
+        message: "vehicle_id is required.",
+      });
+    }
+
+    // Find vehicle
+    const vehicle = await Vehicle.findByPk(vehicle_id);
+
+    if (!vehicle) {
+      return res.status(404).json({
+        status: 0,
+        message: "Vehicle not found.",
+      });
+    }
+
+    // Build filters
+    const whereCondition = {
+      vehicle_id: vehicle.id,
+    };
+
+    // Status filter
+    if (status) {
+      const allowedStatuses = ["Pending", "Approved", "Rejected"];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          status: 0,
+          message: "Invalid status. Use Pending, Approved, or Rejected.",
+        });
+      }
+
+      whereCondition.status = status;
+    }
+
+    // Date filter
+    if (date) {
+      whereCondition.submitted_at = {
+        [Op.gte]: `${date} 00:00:00`,
+        [Op.lt]: `${date} 23:59:59`,
+      };
+    }
+
+    // Get matching Trip Summary records
+    const tripSummaries = await TripSummary.findAll({
+      where: whereCondition,
+      attributes: [
+        "subcategory_id",
+        "subcategory_name",
+        "total_waste_kg",
+      ],
+    });
+
+    
+
+    // Calculate subcategory-wise totals
+    // Get all 5 subcategories
+const allSubcategories = await SubCategory.findAll({
+  where: {
+    id: [1, 2, 3, 4, 5],
+  },
+  attributes: ["id", "name"],
+  order: [["id", "ASC"]],
+});
+
+// Calculate totals from Trip Summary records
+let totalWaste = 0;
+
+const subcategoryTotals = {};
+
+for (const subcategory of allSubcategories) {
+  subcategoryTotals[subcategory.id] = {
+    subcategory_id: subcategory.id,
+    subcategory_name: subcategory.name,
+    total_waste_kg: 0,
+  };
+}
+
+for (const trip of tripSummaries) {
+  const weight = Number(trip.total_waste_kg || 0);
+
+  totalWaste += weight;
+
+  const subcategoryId = trip.subcategory_id;
+
+  if (subcategoryTotals[subcategoryId]) {
+    subcategoryTotals[subcategoryId].total_waste_kg += weight;
+  }
+}
+
+
+    return res.status(200).json({
+      status: 1,
+      message: "Vehicle waste summary fetched successfully.",
+      data: {
+        vehicle_id: vehicle.id,
+        vehicle_number: vehicle.registration_number,
+        total_waste_kg: Number(totalWaste.toFixed(2)),
+        subcategory_wise: Object.values(subcategoryTotals).map((item) => ({
+          ...item,
+          total_waste_kg: Number(item.total_waste_kg.toFixed(2)),
+        })),
+      },
+    });
+
+  } catch (err) {
+    console.error("getVehicleWasteSummary error:", err);
+
+    return res.status(500).json({
+      status: 0,
+      message: "Failed to fetch vehicle waste summary.",
+      error: err.message,
+    });
+  }
+};
+
+
 module.exports = {
   fetchOrderDetails,
   submitTripSummary,
+  getVehicleTripSummaries,
+  getVehicleWasteSummary,
 };

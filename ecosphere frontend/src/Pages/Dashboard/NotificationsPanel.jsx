@@ -1,6 +1,11 @@
 import React from "react";
 import { FiBell, FiAlertTriangle, FiArrowRight } from "react-icons/fi";
-import { formatDate, getVehicleNumber, getDriverName } from "./pickupHelpers";
+import {
+  formatDate,
+  getVehicleNumber,
+  getDriverName,
+  getDriverMobile,
+} from "./pickupHelpers";
 
 export default function NotificationsPanel({
   missedPickups,
@@ -45,10 +50,10 @@ export default function NotificationsPanel({
 
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-amber-800">
-                    Pickup missed on {formatDate(pickup.pickup_date)}
+                    Pickup missed on {formatDate(pickup.pickup_date)||"Unknown date"}
                   </p>
                   <p className="text-xs text-amber-700 mt-1">
-                    Vehicle: {getVehicleNumber(pickup)} · Driver: {getDriverName(pickup)}
+                    Vehicle: {getVehicleNumber(pickup) || "Not assigned"} · Driver: {getDriverName(pickup) || "Not assigned"} · Mobile: {getDriverMobile(pickup) || "Not assigned"}
                   </p>
                 </div>
               </div>

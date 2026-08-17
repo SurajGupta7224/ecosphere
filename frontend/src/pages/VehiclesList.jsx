@@ -4,7 +4,7 @@ import {
   Search, SlidersHorizontal, Eye, Edit3, Trash2, Check, X,
   ShieldCheck, Calendar, Info, FileText, Phone, User,
   MapPin, Plus, ChevronRight, AlertCircle, ChevronDown, CheckCircle2,
-  Smartphone, Truck, Settings, MoreVertical
+  Smartphone, Truck, Settings, MoreVertical, KeyRound, EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { IMAGE_BASE_URL } from '../api';
@@ -26,6 +26,13 @@ const VehiclesList = () => {
   const [detailedVehicle, setDetailedVehicle] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
+
+  // Password reset modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalVehicleId, setPasswordModalVehicleId] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordResetting, setPasswordResetting] = useState(false);
 
   // Load vehicles directory list
   const fetchVehicles = async () => {
@@ -111,6 +118,34 @@ const VehiclesList = () => {
     }
   };
 
+  const openPasswordModal = (vehicleId) => {
+    setPasswordModalVehicleId(vehicleId);
+    setNewPassword('');
+    setShowNewPassword(false);
+    setShowPasswordModal(true);
+    setActiveDropdownId(null);
+  };
+
+  const handleResetDriverPassword = async () => {
+    if (!newPassword || newPassword.trim().length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    setPasswordResetting(true);
+    try {
+      const res = await api.patch(`/aggregator-vehicles/${passwordModalVehicleId}/reset-password`, {
+        new_password: newPassword.trim()
+      });
+      toast.success(res.data.message || 'Driver password updated successfully!');
+      setShowPasswordModal(false);
+      setNewPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setPasswordResetting(false);
+    }
+  };
+
   // Close active dropdowns on click-out
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -175,6 +210,68 @@ const VehiclesList = () => {
 
     return (
       <div className="w-full mx-auto px-4 pb-16 animate-fadeIn">
+
+        {/* ── Update Password Modal ── */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm mx-4 p-6 animate-fadeIn">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-50 border border-indigo-100">
+                    <KeyRound className="w-5 h-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-sm">Update Driver Password</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">No email will be sent to the driver</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="mb-5">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleResetDriverPassword()}
+                    placeholder="Enter new password (min. 6 chars)"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">The driver can use this password to log in to the Driver app.</p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetDriverPassword}
+                  disabled={passwordResetting}
+                  style={{ backgroundColor: primaryColor }}
+                  className="flex-1 px-4 py-2 text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {passwordResetting ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Detail Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 border-b border-slate-100 pb-6">
           <div className="flex items-center space-x-4">
@@ -206,6 +303,12 @@ const VehiclesList = () => {
               className="flex items-center px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 rounded-xl bg-white text-xs font-bold shadow-sm transition-all"
             >
               <Edit3 className="w-4 h-4 mr-2" /> Modify Profile
+            </button>
+            <button
+              onClick={() => openPasswordModal(veh.id)}
+              className="flex items-center px-4 py-2 border border-indigo-100 hover:border-indigo-200 text-indigo-600 hover:text-indigo-700 rounded-xl bg-indigo-50 text-xs font-bold shadow-sm transition-all"
+            >
+              <KeyRound className="w-4 h-4 mr-2" /> Update Password
             </button>
             <button
               onClick={() => setSelectedVehicleId(null)}

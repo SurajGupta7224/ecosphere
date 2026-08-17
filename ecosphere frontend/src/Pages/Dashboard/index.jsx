@@ -30,11 +30,6 @@ import {
 } from "react-icons/fi";
 import { customerFetch } from "../../api";
 
-// -----------------------------------------------------------
-// NEW: extracted dashboard pieces + shared helpers
-// Adjust these relative paths to wherever you place the files
-// -----------------------------------------------------------
-import PlanStatusCard from "./PlanStatusCard";
 import OverviewStats from "./OverviewStats";
 import WasteBreakdownCard from "./WasteBreakdownCard";
 import RecentPickupsStrip from "./RecentPickupsStrip";
@@ -42,21 +37,19 @@ import NotificationsPanel from "./NotificationsPanel";
 import MyDetails from "./MyDetails";
 import RaiseComplaint from "./RaiseComplaint";
 import MyComplaints from "./MyComplaints";
+import TodaysPickupCard from "./TodaysPickupCard";
 
 import {
   statusColor,
   isToday,
   isMissedPickup,
   formatDate,
-  formatDateTime,
-  getVehicleNumber,
-  getDriverName,
-  getWetWeight,
-  getDryWeight,
-  getSanitaryWeight,
-  getSpecialCareWeight,
-  getTotalWeight,
+  formatTime,
+  getCategoryWeight,
 } from "./pickupHelpers";
+
+// FIX: module-scope constant so it's defined wherever it's used
+const TRACKABLE_STATUSES = ["booked", "pending", "approved", "in progress", "in-progress"];
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
@@ -79,16 +72,33 @@ export default function CustomerDashboard() {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [pickups, setPickups] = useState([]);
+  const [pickuphistory, setPickupHistory] = useState([]);
   const [loadingPickups, setLoadingPickups] = useState(false);
 
-  // QR popup
   const [showQR, setShowQR] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
 
-  // Pickup history filters
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
+  const [complaints, setComplaints] = useState([]);
+
+  useEffect(() => {
+    customerFetch("/customer/complaints")
+      .then((data) => {
+        setComplaints(data.data || []);
+      })
+      .catch((err) => {
+        console.error("Complaints fetch error:", err);
+      });
+  }, []);
+
+  const openComplaints = useMemo(() => {
+    return complaints.filter(
+      (c) => String(c.status || "pending").toLowerCase() !== "closed"
+    ).length;
+  }, [complaints]);
 
   const loadPickupQR = async (pickupId) => {
     try {
@@ -103,16 +113,11 @@ export default function CustomerDashboard() {
       setShowQR(true);
     } catch (err) {
       console.error("QR fetch error:", err);
-      alert("Failed to load pickup QR code.");
     } finally {
       setQrLoading(false);
     }
   };
-  
 
-  // ---------------------------------------------------------
-  // FETCH PICKUPS
-  // ---------------------------------------------------------
   useEffect(() => {
     setLoadingPickups(true);
 
@@ -128,12 +133,16 @@ export default function CustomerDashboard() {
       });
   }, []);
 
-  
-  
+ /* useEffect(() => {
+    customerFetch("/customer/pickup-history")
+      .then((data) => {
+        setPickupHistory(data.data || []);
+      })
+      .catch((err) => {
+        console.error("Pickup history fetch error:", err);
+      })
+  }, []);*/
 
-  // ---------------------------------------------------------
-  // FETCH PROFILE
-  // ---------------------------------------------------------
   useEffect(() => {
     customerFetch("/customer/profile")
       .then((data) => {
@@ -150,18 +159,12 @@ export default function CustomerDashboard() {
       });
   }, []);
 
-  // ---------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------
   const handleLogout = () => {
     localStorage.removeItem("customer_token");
     localStorage.removeItem("customer_user");
     window.location.href = "/";
   };
 
-  // ---------------------------------------------------------
-  // HELPERS
-  // ---------------------------------------------------------
   const capitalizeWords = (str) => {
     if (!str) return str;
 
@@ -175,13 +178,11 @@ export default function CustomerDashboard() {
       .join(" ");
   };
 
+
   const customerName = capitalizeWords(customer?.customer_name);
   const customerEmail = customer?.email;
   const customerMobile = customer?.phone || customer?.mobile;
 
-  // ---------------------------------------------------------
-  // NAV ITEMS
-  // ---------------------------------------------------------
   const sidebarNavItems = [
     { id: "overview", label: "Overview", icon: FiLayout },
     { id: "my-details", label: "My Details", icon: FiUser },
@@ -196,28 +197,16 @@ export default function CustomerDashboard() {
     { id: "settings", label: "Settings", icon: FiSettings },
   ];
 
+  const totalPickups = pickuphistory.length;
 
-  const totalPickups = pickups.length;
-
-  // ---------------------------------------------------------
-  // TODAY'S PICKUP
-  // ---------------------------------------------------------
-  const upcomingPickup  = useMemo(() => {
-    const trackableStatuses = [
-      "booked",
-      "pending",
-      "approved",
-      "in progress",
-      "in-progress",
-    ];
-
+  const todaysPickups = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return [...pickups]
       .filter((p) => {
         const status = String(p.status || "").toLowerCase();
-        if (!trackableStatuses.includes(status)) return false;
+        if (!TRACKABLE_STATUSES.includes(status)) return false;
 
         if (!p.pickup_date) return false;
         const d = new Date(p.pickup_date);
@@ -227,21 +216,14 @@ export default function CustomerDashboard() {
         return d >= today;
       })
       .sort((a, b) => new Date(a.pickup_date) - new Date(b.pickup_date))[0];
-}, [pickups]);
+  }, [pickups]);
 
-
-  // ---------------------------------------------------------
-  // MISSED PICKUPS (past date, never collected)
-  // ---------------------------------------------------------
   const missedPickups = useMemo(() => {
     return [...pickups]
       .filter(isMissedPickup)
       .sort((a, b) => new Date(b.pickup_date) - new Date(a.pickup_date));
   }, [pickups]);
 
-  // ---------------------------------------------------------
-  // RECENT PICKUPS (last 10, most recent first)
-  // ---------------------------------------------------------
   const recentPickups = useMemo(() => {
     return [...pickups]
       .sort((a, b) => {
@@ -258,14 +240,11 @@ export default function CustomerDashboard() {
       .slice(0, 7);
   }, [pickups]);
 
-  // ---------------------------------------------------------
-  // FILTER PICKUPS (pickup history tab)
-  // ---------------------------------------------------------
   const filteredPickups = useMemo(() => {
-    return pickups.filter((pickup) => {
-      if (!pickup.pickup_date) return true;
+    return pickuphistory.filter((pickup) => {
+      if (!pickup.submitted_at) return true;
 
-      const pickupDate = new Date(pickup.pickup_date);
+      const pickupDate = new Date(pickup.submitted_at);
 
       if (Number.isNaN(pickupDate.getTime())) {
         return true;
@@ -285,28 +264,22 @@ export default function CustomerDashboard() {
 
       return true;
     });
-  }, [pickups, fromDate, toDate]);
+  }, [pickuphistory, fromDate, toDate]);
 
-  // ---------------------------------------------------------
-  // REPORT SUMMARY
-  // ---------------------------------------------------------
   const reportSummary = useMemo(() => {
     return filteredPickups.reduce(
       (summary, pickup) => {
-        summary.wet += getWetWeight(pickup);
-        summary.dry += getDryWeight(pickup);
-        summary.sanitary += getSanitaryWeight(pickup);
-        summary.special += getSpecialCareWeight(pickup);
-        summary.total += getTotalWeight(pickup);
+        summary.wet += getCategoryWeight(pickup, "Wet Waste");
+        summary.dry += getCategoryWeight(pickup, "Dry Waste");
+        summary.sanitary += getCategoryWeight(pickup, "Sanitary Waste");
+        summary.special += getCategoryWeight(pickup, "Special Care");
+        summary.total += Number(pickup.total_waste_kg) || 0;
         return summary;
       },
       { wet: 0, dry: 0, sanitary: 0, special: 0, total: 0 }
     );
   }, [filteredPickups]);
 
-  // ---------------------------------------------------------
-  // CSV DOWNLOAD
-  // ---------------------------------------------------------
   const downloadCSV = () => {
     if (!filteredPickups.length) {
       alert("No pickup records available for the selected date range.");
@@ -314,7 +287,8 @@ export default function CustomerDashboard() {
     }
 
     const headers = [
-      "Date & Time",
+      "Date",
+      "Time",
       "Vehicle No.",
       "Driver",
       "Trip Status",
@@ -326,15 +300,16 @@ export default function CustomerDashboard() {
     ];
 
     const rows = filteredPickups.map((pickup) => [
-      formatDateTime(pickup),
-      getVehicleNumber(pickup),
-      getDriverName(pickup),
+      formatDate(pickup.submitted_at),
+      formatTime(pickup.submitted_at),
+      pickup.vehicle_number || "—",
+      pickup.driver_name || "—",
       pickup.status || "—",
-      getWetWeight(pickup),
-      getDryWeight(pickup),
-      getSanitaryWeight(pickup),
-      getSpecialCareWeight(pickup),
-      getTotalWeight(pickup),
+      getCategoryWeight(pickup, "Wet Waste"),
+      getCategoryWeight(pickup, "Dry Waste"),
+      getCategoryWeight(pickup, "Sanitary Waste"),
+      getCategoryWeight(pickup, "Special Care"),
+      pickup.total_waste_kg,
     ]);
 
     const csvContent = [headers, ...rows]
@@ -359,9 +334,6 @@ export default function CustomerDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // ---------------------------------------------------------
-  // GENERATE REPORT
-  // ---------------------------------------------------------
   const generateReport = () => {
     if (!filteredPickups.length) {
       alert("No pickup records available for the selected date range.");
@@ -375,11 +347,6 @@ export default function CustomerDashboard() {
     );
   };
 
- 
-
-  // ---------------------------------------------------------
-  // NAV BUTTON
-  // ---------------------------------------------------------
   const NavButton = ({ item, badge }) => {
     const Icon = item.icon;
     const isActive = activeTab === item.id;
@@ -411,38 +378,73 @@ export default function CustomerDashboard() {
     }
 
     const link = document.createElement("a");
-
     link.href = qrCodeDataUrl;
-
     link.download = `pickup-qr.png`;
-
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // FIX: guards against invalid/missing startDate
+  const getEndDateOneYearLater = (startDate) => {
+    if (!startDate) return null;
 
+    const date = new Date(startDate);
+    if (Number.isNaN(date.getTime())) return null;
 
-  // =========================================================
-  // UI
-  // =========================================================
+    date.setFullYear(date.getFullYear() + 1);
+    return date.toISOString().split("T")[0];
+  };
+
+  // NEW: earliest pickup_date across `pickups` = plan start date
+  const getPlanStartDate = (pickupList) => {
+    const validDates = pickupList
+      .map((p) => p.pickup_date)
+      .filter(Boolean)
+      .map((d) => new Date(d))
+      .filter((d) => !Number.isNaN(d.getTime()));
+
+    if (validDates.length === 0) return null;
+
+    const earliest = new Date(Math.min(...validDates.map((d) => d.getTime())));
+    return earliest.toISOString().split("T")[0];
+  };
+
+  // NEW: derive plan start/end from the pickups list
+  const planStartDate = useMemo(() => getPlanStartDate(pickups), [pickups]);
+
+  const planEndDate = useMemo(
+    () => getEndDateOneYearLater(planStartDate) || "2026-12-31",
+    [planStartDate]
+  );
+
+  const getDaysRemaining = (endDate) => {
+    if (!endDate) return null;
+
+    const end = new Date(endDate);
+    if (Number.isNaN(end.getTime())) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const daysRemaining = useMemo(() => getDaysRemaining(planEndDate), [planEndDate]);
 
   return (
     <>
       <div className="min-h-screen bg-[#f0f3f1] pt-48 sm:pt-52 lg:pt-56 pb-24 px-4 sm:px-6 lg:px-10">
-
         <div className="flex items-start justify-center gap-5 px-6 max-w-7xl mx-auto">
 
-          {/* SIDEBAR */}
           <aside className="w-52 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
-
             <NavButton item={sidebarNavItems.find((i) => i.id === "overview")} />
             <NavButton item={sidebarNavItems.find((i) => i.id === "my-details")} />
 
             <div className="h-px bg-gray-100 my-3" />
 
             <nav className="flex flex-col gap-0.5 flex-1">
-
               <button
                 onClick={() => setActiveTab("pickup-history")}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all w-full ${
@@ -473,17 +475,12 @@ export default function CustomerDashboard() {
               <FiLogOut size={15} />
               <span>Logout</span>
             </button>
-
           </aside>
 
-          {/* MAIN CONTENT */}
           <main className="flex-1 min-w-0 flex flex-col gap-4">
 
-            {/* ============================ OVERVIEW ============================ */}
             {activeTab === "overview" && (
               <div className="flex flex-col gap-4">
-
-                {/* Welcome Banner */}
                 <div className="bg-green-800 rounded-2xl p-5 sm:p-6 flex items-center gap-5">
                   <div className="w-16 h-16 rounded-full bg-green-600/60 border-2 border-green-500/40 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 select-none">
                     {customerName?.charAt(0)?.toUpperCase() || "U"}
@@ -502,11 +499,32 @@ export default function CustomerDashboard() {
                     </div>
                   </div>
 
+                  {/* NEW: plan renewal info */}
+                  <div className="text-center flex-shrink-0 border border-green-600/50 bg-green-700/20 p-2 rounded-xl shadow-xl hidden sm:block">
+                    <p className="text-amber-400 font-semibold text-[10px] uppercase tracking-widest mb-1">
+                      Plan Renews On
+                    </p>
+                    <p className="text-white text-sm font-semibold mb-1.5">
+                      {formatDate(planEndDate)}
+                    </p>
+                    {daysRemaining !== null && (
+                      <span className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                        daysRemaining < 0
+                          ? "bg-red-500/20 text-red-200"
+                          : "bg-white/15 text-white"
+                      }`}>
+                        {daysRemaining < 0
+                          ? "Plan expired"
+                          : `${daysRemaining} days left`}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => {
-                        if (upcomingPickup?.id) {
-                          loadPickupQR(upcomingPickup.id);
+                        if (todaysPickups?.id) {
+                          loadPickupQR(todaysPickups.id);
                         }
                       }}
                       title="Show Pickup QR"
@@ -517,50 +535,32 @@ export default function CustomerDashboard() {
                   </div>
                 </div>
 
-                {/* Plan / contract status — wire startDate/endDate to your
-                    customer or subscription object once that field exists */}
-                <PlanStatusCard
-                  planName={customer?.plan_name || "Service Plan"}
-                  siteName={customer?.site_name|| "Bangalore Site"}
-                  endDate={customer?.plan_end_date||"2026-12-31"}
-                  onDownloadReport={generateReport}
-                />
-
-                {/* Stat row — first card merges today's pickup detail
-                    (vehicle, driver, mobile, Track) with the stat tiles.
-                    openComplaints is a placeholder until complaints are
-                    fetched from the backend. */}
                 <OverviewStats
                   loadingPickups={loadingPickups}
-                  upcomingPickup={upcomingPickup}
-                  fallbackMobile={customerMobile}
-                  onTrack={() => setActiveTab("pickup-history")}
                   totalPickups={totalPickups}
                   totalWasteKg={reportSummary.total}
-                  openComplaints={0}
+                  openComplaints={openComplaints}
                 />
 
-                {/* Waste breakdown 
-                <WasteBreakdownCard reportSummary={reportSummary} />*/}
+                <TodaysPickupCard 
+                  todaysPickups = {todaysPickups}
+                  loadingPickups={loadingPickups} 
+                  fallbackMobile = {customerMobile}
+                  onTrack = {() => setActiveTab("pickup-history")}
+                />
 
-                {/* Recent pickups strip */}
                 <RecentPickupsStrip
                   pickups={recentPickups}
                   loadingPickups={loadingPickups}
                   onViewAll={() => setActiveTab("pickup-history")}
                 />
-
               </div>
             )}
 
-            {/* ============================ MY DETAILS ============================ */}
-
             {activeTab === "my-details" && <MyDetails customer={customer} />}
 
-            {/* ============================ PICKUP HISTORY ============================ */}
             {activeTab === "pickup-history" && (
               <div className="flex flex-col gap-4">
-
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -660,7 +660,8 @@ export default function CustomerDashboard() {
                     <table className="w-full min-w-[1100px] text-sm">
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr>
-                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Date & Time</th>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Trip Date</th>
+                          <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Pickup Time</th>
                           <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Vehicle No.</th>
                           <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Driver</th>
                           <th className="px-4 py-4 text-left text-[10px] uppercase tracking-wider font-bold text-gray-400">Trip Status</th>
@@ -674,7 +675,7 @@ export default function CustomerDashboard() {
                       <tbody>
                         {filteredPickups.length === 0 ? (
                           <tr>
-                            <td colSpan="9" className="text-center py-16 text-gray-400">
+                            <td colSpan="10" className="text-center py-16 text-gray-400">
                               <FiTruck size={32} className="mx-auto mb-3" />
                               No pickup records found for this date range.
                             </td>
@@ -682,23 +683,24 @@ export default function CustomerDashboard() {
                         ) : (
                           filteredPickups.map((pickup, index) => (
                             <tr
-                              key={pickup._id || pickup.id || pickup.lead_id || index}
+                              key={pickup.trip_id ?? index}
                               className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
                             >
-                              <td className="px-4 py-4 text-gray-700 whitespace-nowrap">{formatDateTime(pickup)}</td>
-                              <td className="px-4 py-4 font-medium text-gray-700">{getVehicleNumber(pickup)}</td>
-                              <td className="px-4 py-4 text-gray-700">{getDriverName(pickup)}</td>
+                              <td className="px-4 py-4 text-gray-700 whitespace-nowrap">{formatDate(pickup.submitted_at)}</td>
+                              <td className="px-4 py-4 text-gray-700 whitespace-nowrap">{formatTime(pickup.submitted_at)}</td>
+                              <td className="px-4 py-4 font-medium text-gray-700">{pickup.vehicle_number}</td>
+                              <td className="px-4 py-4 text-gray-700">{pickup.driver_name}</td>
                               <td className="px-4 py-4">
                                 <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusColor(pickup.status)}`}>
                                   {String(pickup.status || "").toLowerCase() === "completed" && <FiCheckCircle size={11} />}
                                   {pickup.status || "Pending"}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-right text-gray-700">{getWetWeight(pickup).toFixed(1)}</td>
-                              <td className="px-4 py-4 text-right text-gray-700">{getDryWeight(pickup).toFixed(1)}</td>
-                              <td className="px-4 py-4 text-right text-gray-700">{getSanitaryWeight(pickup).toFixed(1)}</td>
-                              <td className="px-4 py-4 text-right text-gray-700">{getSpecialCareWeight(pickup).toFixed(1)}</td>
-                              <td className="px-4 py-4 text-right font-bold text-gray-900">{getTotalWeight(pickup).toFixed(1)}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getCategoryWeight(pickup, "Wet Waste")}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getCategoryWeight(pickup, "Dry Waste")}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getCategoryWeight(pickup, "Sanitary Waste")}</td>
+                              <td className="px-4 py-4 text-right text-gray-700">{getCategoryWeight(pickup, "Special Care")}</td>
+                              <td className="px-4 py-4 text-right font-bold text-gray-900">{pickup.total_waste_kg}</td>
                             </tr>
                           ))
                         )}
@@ -706,11 +708,9 @@ export default function CustomerDashboard() {
                     </table>
                   </div>
                 </div>
-
               </div>
             )}
 
-            {/* ============================ PAYMENTS ============================ */}
             {activeTab === "payments" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-6">
@@ -730,7 +730,6 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* ============================ ADDRESS ============================ */}
             {activeTab === "addresses" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
@@ -763,35 +762,30 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* ============================ NOTIFICATIONS ============================ */}
             {activeTab === "notifications" && (
               <NotificationsPanel
                 missedPickups={missedPickups}
                 loadingPickups={loadingPickups}
                 onRaiseComplaint={() => {
-                  setSubject("Missed Pickup");
                   setActiveTab("complaints");
                 }}
               />
             )}
 
-            {/* ============================ RAISE COMPLAINT ============================ */}
             {activeTab === "complaints" && (
-              <RaiseComplaint 
-                customer={customer} 
+              <RaiseComplaint
+                customer={customer}
                 onViewComplaints={() => setActiveTab("mycomplaints")}
               />
             )}
 
-            {/* ============================ MY COMPLAINTS ============================ */}
             {activeTab === "mycomplaints" && (
-              <MyComplaints 
-                customer={customer} 
+              <MyComplaints
+                customer={customer}
                 onRaiseComplaint={() => setActiveTab("complaints")}
               />
             )}
 
-            {/* ============================ SUPPORT ============================ */}
             {activeTab === "support" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="mb-6">
@@ -822,13 +816,11 @@ export default function CustomerDashboard() {
                     </div>
                     <p className="font-semibold text-gray-800">Call Support</p>
                     <p className="text-sm text-gray-500 mt-1">+91 90354 89496</p>
-                    <p className="text-xs text-gray-400 mt-3">Mon–Sat · 8:00 AM – 8:00 PM</p>
                   </a>
                 </div>
               </div>
             )}
 
-            {/* ============================ WALLET (hidden from sidebar) ============================ */}
             {activeTab === "wallet" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Wallet</h2>
@@ -839,7 +831,6 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* ============================ REWARDS (hidden from sidebar) ============================ */}
             {activeTab === "rewards" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Rewards</h2>
@@ -850,10 +841,6 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* ============================ BOOK PICKUP (hidden from sidebar) ============================ */}
-            {activeTab === "book-pickup" && <BookPickup />}
-
-            {/* ============================ SETTINGS (hidden from sidebar) ============================ */}
             {activeTab === "settings" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Settings</h2>
@@ -867,94 +854,79 @@ export default function CustomerDashboard() {
           </main>
 
         </div>
-
-      </div>
-      {/* QR MODAL */}
-     {showQR && (
-  <div
-    className="fixed left-0 top-0 z-[999999] flex h-screen w-screen items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-    onClick={() => setShowQR(false)}
-  >
-    <div
-      className="relative flex w-[380px] flex-col items-center rounded-[28px] bg-white px-6 py-7 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* CLOSE */}
-      <button
-        type="button"
-        onClick={() => setShowQR(false)}
-        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
-      >
-        <FiX size={18} />
-      </button>
-
-      {/* TITLE */}
-      <div className="w-full text-center">
-        <h2 className="text-[20px] font-bold text-gray-900">
-          Customer QR Code
-        </h2>
-
-        <p className="mt-1 text-[13px] text-gray-500">
-          Scan to view customer details
-        </p>
       </div>
 
-      {/* QR */}
-      <div
-        className="mt-6 flex h-[260px] w-[260px] items-center justify-center"
-        style={{
-          position: "relative",
-          overflow: "visible",
-          flexShrink: 0,
-        }}
-      >
+      {showQR && (
         <div
-          id="customer-qr"
-          style={{
-            position: "relative",
-            width: "240px",
-            height: "240px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#ffffff",
-            padding: "8px",
-            borderRadius: "16px",
-            border: "1px solid #e5e7eb",
-            boxSizing: "border-box",
-          }}
+          className="fixed left-0 top-0 z-[999999] flex h-screen w-screen items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowQR(false)}
         >
-          {qrLoading ? (
-            <p className="text-sm text-gray-400">
-              Generating QR...
-            </p>
-          ) : qrCodeDataUrl ? (
-            <img
-              src={qrCodeDataUrl}
-              alt="Pickup QR Code"
-              className="h-[220px] w-[220px]"
-            />
-           ) : (
-            <p className="text-sm text-gray-400">
-              QR unavailable
-            </p>
-          )}
-        </div>
-      </div>
+          <div
+            className="relative flex w-[380px] flex-col items-center rounded-[28px] bg-white px-6 py-7 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowQR(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
+            >
+              <FiX size={18} />
+            </button>
 
-      {/* DOWNLOAD */}
-      <button
-        type="button"
-        onClick={downloadCustomerQR}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3.5 text-sm font-semibold text-white"
-      >
-        <FiDownload size={17} />
-        Download QR
-      </button>
-    </div>
-  </div>
-)}
+            <div className="w-full text-center">
+              <h2 className="text-[20px] font-bold text-gray-900">
+                Customer QR Code
+              </h2>
+              <p className="mt-1 text-[13px] text-gray-500">
+                Scan to view customer details
+              </p>
+            </div>
+
+            <div
+              className="mt-6 flex h-[260px] w-[260px] items-center justify-center"
+              style={{ position: "relative", overflow: "visible", flexShrink: 0 }}
+            >
+              <div
+                id="customer-qr"
+                style={{
+                  position: "relative",
+                  width: "240px",
+                  height: "240px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#ffffff",
+                  padding: "8px",
+                  borderRadius: "16px",
+                  border: "1px solid #e5e7eb",
+                  boxSizing: "border-box",
+                }}
+              >
+                {qrLoading ? (
+                  <p className="text-sm text-gray-400">Generating QR...</p>
+                ) : qrCodeDataUrl ? (
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="Pickup QR Code"
+                    className="h-[220px] w-[220px]"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-400">QR unavailable</p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={downloadCustomerQR}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3.5 text-sm font-semibold text-white"
+            >
+              <FiDownload size={17} />
+              Download QR
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
-

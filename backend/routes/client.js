@@ -14,6 +14,7 @@ const {
   getProfile,
   updateProfile,
   getCustomerPickups,
+  getCustomerPickupHistory,
   getCustomerOrderQR
 } = require("../controllers/Client/customerController");
 
@@ -59,6 +60,14 @@ router.put("/customer/profile", verifyToken, updateProfile);
 
 // GET /api/customer/pickups (Fetch authenticated customer's pickups)
 router.get("/customer/pickups", verifyToken, getCustomerPickups);
+
+// GET /api/customer/pickup-history
+// Fetch authenticated customer's Trip Summary history
+router.get(
+  "/customer/pickup-history",
+  verifyToken,
+  getCustomerPickupHistory
+);
 
 // HEAD
 // GET /api/customer/pickups/:id/qr (Fetch QR code for a specific pickup)

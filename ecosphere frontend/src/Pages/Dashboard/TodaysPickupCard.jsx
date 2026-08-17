@@ -1,24 +1,21 @@
 import React from "react";
-import { FiMapPin } from "react-icons/fi";
+import { FiMapPin, FiTruck } from "react-icons/fi";
 import {
   statusColor,
-  getSiteName,
   getVehicleNumber,
   getDriverName,
   getDriverMobile,
 } from "./pickupHelpers";
 
 export default function TodaysPickupCard({
-  todaysPickup,
+  todaysPickups = [],
   loadingPickups,
-  fallbackSiteName,
   fallbackMobile,
   onTrack,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-
-      <div className="flex items-center justify-between mb-4">
+    <div>
+      <div className="flex items-baseline justify-between mb-3">
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
             Scheduled Pickup
@@ -28,64 +25,71 @@ export default function TodaysPickupCard({
           </h2>
         </div>
 
-        {todaysPickup && (
-          <span
-            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${statusColor(
-              todaysPickup.status
-            )}`}
-          >
-            {todaysPickup.status || "Pending"}
+        {todaysPickups.length > 0 && (
+          <span className="text-xs text-gray-400">
+            {todaysPickups.length} truck{todaysPickups.length > 1 ? "s" : ""} assigned
           </span>
         )}
       </div>
 
-      {loadingPickups ? (
-        <p className="text-sm text-gray-400">Loading...</p>
-      ) : todaysPickup ? (
-        <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        {loadingPickups ? (
+          <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
+        ) : todaysPickups.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">
+            No pickup scheduled for today.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {todaysPickups.map((pickup, index) => (
+              <div
+                key={pickup.id ?? index}
+                className="bg-white border border-gray-100 rounded-xl p-4"
+              >
+                <div className="flex items-center justify-between mb-2.5">
+                  <FiTruck size={20} className="text-green-700" />
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(
+                      pickup.status
+                    )}`}
+                  >
+                    {pickup.status || "Pending"}
+                  </span>
+                </div>
 
-          <div className="min-w-0">
-            <p className="font-bold text-gray-800 text-sm truncate">
-              {getSiteName(todaysPickup, fallbackSiteName)}
-            </p>
+                <p className="text-xs text-gray-400">
+                  Reg. No:{" "}
+                  <span className="font-semibold text-gray-600">
+                    {getVehicleNumber(pickup)}
+                  </span>
+                </p>
 
-            <p className="text-xs text-gray-400 mt-2">
-              Reg. No:{" "}
-              <span className="font-semibold text-gray-600">
-                {getVehicleNumber(todaysPickup)}
-              </span>
-            </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Driver:{" "}
+                  <span className="font-semibold text-gray-600">
+                    {getDriverName(pickup)}
+                  </span>
+                </p>
 
-            <p className="text-xs text-gray-400 mt-1">
-              Driver:{" "}
-              <span className="font-semibold text-gray-600">
-                {getDriverName(todaysPickup)}
-              </span>
-            </p>
+                <p className="text-xs text-gray-400 mt-1 mb-3">
+                  Mobile:{" "}
+                  <span className="font-semibold text-gray-600">
+                    {getDriverMobile(pickup, fallbackMobile)}
+                  </span>
+                </p>
 
-            <p className="text-xs text-gray-400 mt-1">
-              Mobile:{" "}
-              <span className="font-semibold text-gray-600">
-                {getDriverMobile(todaysPickup, fallbackMobile)}
-              </span>
-            </p>
+                <button
+                  onClick={() => onTrack?.(pickup)}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-800"
+                >
+                  <FiMapPin size={12} />
+                  Track
+                </button>
+              </div>
+            ))}
           </div>
-
-          <button
-            onClick={onTrack}
-            className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-800"
-          >
-            <FiMapPin size={13} />
-            Track
-          </button>
-
-        </div>
-      ) : (
-        <p className="text-sm text-gray-400">
-          No pickup scheduled for today.
-        </p>
-      )}
-
+        )}
+      </div>
     </div>
   );
 }

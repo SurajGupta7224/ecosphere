@@ -12,6 +12,8 @@ const { verifyDriverToken } = require("../middleware/authMiddleware");
 const {
   fetchOrderDetails,
   submitTripSummary,
+  getVehicleTripSummaries,
+  getVehicleWasteSummary,
 } = require("../controllers/Driver/tripSummaryController");
 
 // Driver Authentication Routes
@@ -40,12 +42,31 @@ router.post(
   fetchOrderDetails
 );
 
+
+// POST /api/v1/driver/vehicle-trip-summary
+// Fetch Trip Summary records using vehicle number
+router.post(
+  "/vehicle-trip-summary",
+  verifyDriverToken,
+  getVehicleTripSummaries
+);
+
+
 // POST /api/v1/driver/create-trip-summary - Submit Waste Collection Trip Summary
 router.post(
   "/create-trip-summary",
   verifyDriverToken,
   upload.any(),
   submitTripSummary
+);
+
+
+
+// POST /api/v1/driver/vehicle-waste-summary
+router.post(
+  "/vehicle-waste-summary",
+  verifyDriverToken,
+  getVehicleWasteSummary
 );
 
 module.exports = router;

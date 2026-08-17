@@ -1308,13 +1308,13 @@ const bookWasteCollectionRequest = async (req, res) => {
 
     if (req.files) {
       if (req.files.mom_agreement_file && req.files.mom_agreement_file[0]) {
-        mom_agreement_file = req.files.mom_agreement_file[0].path;
+        mom_agreement_file = req.files.mom_agreement_file[0].filename;
       }
       if (req.files.po_copy_file && req.files.po_copy_file[0]) {
-        po_copy_file = req.files.po_copy_file[0].path;
+        po_copy_file = req.files.po_copy_file[0].filename;
       }
       if (req.files.email_copy_file && req.files.email_copy_file[0]) {
-        email_copy_file = req.files.email_copy_file[0].path;
+        email_copy_file = req.files.email_copy_file[0].filename;
       }
     }
 
@@ -1325,7 +1325,7 @@ const bookWasteCollectionRequest = async (req, res) => {
 
     if (!hasMom) {
       await t.rollback();
-      return res.status(400).json({ message: "MOM Copy (Minutes of Meeting) document is required." });
+      return res.status(400).json({ message: "MOA Copy (Memorandum of Association) document is required." });
     }
 
     if (!hasPo && !hasEmail) {
@@ -1474,6 +1474,8 @@ const bookWasteCollectionRequest = async (req, res) => {
       const customerMobile = firstReq?.mobile_number || firstReq?.phone_number_2;
       const customerName = firstReq?.customer_legal_name || firstReq?.customer_trade_name || firstReq?.contact_person || firstReq?.waste_generator_name || "Customer";
 
+      console.log(`[Order Booking] Sending credentials email for Order ${orderId} to: ${customerEmail || 'NO EMAIL FOUND'}`);
+
       if (customerEmail) {
         let existingCustomer = await Customer.findOne({ where: { email: customerEmail } });
         const plainPassword = generateProductionPassword();
@@ -1493,6 +1495,7 @@ const bookWasteCollectionRequest = async (req, res) => {
             notification_status: true
           });
           isNewAccount = true;
+          console.log(`[Order Booking] New customer account created for: ${customerEmail}`);
         } else {
           // Update customer password with fresh credentials and ensure active status
           await existingCustomer.update({
@@ -1502,18 +1505,27 @@ const bookWasteCollectionRequest = async (req, res) => {
             status: "active"
           });
           isNewAccount = false;
+          console.log(`[Order Booking] Existing customer password reset for: ${customerEmail}`);
         }
 
-        sendCustomerCredentialsEmail({
+        const emailSent = await sendCustomerCredentialsEmail({
           toEmail: customerEmail,
           plainPassword,
           orderId,
           customerName,
           isNewAccount
-        }).catch(e => console.error("Error sending customer credentials email:", e));
+        });
+
+        if (emailSent) {
+          console.log(`[Order Booking] Credentials email sent successfully to: ${customerEmail}`);
+        } else {
+          console.warn(`[Order Booking] sendCustomerCredentialsEmail returned false for: ${customerEmail}`);
+        }
+      } else {
+        console.warn(`[Order Booking] No customer email found for Order ${orderId}. Credentials email NOT sent.`);
       }
     } catch (custErr) {
-      console.error("Failed to process customer account/email on order booking:", custErr);
+      console.error("[Order Booking] Failed to process customer account/email on order booking:", custErr);
     }
 
     return res.status(200).json({
@@ -1524,7 +1536,7 @@ const bookWasteCollectionRequest = async (req, res) => {
   } catch (err) {
     await t.rollback();
     console.error("bookWasteCollectionRequest error:", err);
-    return res.status(500).json({ message: "Failed to book waste collection request." });
+    return res.status(500).json({ message: err.message || "Failed to book waste collection request." });
   }
 };
 

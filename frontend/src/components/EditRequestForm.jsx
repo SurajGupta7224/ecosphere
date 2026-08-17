@@ -866,13 +866,13 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
     return () => window.removeEventListener('click', handleCloseDropdown);
   }, []);
 
-  const renderEditDocumentUploadField = (file, setFile, existingFilename, title = "Upload Document", accept = ".pdf,image/*", containerId = "") => {
+  const renderEditDocumentUploadField = (file, setFile, existingFilename, title = "Upload Document", accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*", containerId = "") => {
     const isNewFile = file instanceof File;
-    const isNewImage = isNewFile && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
+    const isNewImage = isNewFile && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name));
     const newPreviewUrl = isNewFile ? URL.createObjectURL(file) : '';
 
     const hasExisting = file !== 'clear' && !isNewFile && existingFilename;
-    const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif)$/i.test(existingFilename);
+    const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(existingFilename);
     const existingPreviewUrl = hasExisting ? `${IMAGE_BASE_URL}/CollectionRequests/${existingFilename}` : '';
 
     const showFile = isNewFile || hasExisting;
@@ -888,7 +888,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-50 text-center">
                   <FileText className="w-10 h-10 text-rose-500 mb-2" />
                   <span className="text-xs font-bold text-slate-700 truncate max-w-[90%]">{file.name}</span>
-                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Document</span>
                 </div>
               )
             ) : (
@@ -898,26 +898,39 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
                 <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-50 text-center">
                   <FileText className="w-10 h-10 text-rose-500 mb-2" />
                   <span className="text-xs font-bold text-slate-700 truncate max-w-[90%]">{existingFilename}</span>
-                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Document</span>
                 </div>
               )
             )}
-            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
+            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 px-2">
               <button
                 type="button"
                 onClick={() => window.open(isNewFile ? newPreviewUrl : existingPreviewUrl, '_blank')}
-                className="px-3.5 py-2 bg-white/95 hover:bg-white text-slate-800 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                className="px-2.5 py-1.5 bg-white/95 hover:bg-white text-slate-800 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
-                View Document
+                View
               </button>
+              <label className="px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer">
+                Change
+                <input
+                  type="file"
+                  accept={accept}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setFile(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
               <button
                 type="button"
                 onClick={() => {
                   setFile('clear');
                 }}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
               >
-                Clear
+                Remove
               </button>
             </div>
           </div>
@@ -925,7 +938,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
           <div className="w-full h-full border-2 border-dashed border-slate-200 hover:border-violet-400 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 p-4">
             <ImageIcon className="w-6 h-6 mb-2 opacity-50 text-slate-400" />
             <span className="text-xs font-bold text-slate-500">{title}</span>
-            <span className="text-[10px] text-slate-400 mt-1">Image or PDF (Max 5MB)</span>
+            <span className="text-[10px] text-slate-400 mt-1">PDF, DOC, DOCX, or Image (Max 10MB)</span>
             <input
               type="file"
               accept={accept}
@@ -1430,7 +1443,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
         {/* SECTION 2: Customer Details */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <User className="w-5 h-5 text-violet-500" /> Section 2: Customer Details
+            <User className="w-5 h-5 text-violet-500" /> Customer Details
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -1617,7 +1630,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
         {/* SECTION 3: License Details (Optional) */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <ShieldCheck className="w-5 h-5 text-violet-500" /> Section 3: License Details (Optional)
+            <ShieldCheck className="w-5 h-5 text-violet-500" /> Compliance (Optional)
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -1678,7 +1691,7 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
         {/* SECTION 4: Location Details */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Building className="w-5 h-5 text-violet-500" /> Section 4: Location Details
+            <Building className="w-5 h-5 text-violet-500" /> Location Tracking
           </h3>
 
           <div className="space-y-6">
@@ -2608,8 +2621,8 @@ export default function EditRequestForm({ selectedGroup, onSuccess, onCancel }) 
             {/* Document upload copies */}
             <div className="sm:col-span-4 border-t border-slate-100 pt-4 mt-2 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">MOM Copy (Minutes of Meeting)</label>
-                {renderEditDocumentUploadField(editMomFile, setEditMomFile, selectedGroup.first?.mom_agreement_file, "Upload MOM Copy", ".pdf,image/*", "edit_mom_file_upload")}
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">MOA Copy (Memorandum of Association)</label>
+                {renderEditDocumentUploadField(editMomFile, setEditMomFile, selectedGroup.first?.mom_agreement_file, "Upload MOA Copy", ".pdf,image/*", "edit_mom_file_upload")}
               </div>
 
               <div>

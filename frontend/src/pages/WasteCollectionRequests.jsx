@@ -211,12 +211,12 @@ export default function WasteCollectionRequests() {
     }
   };
 
-  const renderDocumentUploadField = (file, setFile, existingFilename = null, setExistingFile = null, title = "Upload Document", accept = ".pdf,image/*", containerId = "") => {
-    const isNewImage = file && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name));
+  const renderDocumentUploadField = (file, setFile, existingFilename = null, setExistingFile = null, title = "Upload Document", accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*", containerId = "") => {
+    const isNewImage = file && (file.type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name));
     const newPreviewUrl = file ? URL.createObjectURL(file) : '';
 
     const hasExisting = !file && existingFilename;
-    const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif)$/i.test(existingFilename);
+    const isExistingImage = hasExisting && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(existingFilename);
     const existingPreviewUrl = hasExisting ? `${IMAGE_BASE_URL}/CollectionRequests/${existingFilename}` : '';
 
     const showFile = file || hasExisting;
@@ -232,7 +232,7 @@ export default function WasteCollectionRequests() {
                 <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-50 text-center">
                   <FileText className="w-10 h-10 text-rose-500 mb-2 animate-bounce" />
                   <span className="text-xs font-bold text-slate-700 truncate max-w-[90%]">{file.name}</span>
-                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Document</span>
                 </div>
               )
             ) : (
@@ -242,7 +242,7 @@ export default function WasteCollectionRequests() {
                 <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-50 text-center">
                   <FileText className="w-10 h-10 text-rose-500 mb-2" />
                   <span className="text-xs font-bold text-slate-700 truncate max-w-[90%]">{existingFilename}</span>
-                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Document</span>
                 </div>
               )
             )}
@@ -273,7 +273,7 @@ export default function WasteCollectionRequests() {
           <div className="w-full h-full border-2 border-dashed border-slate-200 hover:border-violet-400 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 p-4">
             <ImageIcon className="w-6 h-6 mb-2 opacity-50 text-slate-400" />
             <span className="text-xs font-bold text-slate-500">{title}</span>
-            <span className="text-[10px] text-slate-400 mt-1">Image or PDF (Max 5MB)</span>
+            <span className="text-[10px] text-slate-400 mt-1">PDF, DOC, DOCX, or Image (Max 10MB)</span>
             <input
               type="file"
               accept={accept}
@@ -1819,7 +1819,7 @@ export default function WasteCollectionRequests() {
         {/* SECTION 1: Customer Details */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8">
           <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <User className="w-5 h-5 text-violet-500" /> Section 1: Customer Details
+            <User className="w-5 h-5 text-violet-500" /> Customer Details
           </h2>
 
           {activeTab === 'B2C' ? (
@@ -2072,7 +2072,7 @@ export default function WasteCollectionRequests() {
         {(activeTab === 'B2C' || activeTab === 'B2B') && (
           <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8 animate-in fade-in duration-300">
             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <ShieldCheck className="w-5 h-5 text-violet-500" /> {activeTab === 'B2C' ? 'Section 2: License Details' : 'Section 3: License Details'}
+              <ShieldCheck className="w-5 h-5 text-violet-500" /> Compliance
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
 
@@ -2143,7 +2143,7 @@ export default function WasteCollectionRequests() {
         {/* SECTION 4: Location Details */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8">
           <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Building className="w-5 h-5 text-violet-500" /> Section 4: Location Details
+            <Building className="w-5 h-5 text-violet-500" /> Location Tracking
           </h2>
           <div className="space-y-6">
 
@@ -2696,7 +2696,7 @@ export default function WasteCollectionRequests() {
         {/* SECTION 5: Service Details / Expected Waste (KG) */}
         <div className="bg-white rounded-[1rem] border border-slate-200 shadow-sm p-6 sm:p-8">
           <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <ClipboardCheck className="w-5 h-5 text-violet-500" /> Section 5: Service Details / Expected Waste (KG)
+            <ClipboardCheck className="w-5 h-5 text-violet-500" /> Service Details / Expected Waste (KG)
           </h2>
           <div className="space-y-6">
 
@@ -2907,7 +2907,7 @@ export default function WasteCollectionRequests() {
             disabled={submitting}
             className="px-10 py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl text-sm shadow-lg shadow-violet-100 transition-all disabled:opacity-50 cursor-pointer"
           >
-            {submitting ? 'Generating Request…' : 'Generate Request'}
+            {submitting ? 'Generating Request…' : 'New Lead Request'}
           </button>
         </div>
 

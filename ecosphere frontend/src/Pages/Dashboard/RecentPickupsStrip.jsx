@@ -2,8 +2,6 @@ import React from "react";
 import { FiArrowRight, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 import {
   formatDate,
-  getTotalWeight,
-  getDriverName,
   isCompletedStatus,
 } from "./pickupHelpers";
 
@@ -78,14 +76,14 @@ export default function RecentPickupsStrip({
                     done ? "text-gray-800" : "text-amber-500"
                   }`}
                 >
-                  {getTotalWeight(pickup)}kg
+                  0
                 </p>
 
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-1">
                   Collector
                 </p>
                 <p className="text-sm font-semibold text-green-700 truncate">
-                  {getDriverName(pickup)}
+                  Teja
                 </p>
               </div>
             );

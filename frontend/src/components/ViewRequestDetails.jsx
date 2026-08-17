@@ -376,12 +376,17 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
                 { label: 'GST Certificate', file: firstReq.gst_file },
                 { label: 'PAN Card', file: firstReq.pan_file },
                 { label: 'Trade License', file: firstReq.trade_license_file },
-                { label: 'MOM Copy', file: firstReq.mom_agreement_file },
+                { label: 'MOA Copy', file: firstReq.mom_agreement_file },
                 { label: 'PO Copy', file: firstReq.po_copy_file },
                 { label: 'Email Copy', file: firstReq.email_copy_file },
               ].filter(doc => doc.file).map((doc, idx) => {
-                const fileUrl = `${IMAGE_BASE_URL}/CollectionRequests/${doc.file}`;
-                const isPdf = doc.file.toLowerCase().endsWith('.pdf');
+                const cleanFilename = String(doc.file).split(/[/\\]/).pop();
+                const fileUrl = `${IMAGE_BASE_URL}/CollectionRequests/${cleanFilename}`;
+                const lowerFile = cleanFilename.toLowerCase();
+                const isPdf = lowerFile.endsWith('.pdf');
+                const isWord = lowerFile.endsWith('.doc') || lowerFile.endsWith('.docx');
+                const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(lowerFile);
+
                 return (
                   <a
                     key={idx}
@@ -390,21 +395,23 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
                     rel="noopener noreferrer"
                     className="group relative border border-slate-200 hover:border-emerald-500 rounded-xl overflow-hidden bg-slate-50 aspect-video flex flex-col justify-between p-2.5 transition-all hover:shadow-xs"
                   >
-                    <div className="flex-1 flex items-center justify-center">
-                      {isPdf ? (
-                        <div className="text-center">
-                          <FileText className="w-7 h-7 text-emerald-600 mx-auto" />
-                          <span className="text-[12px] font-medium text-slate-500 block mt-0.5 uppercase">PDF File</span>
-                        </div>
-                      ) : (
+                    <div className="flex-1 flex items-center justify-center w-full h-full relative">
+                      {isImage ? (
                         <img
                           src={fileUrl}
                           alt={doc.label}
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
+                      ) : (
+                        <div className="text-center p-1 z-10">
+                          <FileText className="w-7 h-7 text-emerald-600 mx-auto" />
+                          <span className="text-[12px] font-medium text-slate-500 block mt-0.5 uppercase truncate max-w-[120px]">
+                            {isPdf ? 'PDF File' : (isWord ? 'Word File' : 'Document')}
+                          </span>
+                        </div>
                       )}
                     </div>
-                    <div className="relative bg-slate-900/70 backdrop-blur-xs text-white p-1 text-[12px] font-semibold rounded-md truncate w-full text-center">
+                    <div className="relative bg-slate-900/70 backdrop-blur-xs text-white p-1 text-[12px] font-semibold rounded-md truncate w-full text-center z-10">
                       {doc.label}
                     </div>
                   </a>
@@ -464,8 +471,8 @@ export default function ViewRequestDetails({ selectedGroup, isAdmin, onEditClick
             </div>
           </SectionCard>
 
-          {/* License & Compliance Details */}
-          <SectionCard title="License & Compliance" icon={Award} iconColor="text-emerald-600">
+          {/* Compliance Details */}
+          <SectionCard title="Compliance" icon={Award} iconColor="text-emerald-600">
             <div className="space-y-2.5">
               <InfoItem icon={Building} label="Registered RWA" value={firstReq.registered_rwa} forceShow />
               <InfoItem icon={FileText} label="GST Number" value={firstReq.gst_number || firstReq.gst || firstReq.gst_no} forceShow />
