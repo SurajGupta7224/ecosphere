@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api, { IMAGE_BASE_URL } from '../api';
 
-const SettingsContext = createContext({});
+const SettingsContext = createContext( {} );
 
-export const useSettings = () => useContext(SettingsContext);
+export const useSettings = () => useContext( SettingsContext );
 
 // ─── Translation Dictionary for Dynamic i18n ─────────────────────────────────
+
 const TRANSLATIONS = {
   English: {
     dashboard: "Dashboard",
@@ -585,169 +586,169 @@ const DEFAULTS = {
 };
 
 // ── Load Google Fonts dynamically ─────────────────────────────────────────────
-const loadGoogleFont = (fontName) => {
-  if (!fontName) return;
+const loadGoogleFont = ( fontName ) => {
+  if ( !fontName ) return;
   const systemFonts = ['system-ui', 'sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New'];
-  if (systemFonts.includes(fontName)) return;
+  if ( systemFonts.includes( fontName ) ) return;
 
-  const id = `google-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
-  if (document.getElementById(id)) return;
+  const id = `google-font-${fontName.replace( /\s+/g, '-' ).toLowerCase()}`;
+  if ( document.getElementById( id ) ) return;
 
-  const link = document.createElement('link');
+  const link = document.createElement( 'link' );
   link.id = id;
   link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@300;400;500;600;700;800&display=swap`;
-  document.head.appendChild(link);
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace( /\s+/g, '+' )}:wght@300;400;500;600;700;800&display=swap`;
+  document.head.appendChild( link );
 };
 
 // ── Determine if dark mode should be active ───────────────────────────────────
-const shouldBeDark = (themeType) => {
-  if (themeType === 'dark') return true;
-  if (themeType === 'system') {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+const shouldBeDark = ( themeType ) => {
+  if ( themeType === 'dark' ) return true;
+  if ( themeType === 'system' ) {
+    return window.matchMedia?.( '(prefers-color-scheme: dark)' ).matches ?? false;
   }
   return false; // 'light'
 };
 
-export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState(DEFAULTS);
-  const [loading, setLoading] = useState(true);
+export const SettingsProvider = ( { children } ) => {
+  const [settings, setSettings] = useState( DEFAULTS );
+  const [loading, setLoading] = useState( true );
 
   // ── Apply theme colours as CSS variables + toggle dark class ─────────────────
-  const applyTheme = useCallback((theme) => {
-    if (!theme) return;
+  const applyTheme = useCallback( ( theme ) => {
+    if ( !theme ) return;
     const root = document.documentElement;
 
     // 1. Toggle dark class on <html> for CSS dark mode overrides
-    const dark = shouldBeDark(theme.theme_type);
-    if (dark) {
-      root.classList.add('dark');
+    const dark = shouldBeDark( theme.theme_type );
+    if ( dark ) {
+      root.classList.add( 'dark' );
     } else {
-      root.classList.remove('dark');
+      root.classList.remove( 'dark' );
     }
 
     // 2. Set CSS variables for dynamic colors & fonts
-    root.style.setProperty('--color-primary',   theme.primary_color   || '#6366f1');
-    root.style.setProperty('--color-secondary', theme.secondary_color || '#8b5cf6');
-    root.style.setProperty('--color-sidebar',   theme.sidebar_color   || '#1e133c');
-    root.style.setProperty('--color-sidebar-text', theme.sidebar_text_color || '#cbd5e1');
-    root.style.setProperty('--color-sidebar-active-bg', theme.sidebar_active_bg_color || '#ffffff1a');
-    root.style.setProperty('--color-sidebar-active-text', theme.sidebar_active_text_color || '#ffffff');
-    root.style.setProperty('--color-navbar',    theme.navbar_color    || (dark ? '#1e293b' : '#ffffff'));
-    root.style.setProperty('--color-card-bg',   theme.card_bg_color   || (dark ? '#1e293b' : '#ffffff'));
-    root.style.setProperty('--color-button',    theme.button_color    || '#6366f1');
-    root.style.setProperty('--color-text',      theme.text_color      || (dark ? '#f1f5f9' : '#1e293b'));
+    root.style.setProperty( '--color-primary', theme.primary_color || '#6366f1' );
+    root.style.setProperty( '--color-secondary', theme.secondary_color || '#8b5cf6' );
+    root.style.setProperty( '--color-sidebar', theme.sidebar_color || '#1e133c' );
+    root.style.setProperty( '--color-sidebar-text', theme.sidebar_text_color || '#cbd5e1' );
+    root.style.setProperty( '--color-sidebar-active-bg', theme.sidebar_active_bg_color || '#ffffff1a' );
+    root.style.setProperty( '--color-sidebar-active-text', theme.sidebar_active_text_color || '#ffffff' );
+    root.style.setProperty( '--color-navbar', theme.navbar_color || ( dark ? '#1e293b' : '#ffffff' ) );
+    root.style.setProperty( '--color-card-bg', theme.card_bg_color || ( dark ? '#1e293b' : '#ffffff' ) );
+    root.style.setProperty( '--color-button', theme.button_color || '#6366f1' );
+    root.style.setProperty( '--color-text', theme.text_color || ( dark ? '#f1f5f9' : '#1e293b' ) );
 
     const activeFont = theme.font_family || 'Inter';
-    loadGoogleFont(activeFont);
-    root.style.setProperty('--font-family', `'${activeFont}'`);
+    loadGoogleFont( activeFont );
+    root.style.setProperty( '--font-family', `'${activeFont}'` );
 
     // 3. Update content backgrounds
-    if (dark) {
-      root.style.setProperty('--app-bg',      '#0f172a');
-      root.style.setProperty('--content-bg',  '#111827');
-      root.style.setProperty('--card-surface','#1e293b');
+    if ( dark ) {
+      root.style.setProperty( '--app-bg', '#0f172a' );
+      root.style.setProperty( '--content-bg', '#111827' );
+      root.style.setProperty( '--card-surface', '#1e293b' );
     } else {
-      root.style.setProperty('--app-bg',      '#f3f4f6');
-      root.style.setProperty('--content-bg',  '#f8f9fa');
-      root.style.setProperty('--card-surface', theme.card_bg_color || '#ffffff');
+      root.style.setProperty( '--app-bg', '#f3f4f6' );
+      root.style.setProperty( '--content-bg', '#f8f9fa' );
+      root.style.setProperty( '--card-surface', theme.card_bg_color || '#ffffff' );
     }
-  }, []);
+  }, [] );
 
   // ── Apply branding (title + favicon) ─────────────────────────────────────────
-  const applyBranding = useCallback((s) => {
-    if (!s) return;
-    if (s.appName) document.title = `${s.appName} | Admin Panel`;
-    if (s.favicon) {
-      let link = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
+  const applyBranding = useCallback( ( s ) => {
+    if ( !s ) return;
+    if ( s.appName ) document.title = `${s.appName} | Admin Panel`;
+    if ( s.favicon ) {
+      let link = document.querySelector( "link[rel~='icon']" );
+      if ( !link ) {
+        link = document.createElement( 'link' );
         link.rel = 'icon';
-        document.head.appendChild(link);
+        document.head.appendChild( link );
       }
       link.href = `${IMAGE_BASE_URL}/${s.favicon}`;
-      
+
       // Update type attribute based on extension to force browser update
-      const ext = s.favicon.split('.').pop().toLowerCase();
-      if (ext === 'svg') {
+      const ext = s.favicon.split( '.' ).pop().toLowerCase();
+      if ( ext === 'svg' ) {
         link.type = 'image/svg+xml';
-      } else if (ext === 'png') {
+      } else if ( ext === 'png' ) {
         link.type = 'image/png';
-      } else if (ext === 'ico') {
+      } else if ( ext === 'ico' ) {
         link.type = 'image/x-icon';
       } else {
-        link.removeAttribute('type');
+        link.removeAttribute( 'type' );
       }
     }
-  }, []);
+  }, [] );
 
   // ── Fetch from API and apply everything ───────────────────────────────────────
-  const fetchPublicSettings = useCallback(async () => {
+  const fetchPublicSettings = useCallback( async () => {
     try {
-      const res = await api.get('/settings/public');
-      if (res.data.success) {
+      const res = await api.get( '/settings/public' );
+      if ( res.data.success ) {
         const s = res.data.settings;
-        setSettings(prev => ({ ...DEFAULTS, ...prev, ...s }));
-        applyTheme(s.theme);
-        applyBranding(s);
+        setSettings( prev => ( { ...DEFAULTS, ...prev, ...s } ) );
+        applyTheme( s.theme );
+        applyBranding( s );
       }
     } catch {
       // fail silently — defaults stay in place
     } finally {
-      setLoading(false);
+      setLoading( false );
     }
-  }, [applyTheme, applyBranding]);
+  }, [applyTheme, applyBranding] );
 
   // ── Called by Settings page right after a successful PUT ──────────────────────
-  const refreshSettings = useCallback((patch = null) => {
-    if (patch) {
-      setSettings(prev => {
+  const refreshSettings = useCallback( ( patch = null ) => {
+    if ( patch ) {
+      setSettings( prev => {
         const next = { ...prev, ...patch };
         // If theme patch, apply it immediately
-        if (patch.theme) {
+        if ( patch.theme ) {
           const mergedTheme = { ...prev.theme, ...patch.theme };
-          applyTheme(mergedTheme);
+          applyTheme( mergedTheme );
           next.theme = mergedTheme;
         }
-        if (patch.appName || patch.favicon) applyBranding(next);
+        if ( patch.appName || patch.favicon ) applyBranding( next );
         return next;
-      });
+      } );
     }
     // Always also do a full re-fetch to stay in sync with DB
     fetchPublicSettings();
-  }, [fetchPublicSettings, applyTheme, applyBranding]);
+  }, [fetchPublicSettings, applyTheme, applyBranding] );
 
   // ── Translation Helper Function ──────────────────────────────────────────────
-  const t = useCallback((key) => {
+  const t = useCallback( ( key ) => {
     let lang = settings?.defaultLanguage || 'English';
-    if (lang === 'en') lang = 'English'; // Map DB default schema value to 'English'
+    if ( lang === 'en' ) lang = 'English'; // Map DB default schema value to 'English'
     const translations = TRANSLATIONS[lang] || TRANSLATIONS.English;
     return translations[key] || TRANSLATIONS.English[key] || key;
-  }, [settings?.defaultLanguage]);
+  }, [settings?.defaultLanguage] );
 
   // ── System theme: listen for OS preference changes ────────────────────────────
-  useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+  useEffect( () => {
+    const mq = window.matchMedia?.( '(prefers-color-scheme: dark)' );
     const handler = () => {
-      setSettings(prev => {
-        if (prev.theme?.theme_type === 'system') applyTheme(prev.theme);
+      setSettings( prev => {
+        if ( prev.theme?.theme_type === 'system' ) applyTheme( prev.theme );
         return prev;
-      });
+      } );
     };
-    mq?.addEventListener('change', handler);
-    return () => mq?.removeEventListener('change', handler);
-  }, [applyTheme]);
+    mq?.addEventListener( 'change', handler );
+    return () => mq?.removeEventListener( 'change', handler );
+  }, [applyTheme] );
 
-  useEffect(() => {
+  useEffect( () => {
     fetchPublicSettings();
-  }, [fetchPublicSettings]);
+  }, [fetchPublicSettings] );
 
   // ── Handle RTL for Arabic layout direction ──────────────────────────────────
-  useEffect(() => {
+  useEffect( () => {
     let lang = settings?.defaultLanguage || 'English';
-    if (lang === 'en') lang = 'English';
+    if ( lang === 'en' ) lang = 'English';
     document.documentElement.dir = lang === 'Arabic' ? 'rtl' : 'ltr';
-  }, [settings?.defaultLanguage]);
+  }, [settings?.defaultLanguage] );
 
   return (
     <SettingsContext.Provider value={{ settings, loading, refreshSettings, t }}>
