@@ -120,7 +120,7 @@ export default function QuickHeroSection() {
           />
 
           {/* Scroll Track positioned above phone */}
-          <div className="w-full max-w-6xl mx-auto relative h-[320px] overflow-hidden">
+          <div className="w-full max-w-7xl px-6 mx-auto relative h-[320px] overflow-hidden">
             <div className="absolute left-0 top-0 bottom-0 w-24 z-10 pointer-events-none" />
             <div className="absolute right-0 top-0 bottom-0 w-24 z-10 pointer-events-none" />
 

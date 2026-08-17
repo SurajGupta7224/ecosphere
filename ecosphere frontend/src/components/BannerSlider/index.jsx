@@ -14,7 +14,7 @@ const BannerSlider = () => {
   return (
     <div className="hidden sm:flex w-full justify-center">
       
-      <div className="relative w-[1200px] h-[600px] overflow-hidden rounded-lg">
+      <div className="relative w-[1240px] h-[600px] overflow-hidden rounded-lg">
         {/* ⭐ Continuous Scrolling Wrapper */}
         <h2 className="mt-10 ml-60 text-3xl md:text-3xl font-extrabold text-[#2a0014] leading-tight mb-3 uppercase">
         Sustainable Waste Management Services in <span className="text-3xl md:text-3xl ml-60 italic font-extrabold text-[#92B775] leading-tight mb-4 uppercase">

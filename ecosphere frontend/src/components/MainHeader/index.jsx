@@ -59,7 +59,7 @@ const MainHeader = () => {
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 100);
+    const handleScroll = () => setIsScrolled(window.scrollY > 15);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -125,9 +125,9 @@ const MainHeader = () => {
         }
       >
         <div className="max-w-[1350px] mx-auto">
-          {/* TOP BAR (DESKTOP ONLY, HIDES ON SCROLL) */}
+          {/* TOP BAR (DESKTOP ONLY, HIDES ON SCROLL) */} 
           {!isScrolled && !isMobile && (
-            <div className="py-[14px] px-6 flex justify-end items-center gap-7 text-[14px] font-semibold text-white whitespace-nowrap">
+            <div className="py-[14px] px-12 flex justify-end items-center gap-7 text-[14px] font-semibold text-white whitespace-nowrap">
               <button
                 onClick={() => setIsGetAppModalOpen(true)}
                 className="flex items-center gap-1 hover:opacity-90 transition text-white"
@@ -210,8 +210,8 @@ const MainHeader = () => {
           {/* NAVIGATION ROW */}
           <div
             className={
-              "flex justify-between items-center px-6 " +
-              (isScrolled ? "py-[10px]" : "py-[14px]")
+              "flex justify-between items-center px-12 " +
+              (isScrolled ? "py-[10px]" : "py-[8px]")
             }
           >
             {/* LOGO */}
@@ -295,14 +295,7 @@ const MainHeader = () => {
                       </div>
                     )}
                   </div>
-                )}
-
-                <button
-                  onClick={() => navigate("/partnerwithus")}
-                  className="py-[10px] px-[18px] bg-[#84cc16] text-white rounded-[6px] font-medium cursor-pointer whitespace-nowrap shadow-md hover:bg-[#76b814] transition"
-                >
-                  Partner With Us
-                </button>
+                )}  
               </nav>
             )}
           </div>

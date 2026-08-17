@@ -53,7 +53,7 @@ const FaqSection = () => {
       ref={rootRef}
       className="relative bg-[#ffffff] text-black py-8 md:py-4 px-4 sm:px-6"
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl px-6 mx-auto">
 
         {/* Heading */}
         <div
