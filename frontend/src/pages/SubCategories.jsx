@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, Save, RotateCcw, Filter, Layers, GripVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../api';
+import api, { IMAGE_BASE_URL } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
 
 const SubCategories = () => {
@@ -359,7 +359,7 @@ const SubCategories = () => {
       schedule_after_days: ''
     })));
 
-    setImagePreview(sc.image ? `http://localhost:5000/uploads/SubCategory/${sc.image}` : null);
+    setImagePreview(sc.image ? `${IMAGE_BASE_URL}/SubCategory/${sc.image}` : null);
     setSelectedId(sc.id);
     setIsEditMode(true);
     setIsFormOpen(true);
@@ -939,7 +939,7 @@ const SubCategories = () => {
                           <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-100">
                             {sc.image ? (
                               <img
-                                src={`http://localhost:5000/uploads/SubCategory/${sc.image}`}
+                                src={`${IMAGE_BASE_URL}/SubCategory/${sc.image}`}
                                 alt={sc.alt_tag || sc.name}
                                 className="w-full h-full object-cover"
                               />

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, User, Mail, Calendar, MessageSquare, Image as ImageIcon, Send, RefreshCw, AlertCircle, CheckCircle2, Clock, Archive } from "lucide-react";
 import toast from "react-hot-toast";
-import api from "../api";
+import api, { IMAGE_BASE_URL } from "../api";
 
 export default function ComplaintDetails() {
   const navigate = useNavigate();
@@ -201,7 +201,7 @@ export default function ComplaintDetails() {
                   className="relative group rounded-2xl border border-slate-200 overflow-hidden max-w-md bg-slate-950 cursor-pointer shadow-xs"
                 >
                   <img
-                    src={`http://localhost:5000/uploads/complaints/${complaint.attachment}`}
+                    src={`${IMAGE_BASE_URL}/complaints/${complaint.attachment}`}
                     alt="Complaint Attachment"
                     className="w-full max-h-72 object-cover group-hover:scale-105 transition duration-300"
                   />
@@ -274,7 +274,7 @@ export default function ComplaintDetails() {
           onClick={() => setShowImage(false)}
         >
           <img
-            src={`http://localhost:5000/uploads/complaints/${complaint.attachment}`}
+            src={`${IMAGE_BASE_URL}/complaints/${complaint.attachment}`}
             alt="Full Attachment"
             className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}

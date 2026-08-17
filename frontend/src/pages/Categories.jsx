@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, Save, RotateCcw, Filter, CheckCircle, XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../api';
+import api, { IMAGE_BASE_URL } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
 
 const Categories = () => {
@@ -103,7 +103,7 @@ const Categories = () => {
       meta_description: category.meta_description || '',
       status: category.status
     });
-    setImagePreview(category.image ? `http://localhost:5000/uploads/Category/${category.image}` : null);
+    setImagePreview(category.image ? `${IMAGE_BASE_URL}/Category/${category.image}` : null);
     setSelectedId(category.id);
     setIsEditMode(true);
     setIsFormOpen(true);
@@ -331,7 +331,7 @@ const Categories = () => {
                       <td className="p-5">
                         <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-100">
                           {cat.image ? (
-                            <img src={`http://localhost:5000/uploads/Category/${cat.image}`} alt={cat.name} className="w-full h-full object-cover" />
+                            <img src={`${IMAGE_BASE_URL}/Category/${cat.image}`} alt={cat.name} className="w-full h-full object-cover" />
                           ) : (
                             <ImageIcon className="w-full h-full p-3 text-slate-300" />
                           )}
