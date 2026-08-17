@@ -143,23 +143,52 @@ const submitRegistration = async (req, res) => {
       }
     }
 
-    // Create Customer record or link existing
-    let customerId = null;
-    let targetUserId = null;
-    const validCustType = (customer_type && customer_type.toLowerCase() !== 'admin') ? customer_type : 'B2B';
+   // Create Customer record or link existing
+let customerId = null;
+let targetUserId = null;
 
-    try {
-      const custName = contact_person || customer_legal_name || customer_trade_name || 'Customer';
-      const newCust = await Customer.create({
-        customer_name: custName,
-        mobile: mobile_number || null,
-        email: email || null,
-        customer_type: validCustType,
-        created_by: 'customer',
-        status: 'active'
-      });
-      customerId = newCust.id;
+const validCustType =
+  (customer_type && customer_type.toLowerCase() !== "admin")
+    ? customer_type
+    : "B2B";
 
+try {
+  const custName =
+    contact_person ||
+    customer_legal_name ||
+    customer_trade_name ||
+    "Customer";
+
+  // Check whether customer is already registered
+  const existingCustomer = await Customer.findOne({
+    where: {
+      [Op.or]: [
+        email ? { email } : null,
+        mobile_number ? { mobile: mobile_number } : null
+      ].filter(Boolean)
+    }
+  });
+
+  if (existingCustomer) {
+    return res.status(400).json({
+      success: 0,
+      message: "User is already registered"
+    });
+  }
+
+  // Create only when customer does not already exist
+  const newCust = await Customer.create({
+    customer_name: custName,
+    mobile: mobile_number || null,
+    email: email || null,
+    customer_type: validCustType,
+    created_by: "customer",
+    status: "active"
+  });
+
+  customerId = newCust.id;
+
+  
       if (email || mobile_number) {
         const existingUser = await User.findOne({
           where: {
