@@ -47,12 +47,12 @@ const getProfile = async (req, res) => {
   try {
     // req.user contains the verified customer object from authMiddleware
     return res.status(200).json({
-      success: true,
+      success: 1,
       customer: req.user
     });
   } catch (err) {
     console.error("profile fetch error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch profile" });
+    return res.status(500).json({ success: 0, message: "Failed to fetch profile" });
   }
 };
 
@@ -73,13 +73,13 @@ const updateProfile = async (req, res) => {
     });
 
     return res.status(200).json({
-      success: true,
+      success: 1,
       message: "Profile updated successfully",
       customer
     });
   } catch (err) {
     console.error("profile update error:", err);
-    return res.status(500).json({ success: false, message: "Failed to update profile" });
+    return res.status(500).json({ success: 0, message: "Failed to update profile" });
   }
 };
 
@@ -481,7 +481,7 @@ const getCustomerPickupHistory = async (req, res) => {
     // No trips found
     if (tripIds.length === 0) {
       return res.status(200).json({
-        success: true,
+        success: 1,
         message: "Pickup history fetched successfully",
         data: [],
         pagination: {
@@ -567,7 +567,7 @@ const getCustomerPickupHistory = async (req, res) => {
     const totalPages = Math.ceil(totalTrips / limit);
 
     return res.status(200).json({
-      success: true,
+      success: 1,
       message: "Pickup history fetched successfully",
       data,
       pagination: {
@@ -584,7 +584,7 @@ const getCustomerPickupHistory = async (req, res) => {
     console.error("getCustomerPickupHistory error:", err);
 
     return res.status(500).json({
-      success: false,
+      success: 0,
       message: "Failed to fetch pickup history",
       error: err.message,
     });

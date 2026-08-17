@@ -793,13 +793,26 @@ export default function WasteCollectionRequests() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-48 pb-10 px-4 sm:px-6 lg:px-12">
       <div className="max-w-[78rem] mx-auto">
 
-        {/* Toast Banner */}
-        {toastMsg.message && (
-          <div className={`mb-6 p-4 rounded-xl text-sm font-bold flex items-center justify-between shadow-md ${toastMsg.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-            <span>{toastMsg.message}</span>
-            <button onClick={() => setToastMsg({ type: '', message: '' })} className="text-white hover:opacity-80 font-bold">×</button>
-          </div>
-        )}
+        {/* Toast Notification */}
+{toastMsg.message && (
+  <div
+    className={`fixed top-6 right-6 z-[9999] min-w-[320px] max-w-[450px] p-4 rounded-xl text-sm font-bold flex items-center justify-between gap-4 shadow-2xl ${
+      toastMsg.type === 'success'
+        ? 'bg-emerald-600 text-white'
+        : 'bg-rose-600 text-white'
+    }`}
+  >
+    <span>{toastMsg.message}</span>
+
+    <button
+      type="button"
+      onClick={() => setToastMsg({ type: '', message: '' })}
+      className="text-white hover:opacity-80 font-bold text-lg leading-none"
+    >
+      ×
+    </button>
+  </div>
+)}
 
         {/* ================= SCREEN 1: TERMS & CONDITIONS ================= */}
         {!tncAccepted ? (
