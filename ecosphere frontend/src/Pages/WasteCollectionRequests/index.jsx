@@ -6,6 +6,7 @@ import {
   Info, ExternalLink, Copy
 } from 'lucide-react';
 import axios from 'axios';
+import DatePicker from '../../components/DatePicker';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -789,7 +790,7 @@ export default function WasteCollectionRequests() {
   }, [submitSuccess]);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-56 pb-10 px-4 sm:px-6 lg:px-12">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pt-48 pb-10 px-4 sm:px-6 lg:px-12">
       <div className="max-w-[78rem] mx-auto">
 
         {/* Toast Banner */}
@@ -1630,12 +1631,9 @@ export default function WasteCollectionRequests() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-slate-100">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preferred Pickup Date</label>
-                    <input
-                      type="date"
-                      name="pickup_date"
+                    <DatePicker
                       value={formData.pickup_date}
-                      onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-1 focus:ring-[#84cc16] focus:border-[#84cc16] transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                      onChange={(date) => setFormData(prev => ({ ...prev, pickup_date: date }))}
                     />
                   </div>
 

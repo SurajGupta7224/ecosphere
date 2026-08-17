@@ -59,7 +59,7 @@ const MainHeader = () => {
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 100);
+    const handleScroll = () => setIsScrolled(window.scrollY > 15);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -211,7 +211,7 @@ const MainHeader = () => {
           <div
             className={
               "flex justify-between items-center px-12 " +
-              (isScrolled ? "py-[10px]" : "py-[14px]")
+              (isScrolled ? "py-[10px]" : "py-[8px]")
             }
           >
             {/* LOGO */}

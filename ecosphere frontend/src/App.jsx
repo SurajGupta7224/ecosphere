@@ -26,6 +26,7 @@ import PrivacyPolicy from "./Pages/PrivacyPolicy";
 import RefundPolicy from "./Pages/RefundPolicy";
 import CustomerDashboard from "./Pages/Dashboard";
 import WasteCollectionRequests from "./Pages/WasteCollectionRequests";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Strict route protection helper for Customer Dashboard
 function RequireCustomerAuth({ children }) {
@@ -47,6 +48,8 @@ function AppContent() {
 
   return (
     <>
+
+      <ScrollToTop />
       {/* SHOW HEADER ONLY ON PAGES EXCEPT partnerwithus */}
       {!hideHeader && <MainHeader />}
 
