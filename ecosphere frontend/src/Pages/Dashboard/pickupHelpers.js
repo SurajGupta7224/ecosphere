@@ -97,99 +97,54 @@ export const formatDate = (date) => {
   });
 };
 
-export const formatDateTime = (pickup) => {
-  const date = pickup?.pickup_date;
-  const time = pickup?.pickup_time;
+export const formatTime = (date) => {
+  if (!date) return "—";
 
-  if (!date && !time) return "—";
+  const parsed = new Date(date);
 
-  if (date && time) {
-    return `${formatDate(date)}, ${time}`;
+  if (Number.isNaN(parsed.getTime())) {
+    return "—";
   }
 
-  return formatDate(date) || time;
+  return parsed
+    .toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toLowerCase();
 };
 
-export const getVehicleNumber = (pickup) =>
-  pickup?.vehicle_no ||
-  pickup?.vehicle_number ||
-  pickup?.vehicleNumber ||
-  pickup?.vehicle?.vehicle_no ||
-  "—";
-
-export const getDriverName = (pickup) =>
-  pickup?.driver_name ||
-  pickup?.driver ||
-  pickup?.driverName ||
-  pickup?.assigned_driver ||
-  "—";
-
-export const getDriverMobile = (pickup, fallback) =>
-  pickup?.driver_mobile ||
-  pickup?.driver_phone ||
-  pickup?.driverMobile ||
-  pickup?.mobile ||
-  fallback ||
-  "—";
-
-export const getSiteName = (pickup, fallback) =>
-  pickup?.waste_generator_name ||
-  pickup?.site_name ||
-  pickup?.siteName ||
-  fallback ||
-  "—";
-
-export const getWetWeight = (pickup) =>
-  Number(
-    pickup?.wet_kg ||
-      pickup?.wet ||
-      pickup?.wet_weight ||
-      pickup?.wetWaste ||
-      0
+export const getCategoryWeight = (pickup, categoryName) => {
+  const match = pickup.waste_details?.find(
+    (w) => w.subcategory_name === categoryName
   );
+  return match ? Number(match.total_waste_kg) : 0;
+};
 
-export const getDryWeight = (pickup) =>
-  Number(
-    pickup?.dry_kg ||
-      pickup?.dry ||
-      pickup?.dry_weight ||
-      pickup?.dryWaste ||
-      0
-  );
-
-export const getSanitaryWeight = (pickup) =>
-  Number(
-    pickup?.sanitary_kg ||
-      pickup?.sanitary ||
-      pickup?.sanitary_weight ||
-      pickup?.sanitaryWaste ||
-      0
-  );
-
-export const getSpecialCareWeight = (pickup) =>
-  Number(
-    pickup?.special_care_kg ||
-      pickup?.special_care ||
-      pickup?.specialCare ||
-      pickup?.special_care_weight ||
-      0
-  );
-
-export const getTotalWeight = (pickup) => {
-  const backendTotal =
-    pickup?.total_kg ||
-    pickup?.total_weight ||
-    pickup?.totalWeight ||
-    pickup?.total;
-
-  if (backendTotal !== undefined && backendTotal !== null) {
-    return Number(backendTotal);
-  }
-
+export const getVehicleNumber = (pickup) => {
   return (
-    getWetWeight(pickup) +
-    getDryWeight(pickup) +
-    getSanitaryWeight(pickup) +
-    getSpecialCareWeight(pickup)
+    pickup?.vehicle_number ||
+    pickup?.vehicle_no ||
+    pickup?.vehicleNumber ||
+    "Not assigned"
+  );
+};
+
+export const getDriverName = (pickup) => {
+  return (
+    pickup?.driver_name ||
+    pickup?.driverName ||
+    "Not assigned"
+  );
+};
+
+export const getDriverMobile = (pickup, fallbackMobile) => {
+  return (
+    pickup?.driver_mobile ||
+    pickup?.driver_phone ||
+    pickup?.driverMobile ||
+    fallbackMobile ||
+    "—"
   );
 };

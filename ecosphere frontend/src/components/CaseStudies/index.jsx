@@ -66,7 +66,7 @@ const CaseStudies = () => {
   };
 
   return (
-    <section className="py-10 sm:py-14 md:py-20 px-4 bg-white -mt-10 sm:-mt-20">
+    <section className="max-w-7xl px-6 mx-auto py-10 sm:py-14 md:py-20 bg-white -mt-10 sm:-mt-20">
       
       {/* HEADER */}
       <div className="max-w-6xl mx-auto text-center mb-12">

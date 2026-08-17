@@ -8,8 +8,7 @@ import { FiFileText } from "react-icons/fi";
 // this gracefully hides the renewal chip if endDate is missing.
 // -----------------------------------------------------------
 export default function PlanStatusCard({
-  planName = "Service Plan",
-  siteName,
+  planName = "Your Plan",
   endDate,
   onDownloadReport,
 }) {
@@ -33,7 +32,6 @@ export default function PlanStatusCard({
           </p>
           <p className="text-sm font-bold text-gray-800">
             {planName}
-            {siteName ? ` · ${siteName}` : ""}
           </p>
         </div>
 

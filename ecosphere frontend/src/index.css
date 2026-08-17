@@ -66,6 +66,47 @@ html, body {
   overflow-x: hidden;
 }
 
+.ecosphere-datepicker .react-datepicker {
+  font-family: inherit;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+  padding: 12px;
+}
+.ecosphere-datepicker .react-datepicker__header {
+  background: white;
+  border-bottom: none;
+  padding: 0;
+}
+.ecosphere-datepicker .react-datepicker__day-name {
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 11px;
+  width: 2.2rem;
+}
+.ecosphere-datepicker .react-datepicker__day {
+  width: 2.2rem;
+  line-height: 2.2rem;
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+  border-radius: 9999px;
+}
+.ecosphere-datepicker .react-datepicker__day:hover {
+  background: #ecfccb;
+}
+.ecosphere-datepicker .react-datepicker__day--selected,
+.ecosphere-datepicker .react-datepicker__day--keyboard-selected {
+  background: #84cc16 !important;
+  color: white !important;
+}
+.ecosphere-datepicker .react-datepicker__day--disabled {
+  color: #cbd5e1;
+}
+.ecosphere-datepicker .react-datepicker__day--outside-month {
+  color: #cbd5e1;
+}
+
 canvas {
   position: absolute;
   top: 0;

@@ -178,7 +178,7 @@ const ServicesGrid = () => {
       </div>
 
       {/* ========= DESKTOP VIEW ========= */}
-      <div className="hidden md:block max-w-6xl mx-auto">
+      <div className="hidden md:block max-w-7xl px-6 mx-auto">
         {desktopServices.map((service, idx) => {
           const isReversed = idx % 2 === 1;
 

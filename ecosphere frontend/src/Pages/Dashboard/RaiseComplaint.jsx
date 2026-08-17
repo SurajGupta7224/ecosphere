@@ -545,7 +545,7 @@ export default function RaiseComplaint({ customer, onViewComplaints }) {
 			<div className="mt-6">
 
 				<label className="mb-2 block text-xs font-semibold text-gray-600">
-				Description
+				Description<span className="text-red-500">*</span>
 				</label>
 
 				<textarea

@@ -20,13 +20,13 @@ import BsfInnovation from "./Pages/bsfinnovation";
 import GpsSolutions from "./Pages/GpsSolutions";
 import LoginPage from "./components/login";
 import MobileNavbar from "./components/MobileNavbar";
-import PartnerWithUs from "./Pages/partnerwithus";
 import OurProductsSection from "./components/ProductsSection";
 import Segments from "./Pages/Segments";
 import PrivacyPolicy from "./Pages/PrivacyPolicy";
 import RefundPolicy from "./Pages/RefundPolicy";
 import CustomerDashboard from "./Pages/Dashboard";
 import WasteCollectionRequests from "./Pages/WasteCollectionRequests";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Strict route protection helper for Customer Dashboard
 function RequireCustomerAuth({ children }) {
@@ -48,6 +48,8 @@ function AppContent() {
 
   return (
     <>
+
+      <ScrollToTop />
       {/* SHOW HEADER ONLY ON PAGES EXCEPT partnerwithus */}
       {!hideHeader && <MainHeader />}
 
@@ -90,7 +92,6 @@ function AppContent() {
         />
 
         {/* PARTNER WITH US PAGE (header hidden) */}
-        <Route path="/partnerwithus" element={<PartnerWithUs />} />
         <Route path="/segments" element={<Segments />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />

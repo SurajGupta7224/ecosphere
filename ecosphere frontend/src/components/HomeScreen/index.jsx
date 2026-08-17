@@ -10,7 +10,7 @@ const HomeScreen = () => {
         className="
           relative 
           min-h-[650px]
-          md:h-screen 
+          md:min-h-[700px] 
           flex 
           items-center 
           justify-center
@@ -33,7 +33,7 @@ const HomeScreen = () => {
 
         {/* ⭐ OUTER CONTAINER MATCHING HEADER WIDTH */}
         <div className="relative w-full">
-          <div className="max-w-[1350px] mx-auto px-4 sm:px-6 lg:px-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
             {/* ⭐ HERO CONTENT */}
             <div className="w-full max-w-5xl mx-auto text-center flex flex-col items-center">
               {/* ⭐ HERO TITLE */}

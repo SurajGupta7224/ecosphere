@@ -436,6 +436,7 @@ const getCustomerOrderQR = async (req, res) => {
 const getCustomerPickupHistory = async (req, res) => {
   try {
     const customerId = req.user.id;
+    console.log(`Fetching pickup history for customer ID: ${customerId}`);
 
     // Pagination parameters
     const page = Math.max(parseInt(req.query.page) || 1, 1);
