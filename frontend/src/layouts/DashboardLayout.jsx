@@ -437,7 +437,7 @@ const DashboardLayout = () => {
         {/* Bottom Banner Image */}
         <div className="w-full h-24 overflow-hidden select-none pointer-events-none shrink-0 relative">
           <img
-            src="/leftnavbarimgbottom.webp"
+            src="/panel/leftnavbarimgbottom.webp"
             alt="Sidebar Bottom Banner"
             className="w-full h-auto object-contain object-bottom absolute bottom-0"
           />

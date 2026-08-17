@@ -142,7 +142,7 @@ const Login = () => {
       <div className="min-h-screen flex items-center justify-center bg-[#06291e] text-slate-100 p-4 relative overflow-hidden font-sans">
         <div className="w-full max-w-lg z-10">
           <div className="bg-[#09392b]/80 backdrop-blur-xl border border-emerald-800/40 rounded-3xl p-8 md:p-12 shadow-2xl text-center flex flex-col items-center">
-            <img src="/logologinpage.png" alt={appName} className="max-h-16 object-contain mb-8" />
+            <img src="/panel/logologinpage.png" alt={appName} className="max-h-16 object-contain mb-8" />
             <span className="px-3.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25 uppercase tracking-widest mb-4">
               Scheduled Maintenance
             </span>
@@ -170,7 +170,7 @@ const Login = () => {
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#073224] font-sans">
         <div className="w-full max-w-md z-10">
           <div className="text-center mb-6">
-            <img src="/logologinpage.png" alt={appName} className="max-h-14 mx-auto mb-3 object-contain" />
+            <img src="/panel/logologinpage.png" alt={appName} className="max-h-14 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-white">{appName}</h1>
             <p className="text-emerald-200/70 text-xs mt-1">Two-Factor Authentication</p>
           </div>
@@ -238,7 +238,7 @@ const Login = () => {
         {/* Left Background Artwork */}
         <div className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-95">
           <img
-            src="/loginimageleft.png"
+            src="/panel/loginimageleft.png"
             alt="Ecosphere Waste Solutions"
             className="w-full h-full object-cover object-left"
           />
@@ -308,7 +308,7 @@ const Login = () => {
           <div className="text-center space-y-2 mb-6">
             <div className="w-full max-w-[170px] p-1 flex items-center justify-center mx-auto">
               <div className="w-full h-[64px]flex items-center justify-center overflow-hidden p-2">
-                <img src="/ecospare-logo.png" alt="Ecosphere Logo" className="w-full h-full object-contain" />
+                <img src="/panel/ecospare-logo.png" alt="Ecosphere Logo" className="w-full h-full object-contain" />
               </div>
             </div>
 

@@ -334,7 +334,7 @@ const Dashboard = () => {
         {/* Right side banner illustration matching the mockup */}
         <div className="hidden md:block absolute right-0 bottom-[-20px] h-32 md:h-40 lg:h-70 max-w-full select-none pointer-events-none">
           <img
-            src="/dashboard-banner.webp"
+            src="/panel/dashboard-banner.webp"
             alt="Dashboard Banner"
             className="h-full w-auto object-contain object-right-bottom"
           />

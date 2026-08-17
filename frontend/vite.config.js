@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/panel/",   // ✅ THIS LINE IS REQUIRED
+  base: "/panel/",
   server: {
     proxy: {
       '/api': {

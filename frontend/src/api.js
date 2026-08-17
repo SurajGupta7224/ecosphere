@@ -27,7 +27,7 @@ api.interceptors.response.use(
       if (token) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/panel/login';
       }
     }
     return Promise.reject(error);
